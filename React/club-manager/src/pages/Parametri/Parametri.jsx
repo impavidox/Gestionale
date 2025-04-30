@@ -10,6 +10,7 @@ import CheckboxField from '../../components/forms/CheckboxField';
 import Loader from '../../components/common/Loader';
 import AttivitaList from '../../components/attivita/AttivitaList';
 import AttivitaForm from '../../components/attivita/AttivitaForm';
+import { formatDateDisplay } from '../../utils/dateUtils';
 
 /**
  * Pagina per la gestione dei parametri dell'applicazione

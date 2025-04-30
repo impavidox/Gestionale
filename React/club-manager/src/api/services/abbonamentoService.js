@@ -1,5 +1,5 @@
-import axios from '../axios';
-import { API_ENDPOINTS } from '../endpoints';
+import api from '../axios';
+import endpoints from '../endpoints';
 
 /**
  * Crea un nuovo abbonamento
@@ -9,7 +9,7 @@ import { API_ENDPOINTS } from '../endpoints';
  */
 export const createAbbonamento = async (abbonamentoData) => {
   try {
-    const response = await axios.post(API_ENDPOINTS.ABBONAMENTO.CREATE, abbonamentoData);
+    const response = await api.post(endpoints.ABBONAMENTO.UPDATE, abbonamentoData);
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Errore durante la creazione dell\'abbonamento');
@@ -24,7 +24,7 @@ export const createAbbonamento = async (abbonamentoData) => {
  */
 export const updateAbbonamento = async (abbonamentoData) => {
   try {
-    const response = await axios.post(API_ENDPOINTS.ABBONAMENTO.UPDATE, abbonamentoData);
+    const response = await api.post(endpoints.ABBONAMENTO.UPDATE, abbonamentoData);
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Errore durante l\'aggiornamento dell\'abbonamento');
@@ -39,7 +39,7 @@ export const updateAbbonamento = async (abbonamentoData) => {
  */
 export const getCurrentAbbonamento = async (socioId) => {
   try {
-    const response = await axios.get(`${API_ENDPOINTS.ABBONAMENTO.GET_CURRENT}/${socioId}`);
+    const response = await api.get(`${endpoints.ABBONAMENTO.RETRIEVE_CURRENT}/${socioId}`);
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Errore durante il recupero dell\'abbonamento corrente');
@@ -54,7 +54,7 @@ export const getCurrentAbbonamento = async (socioId) => {
  */
 export const getAbbonamentoById = async (abbonamentoId) => {
   try {
-    const response = await axios.get(`${API_ENDPOINTS.ABBONAMENTO.GET_BY_ID}/${abbonamentoId}`);
+    const response = await api.get(`${endpoints.ABBONAMENTO.RETRIEVE_CURRENT}/${abbonamentoId}`);
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Errore durante il recupero dell\'abbonamento');
@@ -69,7 +69,7 @@ export const getAbbonamentoById = async (abbonamentoId) => {
  */
 export const getAbbonamentiBySocio = async (socioId) => {
   try {
-    const response = await axios.get(`${API_ENDPOINTS.ABBONAMENTO.GET_BY_SOCIO}/${socioId}`);
+    const response = await api.get(`${endpoints.ABBONAMENTO.RETRIEVE_CURRENT}/${socioId}`);
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Errore durante il recupero degli abbonamenti');
@@ -84,7 +84,7 @@ export const getAbbonamentiBySocio = async (socioId) => {
  */
 export const getAbbonamentoByTessera = async (numeroTessera) => {
   try {
-    const response = await axios.get(`${API_ENDPOINTS.ABBONAMENTO.GET_BY_TESSERA}/${numeroTessera}`);
+    const response = await api.get(`${endpoints.UTILITY.RETRIEVE_ABBONAMENTO_BY_TESSERA}/${numeroTessera}`);
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Errore durante il recupero degli abbonamenti per tessera');

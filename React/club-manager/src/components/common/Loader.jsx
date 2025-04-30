@@ -1,8 +1,8 @@
-import React, { useContext } from 'react';
-import { AppContext } from '../../context/AppContext';
+import React from 'react';
+import { useApp } from '../../context/AppContext';
 
 const Loader = ({ size = 'md', fullScreen = false }) => {
-  const { loading } = useContext(AppContext);
+  const { loading } = useApp();
 
   if (!loading) return null;
 

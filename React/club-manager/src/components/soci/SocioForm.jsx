@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Row, Col, Button, Alert, Nav } from 'react-bootstrap';
+import { Card, Form, Row, Col, Button, Alert, Nav, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import TextField from '../forms/TextField';
