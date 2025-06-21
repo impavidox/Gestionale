@@ -29,10 +29,10 @@ app.http('abbonamento', {
             context.log(`Action: ${action}, Param1: ${param1}`);
 
             switch (action) {
-                case 'updateAbonamento':
+                case 'updateAbbonamento':
                     return await handleUpdateAbbonamento(context, request.body);
                 
-                case 'retrieveCurrentAbbonemanto':
+                case 'retrieveCurrentAbbonamento':
                     return await handleRetrieveCurrentAbbonamento(context, param1);
                 
                 default:

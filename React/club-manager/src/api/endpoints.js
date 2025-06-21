@@ -17,8 +17,8 @@ const endpoints = {
     
     // Abbonamenti
     ABBONAMENTO: {
-      UPDATE: 'abbonamento/updateAbonamento',
-      RETRIEVE_CURRENT: 'abbonamento/retrieveCurrentAbbonemanto',
+      UPDATE: 'abbonamento/updateAbbonamento',
+      RETRIEVE_CURRENT: 'abbonamento/retrieveCurrentAbbonamento',
     },
     
     // Ricevute
