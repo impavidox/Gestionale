@@ -40,8 +40,9 @@ const ElencoSoci = () => {
         filters.scadute,
         filters.anno
       );
-      
-      setSoci(response.data);
+      console.log(response.data)
+      setSoci(response.data.data.items);
+      console.log(soci)
       setShowSearchResults(true);
       setShowDetailSocio(false);
     } catch (error) {
