@@ -61,9 +61,9 @@ const Parametri = () => {
       try {
         setLoading(true);
         
-        // Carica parametri
-        const paramsResponse = await parametriService.retrieveParameters();
-        setParameters(paramsResponse.data);
+        // // Carica parametri
+        // const paramsResponse = await parametriService.retrieveParameters();
+        // setParameters(paramsResponse.data);
         
         // Carica famiglie
         const familiesResponse = await activityService.retrieveFamilies();
@@ -112,13 +112,14 @@ const Parametri = () => {
   // Gestione selezione famiglia
   const handleFamilyChange = async (name, selectedValue) => {
     setSelectedFamily(selectedValue.value);
+    console.log(selectedValue.value)
     setSelectedActivity(null);
     
     try {
       setLoading(true);
       
-      const response = await activityService.retrieveFullActivitiesByFamily(selectedValue.value.id);
-      setActivities(response.data);
+      const response = await activityService.retrieveFullActivitiesByFamily(selectedValue.value.value);
+      setActivities(response.data.data);
       
       setLoading(false);
     } catch (err) {

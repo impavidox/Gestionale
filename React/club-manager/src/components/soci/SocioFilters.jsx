@@ -150,7 +150,7 @@ const SocioFilters = ({
     
     // Carica attività per la famiglia selezionata
     try {
-      const response = await activityService.retrieveActivitiesByFamily(selectedValue.value.id);
+      const response = await activityService.retrieveActivitiesByFamily(selectedValue.value.value);
       console.log('Attivita loaded for family:', response);
       setAttivita(response.data || []);
     } catch (error) {

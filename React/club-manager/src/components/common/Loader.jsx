@@ -4,7 +4,8 @@ import { useApp } from '../../context/AppContext';
 const Loader = ({ size = 'md', fullScreen = false }) => {
   const { loading } = useApp();
 
-  if (!loading) return null;
+  // Fix: Check if loading is greater than 0 instead of just truthy
+  if (loading <= 0) return null;
 
   const getSizeClasses = () => {
     switch (size) {
