@@ -1,8 +1,13 @@
 import axios from 'axios';
 
+// Base URL configuration based on environment
+const getBaseURL = () => {
+    return 'https://backend-cso.azurewebsites.net/api/';
+};
+
 // Configurazione di base di Axios
 const api = axios.create({
-  baseURL: '/cso/rest/', // Equivalente al prefix nel codice originale
+  baseURL: getBaseURL(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -19,7 +24,7 @@ api.interceptors.response.use(
   }
 );
 
-// Interceptor per mostrare/nascondere loader (equivalente al loading-interceptor dell'originale)
+// Interceptor per mostrare/nascondere loader
 let requestCount = 0;
 
 api.interceptors.request.use(

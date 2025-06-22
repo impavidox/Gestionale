@@ -1,7 +1,7 @@
 const { app } = require('@azure/functions');
 const { getPool, sql } = require('../../shared/database/connection');
 const { createSuccessResponse, createErrorResponse } = require('../../shared/utils/responseHelper');
-const { validateSocio } = require('../../shared/models/Socio');
+const { validateSocio } = require('../../shared/models/socio');
 
 app.http('socio', {
     methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
