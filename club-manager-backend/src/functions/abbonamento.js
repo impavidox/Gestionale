@@ -63,18 +63,8 @@ async function handleUpdateAbbonamento(context, requestBody) {
 
         context.log('Dati ricevuti per abbonamento:', JSON.stringify(requestBody, null, 2));
 
-        // Normalize field names from frontend to backend
-        const normalizedData = {
-            id: requestBody.idAbonamento || requestBody.id || 0,
-            socioId: requestBody.idSocio || requestBody.socioId,
-            dataIscrizione: requestBody.dateInscription || requestBody.incription || requestBody.dataIscrizione,
-            idAnno: requestBody.idAnno,
-            firmato: requestBody.firmato || false,
-            numeroTessera: requestBody.numeroTessera || requestBody.numeroTessara
-        };
-
-        // Validate the normalized data
-        const { error, value } = validateAbbonamento(normalizedData);
+        // Validate the data using the improved validation
+        const { error, value } = validateAbbonamento(requestBody);
         if (error) {
             context.log.error('Validation error:', error.details);
             return createErrorResponse(400, 'Dati abbonamento non validi', error.details[0].message);
@@ -84,25 +74,30 @@ async function handleUpdateAbbonamento(context, requestBody) {
         const request = pool.request();
 
         // Determine if creating or updating
-        const isUpdate = normalizedData.id && normalizedData.id > 0;
+        const isUpdate = value.id && value.id > 0;
 
         if (isUpdate) {
             // Update existing abbonamento
-            request.input('id', sql.Int, normalizedData.id);
-            request.input('socioId', sql.Int, normalizedData.socioId);
-            request.input('dataIscrizione', sql.DateTime, new Date(normalizedData.dataIscrizione));
-            request.input('firmato', sql.Bit, normalizedData.firmato);
+            request.input('id', sql.Int, value.id);
+            request.input('socioId', sql.Int, value.socioId);
+            request.input('dataIscrizione', sql.DateTime, value.dataIscrizione);
+            request.input('firmato', sql.Bit, value.firmato);
+            
+            if (value.numeroTessera) {
+                request.input('numeroTessera', sql.VarChar(50), value.numeroTessera);
+            }
 
             const updateQuery = `
                 UPDATE Abbonamenti 
                 SET dataIscrizione = @dataIscrizione,
                     firmato = @firmato,
+                    ${value.numeroTessera ? 'numeroTessera = @numeroTessera,' : ''}
                     dataModifica = GETDATE()
                 WHERE id = @id AND socioId = @socioId;
                 
-                SELECT a.*, att.descrizione as attivitaNome 
+                SELECT a.*, at.nome as attivitaNome
                 FROM Abbonamenti a
-                LEFT JOIN Attivita att ON a.attivitaId = att.id
+                LEFT JOIN Attivita at ON a.attivitaId = at.id
                 WHERE a.id = @id;
             `;
 
@@ -112,95 +107,69 @@ async function handleUpdateAbbonamento(context, requestBody) {
                 return createErrorResponse(404, 'Abbonamento non trovato');
             }
 
-            const updatedAbbonamento = normalizeAbbonamentoResponse(result.recordset[0]);
-
+            const abbonamento = normalizeAbbonamentoResponse(result.recordset[0]);
+            context.log('Abbonamento aggiornato:', abbonamento);
+            
             return createSuccessResponse({
-                abbonamento: updatedAbbonamento,
+                abbonamento,
                 message: 'Abbonamento aggiornato con successo'
             });
 
         } else {
             // Create new abbonamento
-            request.input('socioId', sql.Int, normalizedData.socioId);
-            request.input('dataIscrizione', sql.DateTime, new Date(normalizedData.dataIscrizione));
-            request.input('idAnno', sql.Int, normalizedData.idAnno);
-            request.input('firmato', sql.Bit, normalizedData.firmato);
+            request.input('socioId', sql.Int, value.socioId);
+            request.input('dataIscrizione', sql.DateTime, value.dataIscrizione);
+            request.input('attivitaId', sql.Int, value.attivitaId);
+            request.input('importo', sql.Decimal(10, 2), value.importo);
+            request.input('firmato', sql.Bit, value.firmato);
+            request.input('idAnno', sql.Int, value.idAnno);
 
-            // Get anno sportivo info and default activity
-            const annoQuery = `
-                SELECT id, annoName, dataInizio, dataFine 
-                FROM AnniSportivi 
-                WHERE id = @idAnno;
+            // Generate numero tessera if not provided
+            let numeroTessera = value.numeroTessera;
+            if (!numeroTessera || numeroTessera === '...') {
+                // Generate new numero tessera based on business logic
+                const tesseraRequest = pool.request();
+                tesseraRequest.input('annoSportivo', sql.VarChar(10), new Date().getFullYear().toString());
                 
-                SELECT TOP 1 id, descrizione, importo 
-                FROM Attivita 
-                WHERE attiva = 1 
-                ORDER BY id;
-            `;
-
-            const annoResult = await request.query(annoQuery);
-            
-            if (annoResult.recordsets[0].length === 0) {
-                return createErrorResponse(400, 'Anno sportivo non valido');
+                const tesseraQuery = `
+                    SELECT COUNT(*) as count
+                    FROM Abbonamenti a
+                    INNER JOIN AnnoSportivo ans ON a.idAnno = ans.id
+                    WHERE ans.annoName LIKE '%' + @annoSportivo + '%'
+                `;
+                
+                const tesseraResult = await tesseraRequest.query(tesseraQuery);
+                const progressivo = (tesseraResult.recordset[0].count || 0) + 1;
+                numeroTessera = `${new Date().getFullYear()}/${progressivo.toString().padStart(4, '0')}`;
             }
 
-            const annoSportivo = annoResult.recordsets[0][0];
-            const defaultActivity = annoResult.recordsets[1][0];
-
-            if (!defaultActivity) {
-                return createErrorResponse(400, 'Nessuna attività disponibile');
-            }
-
-            // Generate numero tessera
-            const tesseraQuery = `
-                SELECT COUNT(*) as count 
-                FROM Abbonamenti 
-                WHERE YEAR(dataIscrizione) = YEAR(@dataIscrizione)
-            `;
-            
-            const tesseraResult = await request.query(tesseraQuery);
-            const progressivo = tesseraResult.recordset[0].count + 1;
-            const numeroTessera = `${new Date().getFullYear()}/${progressivo.toString().padStart(4, '0')}`;
-
-            // Calculate data scadenza
-            const dataScadenza = new Date(annoSportivo.dataFine);
-
-            // Insert new abbonamento
             request.input('numeroTessera', sql.VarChar(50), numeroTessera);
-            request.input('dataScadenza', sql.DateTime, dataScadenza);
-            request.input('attivitaId', sql.Int, defaultActivity.id);
-            request.input('importo', sql.Decimal(10, 2), defaultActivity.importo);
-            request.input('annoSportivo', sql.VarChar(10), annoSportivo.annoName);
 
             const insertQuery = `
-                INSERT INTO Abbonamenti (
-                    socioId, numeroTessera, dataIscrizione, dataScadenza, 
-                    attivitaId, importo, firmato, annoSportivo, 
-                    dataCreazione, dataModifica, attivo
-                ) 
+                INSERT INTO Abbonamenti (socioId, dataIscrizione, attivitaId, importo, firmato, idAnno, numeroTessera, dataCreazione)
                 OUTPUT INSERTED.*
-                VALUES (
-                    @socioId, @numeroTessera, @dataIscrizione, @dataScadenza,
-                    @attivitaId, @importo, @firmato, @annoSportivo,
-                    GETDATE(), GETDATE(), 1
-                );
+                VALUES (@socioId, @dataIscrizione, @attivitaId, @importo, @firmato, @idAnno, @numeroTessera, GETDATE());
+                
+                SELECT a.*, at.nome as attivitaNome
+                FROM Abbonamenti a
+                LEFT JOIN Attivita at ON a.attivitaId = at.id
+                WHERE a.id = (SELECT id FROM INSERTED);
             `;
 
-            const insertResult = await request.query(insertQuery);
-            const newAbbonamento = insertResult.recordset[0];
-            newAbbonamento.attivitaNome = defaultActivity.descrizione;
-
-            const normalizedAbbonamento = normalizeAbbonamentoResponse(newAbbonamento);
-
+            const result = await request.query(insertQuery);
+            const abbonamento = normalizeAbbonamentoResponse(result.recordset[0]);
+            
+            context.log('Nuovo abbonamento creato:', abbonamento);
+            
             return createSuccessResponse({
-                abbonamento: normalizedAbbonamento,
+                abbonamento,
                 message: 'Abbonamento creato con successo'
             });
         }
 
     } catch (error) {
-        context.log.error('Errore nella gestione abbonamento:', error);
-        return createErrorResponse(500, 'Errore durante l\'operazione sull\'abbonamento', error.message);
+        context.log.error('Errore nell\'aggiornamento abbonamento:', error);
+        return createErrorResponse(500, 'Errore nell\'aggiornamento abbonamento', error.message);
     }
 }
 
@@ -215,16 +184,15 @@ async function handleRetrieveCurrentAbbonamento(context, socioId) {
         request.input('socioId', sql.Int, parseInt(socioId));
 
         const query = `
-            SELECT TOP 1 a.*, att.descrizione as attivitaNome
+            SELECT TOP 1 a.*, at.nome as attivitaNome
             FROM Abbonamenti a
-            LEFT JOIN Attivita att ON a.attivitaId = att.id
-            WHERE a.socioId = @socioId 
-            AND a.attivo = 1
-            ORDER BY a.dataIscrizione DESC;
+            LEFT JOIN Attivita at ON a.attivitaId = at.id
+            WHERE a.socioId = @socioId AND a.attivo = 1
+            ORDER BY a.dataIscrizione DESC, a.id DESC
         `;
 
         const result = await request.query(query);
-
+        
         if (result.recordset.length === 0) {
             return createSuccessResponse({
                 abbonamento: null,
@@ -233,7 +201,7 @@ async function handleRetrieveCurrentAbbonamento(context, socioId) {
         }
 
         const abbonamento = normalizeAbbonamentoResponse(result.recordset[0]);
-
+        
         return createSuccessResponse({
             abbonamento,
             message: 'Abbonamento recuperato con successo'
@@ -241,7 +209,7 @@ async function handleRetrieveCurrentAbbonamento(context, socioId) {
 
     } catch (error) {
         context.log.error('Errore nel recupero abbonamento corrente:', error);
-        return createErrorResponse(500, 'Errore nel recupero dell\'abbonamento corrente', error.message);
+        return createErrorResponse(500, 'Errore nel recupero abbonamento', error.message);
     }
 }
 
@@ -253,31 +221,31 @@ async function handleRetrieveAbbonamentoById(context, abbonamentoId) {
 
         const pool = await getPool();
         const request = pool.request();
-        request.input('abbonamentoId', sql.Int, parseInt(abbonamentoId));
+        request.input('id', sql.Int, parseInt(abbonamentoId));
 
         const query = `
-            SELECT a.*, att.descrizione as attivitaNome
+            SELECT a.*, at.nome as attivitaNome
             FROM Abbonamenti a
-            LEFT JOIN Attivita att ON a.attivitaId = att.id
-            WHERE a.id = @abbonamentoId;
+            LEFT JOIN Attivita at ON a.attivitaId = at.id
+            WHERE a.id = @id
         `;
 
         const result = await request.query(query);
-
+        
         if (result.recordset.length === 0) {
             return createErrorResponse(404, 'Abbonamento non trovato');
         }
 
         const abbonamento = normalizeAbbonamentoResponse(result.recordset[0]);
-
+        
         return createSuccessResponse({
             abbonamento,
             message: 'Abbonamento recuperato con successo'
         });
 
     } catch (error) {
-        context.log.error('Errore nel recupero abbonamento:', error);
-        return createErrorResponse(500, 'Errore nel recupero dell\'abbonamento', error.message);
+        context.log.error('Errore nel recupero abbonamento per ID:', error);
+        return createErrorResponse(500, 'Errore nel recupero abbonamento', error.message);
     }
 }
 
@@ -292,25 +260,25 @@ async function handleRetrieveAbbonamentiBySocio(context, socioId) {
         request.input('socioId', sql.Int, parseInt(socioId));
 
         const query = `
-            SELECT a.*, att.descrizione as attivitaNome
+            SELECT a.*, at.nome as attivitaNome
             FROM Abbonamenti a
-            LEFT JOIN Attivita att ON a.attivitaId = att.id
+            LEFT JOIN Attivita at ON a.attivitaId = at.id
             WHERE a.socioId = @socioId
-            ORDER BY a.dataIscrizione DESC;
+            ORDER BY a.dataIscrizione DESC, a.id DESC
         `;
 
         const result = await request.query(query);
-
-        const abbonamenti = result.recordset.map(abb => normalizeAbbonamentoResponse(abb));
-
+        
+        const abbonamenti = result.recordset.map(row => normalizeAbbonamentoResponse(row));
+        
         return createSuccessResponse({
             abbonamenti,
             count: abbonamenti.length,
-            message: 'Abbonamenti recuperati con successo'
+            message: `${abbonamenti.length} abbonamenti recuperati`
         });
 
     } catch (error) {
-        context.log.error('Errore nel recupero abbonamenti:', error);
-        return createErrorResponse(500, 'Errore nel recupero degli abbonamenti', error.message);
+        context.log.error('Errore nel recupero abbonamenti per socio:', error);
+        return createErrorResponse(500, 'Errore nel recupero abbonamenti', error.message);
     }
 }

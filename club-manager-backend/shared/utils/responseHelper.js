@@ -3,13 +3,13 @@
 const createResponse = (status, data, message = null) => {
   return {
     status,
-    jsonBody: {
+    body: JSON.stringify({
       success: status >= 200 && status < 300,
       returnCode: status >= 200 && status < 300, // Frontend compatibility
       data,
       message,
       timestamp: new Date().toISOString()
-    },
+    }),
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
@@ -23,14 +23,14 @@ const createErrorResponse = (status, message, error = null) => {
   console.error('Error:', message, error);
   return {
     status,
-    jsonBody: {
+    body: JSON.stringify({
       success: false,
       returnCode: false, // Frontend compatibility
       data: null,
       message,
       error: error ? error.toString() : null,
       timestamp: new Date().toISOString()
-    },
+    }),
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
@@ -43,13 +43,13 @@ const createErrorResponse = (status, message, error = null) => {
 const createSuccessResponse = (data, message = null) => {
   return {
     status: 200,
-    jsonBody: {
+    body: JSON.stringify({
       success: true,
       returnCode: true, // Frontend compatibility
       data,
       message,
       timestamp: new Date().toISOString()
-    },
+    }),
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
