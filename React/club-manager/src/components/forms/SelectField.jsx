@@ -27,25 +27,44 @@ const SelectField = ({
 }) => {
   // Adatta il formato dei valori per react-select
   const getOptions = () => {
-    if (!options || options.length === 0) return [];
-    
-    // Se le opzioni sono già nel formato corretto
-    if (options[0] && (options[0].value !== undefined && options[0].label !== undefined)) {
-      return options;
+    if (!options) return [];
+
+    let optionsArray = [];
+
+    // Handle both array and object
+    if (Array.isArray(options)) {
+      optionsArray = options;
+    } else if (typeof options === 'object' && options !== null) {
+      optionsArray = options.data;
     }
-    
-    // Altrimenti converti al formato corretto
-    return options.map(option => {
-      // Gestisci diversi formati possibili
+
+    if (optionsArray.length === 0) return [];
+
+    // If already in correct format
+    if (optionsArray[0] && optionsArray[0].value !== undefined && optionsArray[0].label !== undefined) {
+      return optionsArray;
+    }
+    // Convert to correct format
+    return optionsArray.map(option => {
       if (option.id !== undefined) {
-        return { value: option.id, label: option.name || option.description || option.descrizione || option.label || option.id };
+        return {
+          value: option.id,
+          label: option.name || option.description || option.descrizione || option.label || option.id,
+        };
       } else if (option.code !== undefined) {
-        return { value: option.code, label: option.name || option.description || option.descrizione || option.label || option.code };
+        return {
+          value: option.code,
+          label: option.name || option.description || option.descrizione || option.label || option.code,
+        };
       } else {
-        return { value: option, label: option };
+        return {
+          value: option,
+          label: option,
+        };
       }
     });
   };
+
 
   // Gestisci il cambiamento
   const handleChange = (selectedOption) => {

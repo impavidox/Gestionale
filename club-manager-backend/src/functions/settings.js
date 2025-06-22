@@ -141,40 +141,6 @@ async function handleGetSetting(context) {
         settings.hasLogo = !!settings.logoPath;
         settings.emailConfigured = !!(settings.emailSmtpServer && settings.emailFromAddress);
         
-        // Get additional configuration from SystemParameters
-        const paramsResult = await request.query(`
-            SELECT 
-                parameterName,
-                parameterValue,
-                dataType
-            FROM SystemParameters 
-            WHERE active = 1 AND category = 'application'
-        `);
-        
-        const additionalConfig = {};
-        paramsResult.recordset.forEach(param => {
-            let value = param.parameterValue;
-            
-            // Convert based on data type
-            switch (param.dataType) {
-                case 'boolean':
-                    value = value === 'true' || value === '1';
-                    break;
-                case 'number':
-                    value = parseFloat(value) || 0;
-                    break;
-                case 'integer':
-                    value = parseInt(value) || 0;
-                    break;
-                default:
-                    // string - keep as is
-                    break;
-            }
-            
-            additionalConfig[param.parameterName] = value;
-        });
-        
-        settings.additionalConfig = additionalConfig;
         
         context.log('Impostazioni recuperate con successo');
         return createSuccessResponse(settings);

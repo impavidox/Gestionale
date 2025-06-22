@@ -99,10 +99,11 @@ const SocioFilters = ({
   const handleFamigliaChange = async (name, selectedValue) => {
     setSelectedFamiglia(selectedValue.value);
     setSelectedAttivita(null);
+    console.log(selectedValue)
     setFilters(prev => ({ ...prev, attivita: 0, famiglia: selectedValue.value.id }));
     
     try {
-      const response = await activityService.retrieveActivitiesByFamily(selectedValue.value.id);
+      const response = await activityService.retrieveActivitiesByFamily(selectedValue.value.value);
       setAttivita(response.data);
     } catch (error) {
       console.error('Errore nel caricamento delle attività:', error);

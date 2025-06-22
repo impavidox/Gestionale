@@ -114,18 +114,19 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         
         // Carica province
         const provinceNascitaResponse = await geographicService.retrieveProvince();
-        setListProvNascita(provinceNascitaResponse.data);
-        
-        const provinceResponse = await geographicService.retrieveProvince();
-        setListProv(provinceResponse.data);
+        const province = provinceNascitaResponse.data.data.map(item => item.nome);
+        setListProvNascita(province);
+
+        setListProv(province);
         
         // Carica tipi socio
         const tipiSocioResponse = await socioService.retrieveTipoSocio();
-        setListTipiSocio(tipiSocioResponse.data);
+        console.log(tipiSocioResponse)
+        setListTipiSocio(tipiSocioResponse.data.data);
         
         // Carica affiliazioni
         const affiliazioniResponse = await activityService.retrieveAffiliazione(0);
-        setAffilizioneList(affiliazioniResponse.data);
+        setAffilizioneList(affiliazioniResponse.data.data);
         
         // Se è un nuovo socio, imposta i valori di default
         if (mode === 'C') {
@@ -294,16 +295,17 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   
   // Gestione selezione mese di nascita
   const handleBirthMMS = (name, selectedOption) => {
-    setSelectedMM(selectedOption);
+    setSelectedMM(selectedOption.value);
   };
   
   // Gestione selezione provincia di nascita
   const handleProvNascitaSelected = async (name, selectedOption) => {
-    setSelectedProv(selectedOption);
+    setSelectedProv(selectedOption.value);
     
     try {
-      const response = await geographicService.retrieveCommune(selectedOption.value.code);
-      setListCommNascita(response.data);
+      const response = await geographicService.retrieveCommune(selectedOption.value.value);
+      const comuni =  response.data.data.map(item => item.nome);
+      setListCommNascita(comuni);
     } catch (error) {
       console.error('Errore nel caricamento dei comuni:', error);
     }
@@ -311,11 +313,12 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   
   // Gestione selezione provincia di residenza
   const handleProvResSelected = async (name, selectedOption) => {
-    setProvRes(selectedOption);
+    setProvRes(selectedOption.value);
     
     try {
-      const response = await geographicService.retrieveCommune(selectedOption.value.code);
-      setListCommRes(response.data);
+      const response = await geographicService.retrieveCommune(selectedOption.value.value);
+      const comuni =  response.data.data.map(item => item.nome);
+      setListCommRes(comuni);
     } catch (error) {
       console.error('Errore nel caricamento dei comuni:', error);
     }
@@ -323,7 +326,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   
   // Gestione selezione comune di nascita
   const handleCommuneNascitaSelected = (name, selectedOption) => {
-    setSelectedComm(selectedOption);
+    setSelectedComm(selectedOption.value);
     setBirthCommune(selectedOption.value.description);
     setBirthProv(selectedOption.value.provCode);
     setBirthCode(selectedOption.value.code);
@@ -331,14 +334,14 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   
   // Gestione selezione comune di residenza
   const handleCommuneResSelected = (name, selectedOption) => {
-    setCommRes(selectedOption);
+    setCommRes(selectedOption.value);
     setResCommune(selectedOption.value.description);
     setResProv(selectedOption.value.provCode);
   };
   
   // Gestione selezione tipo socio
   const handleTipoSocioSelected = (name, selectedOption) => {
-    setSelectedTipo(selectedOption);
+    setSelectedTipo(selectedOption.value);
     const tipoId = selectedOption.value.tipoId;
     setFormData(prev => ({ ...prev, tipoSocio: tipoId }));
     setViewFede(tipoId === 3);
@@ -346,13 +349,13 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   
   // Gestione selezione sesso
   const handleSessoSelected = (name, selectedOption) => {
-    setSelectedSesso(selectedOption);
+    setSelectedSesso(selectedOption.value);
     setFormData(prev => ({ ...prev, sesso: selectedOption.value.id }));
   };
   
   // Gestione selezione federazione
   const handleFedeSelected = (name, selectedOption) => {
-    setSelectedFederazione(selectedOption);
+    setSelectedFederazione(selectedOption.value.value);
     setFormData(prev => ({ ...prev, federazione: selectedOption.value.descrizione }));
   };
   
