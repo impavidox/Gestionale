@@ -1,8 +1,11 @@
+// club-manager-backend/shared/utils/responseHelper.js
+
 const createResponse = (status, data, message = null) => {
   return {
     status,
     jsonBody: {
       success: status >= 200 && status < 300,
+      returnCode: status >= 200 && status < 300, // Frontend compatibility
       data,
       message,
       timestamp: new Date().toISOString()
@@ -18,11 +21,42 @@ const createResponse = (status, data, message = null) => {
 
 const createErrorResponse = (status, message, error = null) => {
   console.error('Error:', message, error);
-  return createResponse(status, null, message);
+  return {
+    status,
+    jsonBody: {
+      success: false,
+      returnCode: false, // Frontend compatibility
+      data: null,
+      message,
+      error: error ? error.toString() : null,
+      timestamp: new Date().toISOString()
+    },
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    }
+  };
 };
 
 const createSuccessResponse = (data, message = null) => {
-  return createResponse(200, data, message);
+  return {
+    status: 200,
+    jsonBody: {
+      success: true,
+      returnCode: true, // Frontend compatibility
+      data,
+      message,
+      timestamp: new Date().toISOString()
+    },
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    }
+  };
 };
 
 module.exports = {
