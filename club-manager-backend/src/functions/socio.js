@@ -1,7 +1,7 @@
 const { app } = require('@azure/functions');
 const { getPool, sql } = require('../../shared/database/connection');
 const { createSuccessResponse, createErrorResponse } = require('../../shared/utils/responseHelper');
-const { validateSocio } = require('../../shared/models/socio');
+const { validateSocio, normalizeSocioResponse } = require('../../shared/models/Socio');
 
 app.http('socio', {
     methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
@@ -48,15 +48,6 @@ app.http('socio', {
                 case 'updateSocio':
                     return await handleUpdateSocio(context, request.body);
                 
-                case 'retrieveTipoSocio':
-                    return await handleRetrieveTipoSocio(context);
-                
-                case 'retrieveSocioMail':
-                    return await handleRetrieveSocioMail(context, params);
-                
-                case 'controlUserType':
-                    return await handleControlUserType(context, params.param1, params.param2);
-                
                 default:
                     return createErrorResponse(404, `Endpoint '${action}' non trovato`);
             }
@@ -79,18 +70,18 @@ async function handleRetrieveSocio(context, params) {
         
         let query = `
             SELECT s.*, 
-                   a.numeroTessera, 
-                   a.dataScadenza, 
-                   act.nome as nomeAttivita,
-                   ts.nome as tipoSocioNome
-            FROM Soci s
-            LEFT JOIN Abbonamenti a ON s.id = a.socioId AND a.attivo = 1
-            LEFT JOIN Attivita act ON a.attivitaId = act.id
-            LEFT JOIN TipiSocio ts ON s.tipoSocio = ts.tipoId
-            WHERE s.attivo = 1
+                   -- Check if socio is tesserato for any activity
+                   CASE WHEN EXISTS(SELECT 1 FROM tesserati t WHERE t.socioId = s.id) THEN 1 ELSE 0 END as isTesserato,
+                   -- Get main activity info if tesserato
+                   (SELECT TOP 1 a.nome FROM tesserati t 
+                    INNER JOIN attività a ON t.attivitàId = a.id 
+                    WHERE t.socioId = s.id 
+                    ORDER BY t.id DESC) as nomeAttivita
+            FROM soci s
+            WHERE 1=1
         `;
         
-        // Applica filtri
+        // Apply filters
         if (nome && nome !== 'null') {
             query += ` AND s.nome LIKE @nome`;
             request.input('nome', sql.NVarChar, `%${nome}%`);
@@ -102,27 +93,30 @@ async function handleRetrieveSocio(context, params) {
         }
         
         if (attivita && attivita !== '0') {
-            query += ` AND a.attivitaId = @attivita`;
+            query += ` AND EXISTS(SELECT 1 FROM tesserati t WHERE t.socioId = s.id AND t.attivitàId = @attivita)`;
             request.input('attivita', sql.Int, parseInt(attivita));
         }
         
         if (scadenza && scadenza !== '0') {
             const dataScadenza = new Date();
             dataScadenza.setMonth(dataScadenza.getMonth() + parseInt(scadenza));
-            query += ` AND a.dataScadenza <= @dataScadenza`;
+            query += ` AND s.scadenzaCertificato <= @dataScadenza`;
             request.input('dataScadenza', sql.DateTime, dataScadenza);
         }
         
         if (scadute === 'true') {
-            query += ` AND a.dataScadenza < GETDATE()`;
+            query += ` AND s.scadenzaCertificato < GETDATE()`;
         }
         
         query += ` ORDER BY s.cognome, s.nome`;
         
         const result = await request.query(query);
         
+        // Normalize response for frontend compatibility
+        const normalizedItems = result.recordset.map(item => normalizeSocioResponse(item));
+        
         context.log(`${result.recordset.length} soci trovati`);
-        return createSuccessResponse({ items: result.recordset });
+        return createSuccessResponse({ items: normalizedItems });
         
     } catch (error) {
         context.log.error('Errore nel recupero soci:', error);
@@ -142,18 +136,22 @@ async function handleRetrieveSocioById(context, id) {
         
         const query = `
             SELECT s.*, 
-                   a.numeroTessera, 
-                   a.dataIscrizione, 
-                   a.dataScadenza, 
-                   a.attivitaId, 
-                   a.firmato,
-                   act.nome as nomeAttivita,
-                   ts.nome as tipoSocioNome
-            FROM Soci s
-            LEFT JOIN Abbonamenti a ON s.id = a.socioId AND a.attivo = 1
-            LEFT JOIN Attivita act ON a.attivitaId = act.id
-            LEFT JOIN TipiSocio ts ON s.tipoSocio = ts.tipoId
-            WHERE s.id = @id AND s.attivo = 1
+                   -- Get tesserati info
+                   CASE WHEN EXISTS(SELECT 1 FROM tesserati t WHERE t.socioId = s.id) THEN 1 ELSE 0 END as isTesserato,
+                   -- Get effettivi info
+                   CASE WHEN EXISTS(SELECT 1 FROM effettivi e WHERE e.socioId = s.id) THEN 1 ELSE 0 END as isEffettivo,
+                   -- Get volontari info
+                   CASE WHEN EXISTS(SELECT 1 FROM volontari v WHERE v.socioId = s.id) THEN 1 ELSE 0 END as isVolontario,
+                   -- Get main activity info
+                   (SELECT TOP 1 a.nome FROM tesserati t 
+                    INNER JOIN attività a ON t.attivitàId = a.id 
+                    WHERE t.socioId = s.id 
+                    ORDER BY t.id DESC) as nomeAttivita,
+                   (SELECT TOP 1 t.attivitàId FROM tesserati t 
+                    WHERE t.socioId = s.id 
+                    ORDER BY t.id DESC) as attivitaId
+            FROM soci s
+            WHERE s.id = @id
         `;
         
         const result = await request.query(query);
@@ -162,14 +160,18 @@ async function handleRetrieveSocioById(context, id) {
             return createErrorResponse(404, 'Socio non trovato');
         }
         
+        const normalizedSocio = normalizeSocioResponse(result.recordset[0]);
+        
         context.log(`Socio ${id} recuperato`);
-        return createSuccessResponse(result.recordset[0]);
+        return createSuccessResponse(normalizedSocio);
         
     } catch (error) {
         context.log.error('Errore nel recupero socio:', error);
         return createErrorResponse(500, 'Errore nel recupero socio', error.message);
     }
 }
+
+//a posto
 
 async function handleCreateSocio(context, socioData) {
     try {
@@ -179,7 +181,6 @@ async function handleCreateSocio(context, socioData) {
             context.log.warn('Dati socio non validi:', error.details);
             return createErrorResponse(400, 'Dati non validi', error.details);
         }
-        
         const pool = await getPool();
         const transaction = new sql.Transaction(pool);
         await transaction.begin();
@@ -187,51 +188,93 @@ async function handleCreateSocio(context, socioData) {
         try {
             const request = new sql.Request(transaction);
             
-            // Controlla codice fiscale duplicato
+            // Check for duplicate codice fiscale
             request.input('codiceFiscale', sql.NVarChar, value.codiceFiscale);
-            const checkResult = await request.query('SELECT id FROM Soci WHERE codiceFiscale = @codiceFiscale AND attivo = 1');
+            const checkResult = await request.query('SELECT id FROM soci WHERE codiceFiscale = @codiceFiscale');
             
             if (checkResult.recordset.length > 0) {
                 await transaction.rollback();
                 return createErrorResponse(409, 'Socio con questo codice fiscale già esistente');
             }
             
-            // Inserisci nuovo socio
+            // Insert new socio
             const insertQuery = `
-                INSERT INTO Soci (
-                    nome, cognome, codiceFiscale, dataNascita, birhDate, luogoNascita, 
-                    provinciaNascita, indirizzo, civico, cap, comune, provincia, 
-                    telefono, cellulare, email, tipoSocio, privacy, federazione, 
-                    numeroTesseraFederale, attivo, dataCreazione
+                INSERT INTO soci (
+                    nome, cognome, codiceFiscale, sesso, dataNascita, 
+                    provinciaNascita, comuneNascita, provinciaResidenza, comuneResidenza, 
+                    viaResidenza, capResidenza, telefono, email, scadenzaCertificato,
+                    isAgonistico, privacy, dataPrivacy, isTesserato, isEffettivo, 
+                    isVolontario, dataIscrizione, created_at
                 ) OUTPUT INSERTED.id VALUES (
-                    @nome, @cognome, @codiceFiscale, @dataNascita, @dataNascita, @luogoNascita,
-                    @provinciaNascita, @indirizzo, @civico, @cap, @comune, @provincia,
-                    @telefono, @cellulare, @email, @tipoSocio, @privacy, @federazione,
-                    @numeroTesseraFederale, 1, GETDATE()
+                    @nome, @cognome, @codiceFiscale, @sesso, @dataNascita,
+                    @provinciaNascita, @comuneNascita, @provinciaResidenza, @comuneResidenza,
+                    @viaResidenza, @capResidenza, @telefono, @email, @scadenzaCertificato,
+                    @isAgonistico, @privacy, @dataPrivacy, @isTesserato, @isEffettivo,
+                    @isVolontario, @dataIscrizione, GETDATE()
                 )
             `;
             
-            // Prepara parametri
-            request.input('nome', sql.NVarChar, value.nome);
-            request.input('cognome', sql.NVarChar, value.cognome);
-            request.input('dataNascita', sql.Date, value.dataNascita || value.birhDate);
-            request.input('luogoNascita', sql.NVarChar, value.luogoNascita || '');
-            request.input('provinciaNascita', sql.NVarChar, value.provinciaNascita || '');
-            request.input('indirizzo', sql.NVarChar, value.indirizzo || '');
-            request.input('civico', sql.NVarChar, value.civico || '');
-            request.input('cap', sql.NVarChar, value.cap || '');
-            request.input('comune', sql.NVarChar, value.comune || '');
-            request.input('provincia', sql.NVarChar, value.provincia || '');
-            request.input('telefono', sql.NVarChar, value.telefono || '');
-            request.input('cellulare', sql.NVarChar, value.cellulare || '');
-            request.input('email', sql.NVarChar, value.email || '');
-            request.input('tipoSocio', sql.Int, value.tipoSocio || 1);
-            request.input('privacy', sql.Bit, value.privacy || false);
-            request.input('federazione', sql.NVarChar, value.federazione || '');
-            request.input('numeroTesseraFederale', sql.NVarChar, value.numeroTesseraFederale || '');
+            // Prepare parameters
+            request.input('nome', sql.NVarChar(255), value.nome);
+            request.input('cognome', sql.NVarChar(255), value.cognome);
+            request.input('sesso', sql.NVarChar(10), value.sesso || null);
+            request.input('dataNascita', sql.Date, value.dataNascita || null);
+            request.input('provinciaNascita', sql.NVarChar(255), value.provinciaNascita || null);
+            request.input('comuneNascita', sql.NVarChar(255), value.comuneNascita || null);
+            request.input('provinciaResidenza', sql.NVarChar(255), value.provinciaResidenza || null);
+            request.input('comuneResidenza', sql.NVarChar(255), value.comuneResidenza || null);
+            request.input('viaResidenza', sql.NVarChar(255), value.viaResidenza || null);
+            request.input('capResidenza', sql.NVarChar(10), value.capResidenza || null);
+            request.input('telefono', sql.NVarChar(20), value.telefono || null);
+            request.input('email', sql.NVarChar(255), value.email || null);
+            request.input('scadenzaCertificato', sql.Date, value.scadenzaCertificato || null);
+            request.input('isAgonistico', sql.Int, value.isAgonistico || 0);
+            request.input('privacy', sql.Int, value.privacy || 0);
+            request.input('dataPrivacy', sql.Date, value.dataPrivacy || null);
+            request.input('isTesserato', sql.Int, value.isTesserato || 0);
+            request.input('isEffettivo', sql.Int, value.isEffettivo || 0);
+            request.input('isVolontario', sql.Int, value.isVolontario || 0);
+            request.input('dataIscrizione', sql.Date, value.dataIscrizione || new Date());
             
             const insertResult = await request.query(insertQuery);
             const newSocioId = insertResult.recordset[0].id;
+            
+            // If socio is marked as tesserato, effettivo, or volontario, create corresponding records
+            const currentYear = new Date().getFullYear().toString();  //make function to take from 2024/2025 2025
+            
+            if (value.isTesserato && socioData.attivitaId) {
+                const tesseratoRequest = new sql.Request(transaction);
+                tesseratoRequest.input('socioId', sql.Int, newSocioId);
+                tesseratoRequest.input('attivitàId', sql.Int, socioData.attivitaId);
+                tesseratoRequest.input('annoValidità', sql.VarChar(4), currentYear);
+                
+                await tesseratoRequest.query(`
+                    INSERT INTO tesserati (socioId, attivitàId, annoValidità)
+                    VALUES (@socioId, @attivitàId, @annoValidità)
+                `);
+            }
+            
+            if (value.isEffettivo) {
+                const effettivoRequest = new sql.Request(transaction);
+                effettivoRequest.input('socioId', sql.Int, newSocioId);
+                effettivoRequest.input('annoValidità', sql.VarChar(4), currentYear);
+                
+                await effettivoRequest.query(`
+                    INSERT INTO effettivi (socioId, annoValidità)
+                    VALUES (@socioId, @annoValidità)
+                `);
+            }
+            
+            if (value.isVolontario) {
+                const volontarioRequest = new sql.Request(transaction);
+                volontarioRequest.input('socioId', sql.Int, newSocioId);
+                volontarioRequest.input('annoValidità', sql.VarChar(4), currentYear);
+                
+                await volontarioRequest.query(`
+                    INSERT INTO volontari (socioId, annoValidità)
+                    VALUES (@socioId, @annoValidità)
+                `);
+            }
             
             await transaction.commit();
             
@@ -266,54 +309,145 @@ async function handleUpdateSocio(context, socioData) {
         }
         
         const pool = await getPool();
-        const request = pool.request();
-        
-        const updateQuery = `
-            UPDATE Soci SET 
-                nome = @nome, cognome = @cognome, codiceFiscale = @codiceFiscale,
-                dataNascita = @dataNascita, birhDate = @dataNascita,
-                luogoNascita = @luogoNascita, provinciaNascita = @provinciaNascita,
-                indirizzo = @indirizzo, civico = @civico, cap = @cap, 
-                comune = @comune, provincia = @provincia,
-                telefono = @telefono, cellulare = @cellulare, email = @email, 
-                tipoSocio = @tipoSocio, privacy = @privacy, 
-                federazione = @federazione, numeroTesseraFederale = @numeroTesseraFederale,
-                dataModifica = GETDATE()
-            WHERE id = @id AND attivo = 1
-        `;
-        
-        // Prepara parametri
-        request.input('id', sql.Int, value.id);
-        request.input('nome', sql.NVarChar, value.nome);
-        request.input('cognome', sql.NVarChar, value.cognome);
-        request.input('codiceFiscale', sql.NVarChar, value.codiceFiscale);
-        request.input('dataNascita', sql.Date, value.dataNascita || value.birhDate);
-        request.input('luogoNascita', sql.NVarChar, value.luogoNascita || '');
-        request.input('provinciaNascita', sql.NVarChar, value.provinciaNascita || '');
-        request.input('indirizzo', sql.NVarChar, value.indirizzo || '');
-        request.input('civico', sql.NVarChar, value.civico || '');
-        request.input('cap', sql.NVarChar, value.cap || '');
-        request.input('comune', sql.NVarChar, value.comune || '');
-        request.input('provincia', sql.NVarChar, value.provincia || '');
-        request.input('telefono', sql.NVarChar, value.telefono || '');
-        request.input('cellulare', sql.NVarChar, value.cellulare || '');
-        request.input('email', sql.NVarChar, value.email || '');
-        request.input('tipoSocio', sql.Int, value.tipoSocio);
-        request.input('privacy', sql.Bit, value.privacy || false);
-        request.input('federazione', sql.NVarChar, value.federazione || '');
-        request.input('numeroTesseraFederale', sql.NVarChar, value.numeroTesseraFederale || '');
-        
-        const result = await request.query(updateQuery);
-        
-        if (result.rowsAffected[0] === 0) {
-            return createErrorResponse(404, 'Socio non trovato');
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            const request = new sql.Request(transaction);
+            
+            const updateQuery = `
+                UPDATE soci SET 
+                    nome = @nome, cognome = @cognome, codiceFiscale = @codiceFiscale,
+                    sesso = @sesso, dataNascita = @dataNascita,
+                    provinciaNascita = @provinciaNascita, comuneNascita = @comuneNascita,
+                    provinciaResidenza = @provinciaResidenza, comuneResidenza = @comuneResidenza,
+                    viaResidenza = @viaResidenza, capResidenza = @capResidenza,
+                    telefono = @telefono, email = @email, 
+                    scadenzaCertificato = @scadenzaCertificato,
+                    isAgonistico = @isAgonistico, privacy = @privacy, dataPrivacy = @dataPrivacy,
+                    isTesserato = @isTesserato, isEffettivo = @isEffettivo, isVolontario = @isVolontario,
+                    dataIscrizione = @dataIscrizione
+                WHERE id = @id
+            `;
+            
+            // Prepare parameters
+            request.input('id', sql.Int, value.id);
+            request.input('nome', sql.NVarChar(255), value.nome);
+            request.input('cognome', sql.NVarChar(255), value.cognome);
+            request.input('codiceFiscale', sql.NVarChar(16), value.codiceFiscale);
+            request.input('sesso', sql.NVarChar(10), value.sesso || null);
+            request.input('dataNascita', sql.Date, value.dataNascita || null);
+            request.input('provinciaNascita', sql.NVarChar(255), value.provinciaNascita || null);
+            request.input('comuneNascita', sql.NVarChar(255), value.comuneNascita || null);
+            request.input('provinciaResidenza', sql.NVarChar(255), value.provinciaResidenza || null);
+            request.input('comuneResidenza', sql.NVarChar(255), value.comuneResidenza || null);
+            request.input('viaResidenza', sql.NVarChar(255), value.viaResidenza || null);
+            request.input('capResidenza', sql.NVarChar(10), value.capResidenza || null);
+            request.input('telefono', sql.NVarChar(20), value.telefono || null);
+            request.input('email', sql.NVarChar(255), value.email || null);
+            request.input('scadenzaCertificato', sql.Date, value.scadenzaCertificato || null);
+            request.input('isAgonistico', sql.Int, value.isAgonistico || 0);
+            request.input('privacy', sql.Int, value.privacy || 0);
+            request.input('dataPrivacy', sql.Date, value.dataPrivacy || null);
+            request.input('isTesserato', sql.Int, value.isTesserato || 0);
+            request.input('isEffettivo', sql.Int, value.isEffettivo || 0);
+            request.input('isVolontario', sql.Int, value.isVolontario || 0);
+            request.input('dataIscrizione', sql.Date, value.dataIscrizione || null);
+            
+            const result = await request.query(updateQuery);
+            
+            if (result.rowsAffected[0] === 0) {
+                await transaction.rollback();
+                return createErrorResponse(404, 'Socio non trovato');
+            }
+            
+            // Update related tables based on flags
+            const currentYear = new Date().getFullYear().toString();
+            
+            // Handle tesserati status
+            if (value.isTesserato && socioData.attivitaId) {
+                // Ensure tesserato record exists
+                const tesseratoCheck = new sql.Request(transaction);
+                tesseratoCheck.input('socioId', sql.Int, value.id);
+                tesseratoCheck.input('attivitàId', sql.Int, socioData.attivitaId);
+                tesseratoCheck.input('annoValidità', sql.VarChar(4), currentYear);
+                
+                const tesseratoExists = await tesseratoCheck.query(`
+                    SELECT COUNT(*) as count FROM tesserati 
+                    WHERE socioId = @socioId AND annoValidità = @annoValidità
+                `);
+                
+                if (tesseratoExists.recordset[0].count === 0) {
+                    await tesseratoCheck.query(`
+                        INSERT INTO tesserati (socioId, attivitàId, annoValidità)
+                        VALUES (@socioId, @attivitàId, @annoValidità)
+                    `);
+                }
+            } else if (!value.isTesserato) {
+                // Remove tesserato records if flag is false
+                const removeTesserato = new sql.Request(transaction);
+                removeTesserato.input('socioId', sql.Int, value.id);
+                await removeTesserato.query('DELETE FROM tesserati WHERE socioId = @socioId');
+            }
+            
+            // Handle effettivi status
+            if (value.isEffettivo) {
+                const effettivoCheck = new sql.Request(transaction);
+                effettivoCheck.input('socioId', sql.Int, value.id);
+                effettivoCheck.input('annoValidità', sql.VarChar(4), currentYear);
+                
+                const effettivoExists = await effettivoCheck.query(`
+                    SELECT COUNT(*) as count FROM effettivi 
+                    WHERE socioId = @socioId AND annoValidità = @annoValidità
+                `);
+                
+                if (effettivoExists.recordset[0].count === 0) {
+                    await effettivoCheck.query(`
+                        INSERT INTO effettivi (socioId, annoValidità)
+                        VALUES (@socioId, @annoValidità)
+                    `);
+                }
+            } else {
+                const removeEffettivo = new sql.Request(transaction);
+                removeEffettivo.input('socioId', sql.Int, value.id);
+                await removeEffettivo.query('DELETE FROM effettivi WHERE socioId = @socioId');
+            }
+            
+            // Handle volontari status
+            if (value.isVolontario) {
+                const volontarioCheck = new sql.Request(transaction);
+                volontarioCheck.input('socioId', sql.Int, value.id);
+                volontarioCheck.input('annoValidità', sql.VarChar(4), currentYear);
+                
+                const volontarioExists = await volontarioCheck.query(`
+                    SELECT COUNT(*) as count FROM volontari 
+                    WHERE socioId = @socioId AND annoValidità = @annoValidità
+                `);
+                
+                if (volontarioExists.recordset[0].count === 0) {
+                    await volontarioCheck.query(`
+                        INSERT INTO volontari (socioId, annoValidità)
+                        VALUES (@socioId, @annoValidità)
+                    `);
+                }
+            } else {
+                const removeVolontario = new sql.Request(transaction);
+                removeVolontario.input('socioId', sql.Int, value.id);
+                await removeVolontario.query('DELETE FROM volontari WHERE socioId = @socioId');
+            }
+            
+            await transaction.commit();
+            
+            context.log(`Socio ${value.id} aggiornato`);
+            return createSuccessResponse({ 
+                returnCode: true, 
+                message: 'Socio aggiornato con successo' 
+            });
+            
+        } catch (dbError) {
+            await transaction.rollback();
+            throw dbError;
         }
-        
-        context.log(`Socio ${value.id} aggiornato`);
-        return createSuccessResponse({ 
-            returnCode: true, 
-            message: 'Socio aggiornato con successo' 
-        });
         
     } catch (error) {
         context.log.error('Errore nell\'aggiornamento socio:', error);
@@ -321,87 +455,3 @@ async function handleUpdateSocio(context, socioData) {
     }
 }
 
-async function handleRetrieveTipoSocio(context) {
-    try {
-        const pool = await getPool();
-        const request = pool.request();
-        
-        const query = 'SELECT * FROM TipiSocio WHERE attivo = 1 ORDER BY nome';
-        const result = await request.query(query);
-        
-        context.log(`${result.recordset.length} tipi socio recuperati`);
-        return createSuccessResponse(result.recordset);
-        
-    } catch (error) {
-        context.log.error('Errore nel recupero tipi socio:', error);
-        return createErrorResponse(500, 'Errore nel recupero tipi socio', error.message);
-    }
-}
-
-async function handleRetrieveSocioMail(context, params) {
-    try {
-        const { param1: nome, param2: cognome, param3: scadenza, param4: attivita, param5: scadute, param6: anno } = params;
-        
-        const pool = await getPool();
-        const request = pool.request();
-        
-        let query = `
-            SELECT s.id, s.nome, s.cognome, s.email, 
-                   a.numeroTessera, a.dataScadenza
-            FROM Soci s
-            LEFT JOIN Abbonamenti a ON s.id = a.socioId AND a.attivo = 1
-            WHERE s.attivo = 1 AND s.email IS NOT NULL AND s.email != ''
-        `;
-        
-        // Applica stessi filtri di retrieveSocio
-        if (nome && nome !== 'null') {
-            query += ` AND s.nome LIKE @nome`;
-            request.input('nome', sql.NVarChar, `%${nome}%`);
-        }
-        
-        if (cognome && cognome !== 'null') {
-            query += ` AND s.cognome LIKE @cognome`;
-            request.input('cognome', sql.NVarChar, `%${cognome}%`);
-        }
-        
-        query += ` ORDER BY s.cognome, s.nome`;
-        
-        const result = await request.query(query);
-        
-        context.log(`${result.recordset.length} soci con email trovati`);
-        return createSuccessResponse({ items: result.recordset });
-        
-    } catch (error) {
-        context.log.error('Errore nel recupero soci per email:', error);
-        return createErrorResponse(500, 'Errore nel recupero soci per email', error.message);
-    }
-}
-
-async function handleControlUserType(context, codiceFiscale, tipoSocio) {
-    try {
-        if (!codiceFiscale || !tipoSocio) {
-            return createErrorResponse(400, 'Codice fiscale e tipo socio richiesti');
-        }
-        
-        const pool = await getPool();
-        const request = pool.request();
-        request.input('codiceFiscale', sql.NVarChar, codiceFiscale);
-        request.input('tipoSocio', sql.Int, parseInt(tipoSocio));
-        
-        const query = `
-            SELECT id, nome, cognome FROM Soci 
-            WHERE codiceFiscale = @codiceFiscale AND tipoSocio = @tipoSocio AND attivo = 1
-        `;
-        
-        const result = await request.query(query);
-        
-        return createSuccessResponse({
-            exists: result.recordset.length > 0,
-            data: result.recordset[0] || null
-        });
-        
-    } catch (error) {
-        context.log.error('Errore nel controllo tipo utente:', error);
-        return createErrorResponse(500, 'Errore nel controllo tipo utente', error.message);
-    }
-}

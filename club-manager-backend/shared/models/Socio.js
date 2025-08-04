@@ -30,39 +30,27 @@ const parseDateFromString = (dateStr) => {
 
 const socioSchema = Joi.object({
   id: Joi.number().integer().positive().optional(),
-  nome: Joi.string().max(100).required(),
-  cognome: Joi.string().max(100).required(),
+  nome: Joi.string().max(255).required(),
+  cognome: Joi.string().max(255).required(),
   codiceFiscale: Joi.string().length(16).pattern(/^[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]$/).required(),
+  sesso: Joi.string().valid('M', 'F', 'Maschio', 'Femmina').optional(),
   dataNascita: Joi.date().max('now').optional(),
-  birhDate: Joi.alternatives().try(
-    Joi.date().max('now'),
-    Joi.string().pattern(/^\d{1,2}-\d{1,2}-\d{4}$/) // DD-MM-YYYY format
-  ).optional(), // Frontend typo compatibility
-  birthDate: Joi.alternatives().try(
-    Joi.date().max('now'),
-    Joi.string().pattern(/^\d{1,2}-\d{1,2}-\d{4}$/) // DD-MM-YYYY format
-  ).optional(), // Correct spelling compatibility
-  luogoNascita: Joi.string().max(100).optional(),
-  provinciaNascita: Joi.string().max(2).optional(),
-  indirizzo: Joi.string().max(200).optional(),
-  civico: Joi.string().max(10).optional(),
-  cap: Joi.string().length(5).pattern(/^[0-9]{5}$/).optional(),
-  comune: Joi.string().max(100).optional(),
-  provincia: Joi.string().max(2).optional(),
+  provinciaNascita: Joi.string().max(255).optional(),
+  comuneNascita: Joi.string().max(255).optional(),
+  provinciaResidenza: Joi.string().max(255).optional(),
+  comuneResidenza: Joi.string().max(255).optional(),
+  viaResidenza: Joi.string().max(255).optional(),
+  capResidenza: Joi.string().length(5).pattern(/^[0-9]{5}$/).optional(),
   telefono: Joi.string().max(20).allow('').optional(),
-  cellulare: Joi.string().max(20).allow('').optional(),
   email: Joi.string().email().allow('').optional(),
-  tipoSocio: Joi.number().integer().default(1),
-  privacy: Joi.boolean().default(false),
-  federazione: Joi.string().max(100).allow('').optional(),
-  numeroTesseraFederale: Joi.string().max(50).allow('').optional(),
-  attivo: Joi.boolean().default(true),
-  // Additional frontend compatibility fields
-  competition: Joi.boolean().optional(),
-  certifica: Joi.alternatives().try(
-    Joi.date(),
-    Joi.string().pattern(/^\d{1,2}-\d{1,2}-\d{4}$/) // DD-MM-YYYY format
-  ).optional()
+  scadenzaCertificato: Joi.date().optional(),
+  isAgonistico: Joi.number().integer().valid(0, 1).default(0),
+  privacy: Joi.number().integer().valid(0, 1).default(0),
+  dataPrivacy: Joi.date().optional(),
+  isTesserato: Joi.number().integer().valid(0, 1).default(0),
+  isEffettivo: Joi.number().integer().valid(0, 1).default(0),
+  isVolontario: Joi.number().integer().valid(0, 1).default(0),
+  dataIscrizione: Joi.date().optional(),
 });
 
 const validateSocio = (data) => {
@@ -71,17 +59,18 @@ const validateSocio = (data) => {
     ...data
   };
 
-  // Handle birth date parsing from various frontend field names
-  const birthDateField = data.dataNascita || data.birhDate || data.birthDate;
-  if (birthDateField) {
-    mappedData.dataNascita = parseDateFromString(birthDateField);
-  }
-
-  // Handle certifica date parsing
-  if (data.certifica) {
-    mappedData.certifica = parseDateFromString(data.certifica);
-  }
-
+  var CodiceFiscale = require('codice-fiscale-js');
+  mappedData.codiceFiscale = new CodiceFiscale({
+          name: data.nome,
+          surname: data.cognome,
+          gender: data.sesso,
+          day: data.dataNascita.substring(0, 2),
+          month: data.dataNascita.substring(3, 5),
+          year: data.dataNascita.substring(4, 8),
+          birthplace: data.comuneNascita, 
+          birthplaceProvincia: data.provinciaNascita
+      });
+          
   return socioSchema.validate(mappedData, { allowUnknown: true });
 };
 
@@ -93,26 +82,24 @@ const normalizeSocioResponse = (socio) => {
     nome: socio.nome,
     cognome: socio.cognome,
     codiceFiscale: socio.codiceFiscale,
+    sesso: socio.sesso,
     dataNascita: socio.dataNascita,
-    birhDate: socio.dataNascita, // Frontend typo compatibility
-    birthDate: socio.dataNascita, // Correct spelling
-    luogoNascita: socio.luogoNascita,
     provinciaNascita: socio.provinciaNascita,
-    indirizzo: socio.indirizzo,
-    civico: socio.civico,
-    cap: socio.cap,
-    comune: socio.comune,
-    provincia: socio.provincia,
+    comuneNascita: socio.comuneNascita,
+    provinciaResidenza: socio.provinciaResidenza,
+    comuneResidenza: socio.comuneResidenza,
+    viaResidenza: socio.viaResidenza,
+    capResidenza: socio.capResidenza,
     telefono: socio.telefono,
-    cellulare: socio.cellulare,
     email: socio.email,
-    tipoSocio: socio.tipoSocio,
+    scadenzaCertificato: socio.scadenzaCertificato,
+    isAgonistico: socio.isAgonistico,
     privacy: socio.privacy,
-    federazione: socio.federazione,
-    numeroTesseraFederale: socio.numeroTesseraFederale,
-    attivo: socio.attivo,
-    competition: socio.competition,
-    certifica: socio.certifica
+    dataPrivacy: socio.dataPrivacy,
+    isTesserato: socio.isTesserato,
+    isEffettivo: socio.isEffettivo,
+    isVolontario: socio.isVolontario,
+    dataIscrizione: socio.dataIscrizione,
   };
 };
 
