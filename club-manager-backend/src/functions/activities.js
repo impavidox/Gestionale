@@ -54,7 +54,7 @@ app.http('activities', {
                     return createErrorResponse(404, `Endpoint '${action}' non trovato`);
             }
         } catch (error) {
-            context.log.error('Errore nella function activities:', error);
+            context.log('Errore nella function activities:', error);
             return createErrorResponse(500, 'Errore interno del server', error.message);
         }
     }
@@ -89,7 +89,7 @@ async function handleRetrieveAllActivities(context) {
         return createSuccessResponse(result.recordset);
         
     } catch (error) {
-        context.log.error('Errore nel recupero attività:', error);
+        context.log('Errore nel recupero attività:', error);
         return createErrorResponse(500, 'Errore nel recupero attività', error.message);
     }
 }
@@ -125,7 +125,7 @@ async function handleRetrieveActivitiesByFamily(context, familyId) {
         return createSuccessResponse(result.recordset);
         
     } catch (error) {
-        context.log.error('Errore nel recupero attività per famiglia:', error);
+        context.log('Errore nel recupero attività per famiglia:', error);
         return createErrorResponse(500, 'Errore nel recupero attività per famiglia', error.message);
     }
 }
@@ -182,7 +182,7 @@ async function handleRetrieveFullActivitiesByFamily(context, familyId) {
         return createSuccessResponse(result.recordset);
         
     } catch (error) {
-        context.log.error('Errore nel recupero attività complete per famiglia:', error);
+        context.log('Errore nel recupero attività complete per famiglia:', error);
         return createErrorResponse(500, 'Errore nel recupero attività complete per famiglia', error.message);
     }
 }
@@ -209,7 +209,7 @@ async function handleRetrieveFamilies(context) {
         return createSuccessResponse(result.recordset);
         
     } catch (error) {
-        context.log.error('Errore nel recupero famiglie:', error);
+        context.log('Errore nel recupero famiglie:', error);
         return createErrorResponse(500, 'Errore nel recupero famiglie', error.message);
     }
 }
@@ -221,7 +221,7 @@ async function handleUpdateActivity(context, activityData) {
         // Validate input data
         const { error, value } = validateActivity(activityData);
         if (error) {
-            context.log.warn('Dati attività non validi:', error.details);
+            context.log('Dati attività non validi:', error.details);
             return createErrorResponse(400, 'Dati non validi', error.details);
         }
         
@@ -291,7 +291,7 @@ async function handleUpdateActivity(context, activityData) {
         }
         
     } catch (error) {
-        context.log.error('Errore nell\'aggiornamento attività:', error);
+        context.log('Errore nell\'aggiornamento attività:', error);
         return createErrorResponse(500, 'Errore nell\'aggiornamento attività', error.message);
     }
 }
@@ -342,7 +342,7 @@ async function handleRemoveActivity(context, activityData) {
         }
         
     } catch (error) {
-        context.log.error('Errore nella rimozione attività:', error);
+        context.log('Errore nella rimozione attività:', error);
         return createErrorResponse(500, 'Errore nella rimozione attività', error.message);
     }
 }
@@ -379,7 +379,7 @@ async function handleRetrieveAffiliazioneForLibro(context, param) {
         return createSuccessResponse(result.recordset);
         
     } catch (error) {
-        context.log.error('Errore nel recupero affiliazioni:', error);
+        context.log('Errore nel recupero affiliazioni:', error);
         return createErrorResponse(500, 'Errore nel recupero affiliazioni', error.message);
     }
 }

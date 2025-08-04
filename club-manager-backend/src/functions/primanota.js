@@ -44,7 +44,7 @@ app.http('primanota', {
                     return createErrorResponse(404, `Endpoint '${action}' non trovato`);
             }
         } catch (error) {
-            context.log.error('Errore nella function primanota:', error);
+            context.log('Errore nella function primanota:', error);
             return createErrorResponse(500, 'Errore interno del server', error.message);
         }
     }
@@ -201,7 +201,7 @@ async function handleBuildPrimaNota(context, type, startDate, endDate) {
         });
         
     } catch (error) {
-        context.log.error('Errore nella costruzione prima nota:', error);
+        context.log('Errore nella costruzione prima nota:', error);
         return createErrorResponse(500, 'Errore nella costruzione prima nota', error.message);
     }
 }
@@ -240,7 +240,7 @@ async function handlePrintPrimaNota(context, type, startDate, endDate) {
         return createSuccessResponse(printData);
         
     } catch (error) {
-        context.log.error('Errore nella stampa prima nota:', error);
+        context.log('Errore nella stampa prima nota:', error);
         return createErrorResponse(500, 'Errore nella stampa prima nota', error.message);
     }
 }
@@ -354,7 +354,7 @@ async function handleStatistic(context, type) {
         return createSuccessResponse(result);
         
     } catch (error) {
-        context.log.error('Errore nel calcolo statistiche:', error);
+        context.log('Errore nel calcolo statistiche:', error);
         return createErrorResponse(500, 'Errore nel calcolo statistiche', error.message);
     }
 }

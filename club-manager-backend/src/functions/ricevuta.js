@@ -56,7 +56,7 @@ app.http('ricevuta', {
                     return createErrorResponse(404, `Endpoint '${action}' non trovato`);
             }
         } catch (error) {
-            context.log.error('Errore nella function ricevuta:', error);
+            context.log('Errore nella function ricevuta:', error);
             return createErrorResponse(500, 'Errore interno del server', error.message);
         }
     }
@@ -132,7 +132,7 @@ async function handleCreateNewRicevuta(context, socioId) {
         });
         
     } catch (error) {
-        context.log.error('Errore nella creazione ricevuta:', error);
+        context.log('Errore nella creazione ricevuta:', error);
         return createErrorResponse(500, 'Errore nella creazione ricevuta', error.message);
     }
 }
@@ -173,7 +173,7 @@ async function handleBuildRicevuta(context, socioId, abbonamentoId, ricevutaId) 
         return createSuccessResponse(result.recordset[0]);
         
     } catch (error) {
-        context.log.error('Errore nella costruzione ricevuta:', error);
+        context.log('Errore nella costruzione ricevuta:', error);
         return createErrorResponse(500, 'Errore nella costruzione ricevuta', error.message);
     }
 }
@@ -183,7 +183,7 @@ async function handlePrintNewRicevuta(context, ricevutaData) {
         const { error, value } = validateRicevuta(ricevutaData);
         
         if (error) {
-            context.log.warn('Dati ricevuta non validi:', error.details);
+            context.log('Dati ricevuta non validi:', error.details);
             return createErrorResponse(400, 'Dati ricevuta non validi', error.details);
         }
         
@@ -241,7 +241,7 @@ async function handlePrintNewRicevuta(context, ricevutaData) {
         }
         
     } catch (error) {
-        context.log.error('Errore nella stampa ricevuta:', error);
+        context.log('Errore nella stampa ricevuta:', error);
         return createErrorResponse(500, 'Errore nella stampa ricevuta', error.message);
     }
 }
@@ -281,7 +281,7 @@ async function handleRetrieveRicevutaForUser(context, socioId, numeroTessera) {
         return createSuccessResponse({ items: result.recordset });
         
     } catch (error) {
-        context.log.error('Errore nel recupero ricevute utente:', error);
+        context.log('Errore nel recupero ricevute utente:', error);
         return createErrorResponse(500, 'Errore nel recupero ricevute utente', error.message);
     }
 }
@@ -322,7 +322,7 @@ async function handleUpdateIncassi(context, incassoData) {
         });
         
     } catch (error) {
-        context.log.error('Errore nell\'aggiornamento incassi:', error);
+        context.log('Errore nell\'aggiornamento incassi:', error);
         return createErrorResponse(500, 'Errore nell\'aggiornamento incassi', error.message);
     }
 }
@@ -362,7 +362,7 @@ async function handleAnnulRicevuta(context, annullamentoData) {
         });
         
     } catch (error) {
-        context.log.error('Errore nell\'annullamento ricevuta:', error);
+        context.log('Errore nell\'annullamento ricevuta:', error);
         return createErrorResponse(500, 'Errore nell\'annullamento ricevuta', error.message);
     }
 }
@@ -406,7 +406,7 @@ async function handlePrepareScheda(context, socioId) {
         return createSuccessResponse(result.recordset[0]);
         
     } catch (error) {
-        context.log.error('Errore nella preparazione scheda:', error);
+        context.log('Errore nella preparazione scheda:', error);
         return createErrorResponse(500, 'Errore nella preparazione scheda', error.message);
     }
 }

@@ -20,7 +20,7 @@ const parseDateFromString = (dateStr) => {
     const year = parseInt(parts[2], 10);
     
     if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-      return new Date(year, month, day);
+      return new Date(Date.UTC(year, month, day));
     }
   }
   
@@ -29,7 +29,6 @@ const parseDateFromString = (dateStr) => {
 };
 
 const socioSchema = Joi.object({
-  id: Joi.number().integer().positive().optional(),
   nome: Joi.string().max(255).required(),
   cognome: Joi.string().max(255).required(),
   codiceFiscale: Joi.string().length(16).pattern(/^[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]$/).required(),
@@ -51,6 +50,7 @@ const socioSchema = Joi.object({
   isEffettivo: Joi.number().integer().valid(0, 1).default(0),
   isVolontario: Joi.number().integer().valid(0, 1).default(0),
   dataIscrizione: Joi.date().optional(),
+  isScaduto: Joi.number().integer().valid(0, 1).default(0),
 });
 
 const validateSocio = (data) => {
@@ -59,18 +59,27 @@ const validateSocio = (data) => {
     ...data
   };
 
-  var CodiceFiscale = require('codice-fiscale-js');
-  mappedData.codiceFiscale = new CodiceFiscale({
-          name: data.nome,
-          surname: data.cognome,
-          gender: data.sesso,
-          day: data.dataNascita.substring(0, 2),
-          month: data.dataNascita.substring(3, 5),
-          year: data.dataNascita.substring(4, 8),
-          birthplace: data.comuneNascita, 
-          birthplaceProvincia: data.provinciaNascita
-      });
-          
+  var dateField = data.dataNascita;
+  if (dateField) {
+    mappedData.dataNascita = parseDateFromString(dateField);
+  }
+
+  var dateField = data.scadenzaCertificato;
+  if (dateField) {
+    mappedData.scadenzaCertificato = parseDateFromString(dateField);
+  }
+
+  var dateField = data.dataPrivacy;
+  if (dateField) {
+    mappedData.dataPrivacy = parseDateFromString(dateField);
+  }
+  
+  var dateField = data.dataIscrizione;
+  if (dateField) {
+    mappedData.dataIscrizione = parseDateFromString(dateField);
+  }
+
+
   return socioSchema.validate(mappedData, { allowUnknown: true });
 };
 
@@ -100,6 +109,7 @@ const normalizeSocioResponse = (socio) => {
     isEffettivo: socio.isEffettivo,
     isVolontario: socio.isVolontario,
     dataIscrizione: socio.dataIscrizione,
+    isScaduto: socio.isScaduto
   };
 };
 

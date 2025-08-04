@@ -48,7 +48,7 @@ app.http('abbonamento', {
                     return createErrorResponse(404, `Endpoint '${action}' non trovato`);
             }
         } catch (error) {
-            context.log.error('Errore nella function abbonamento:', error);
+            context.log('Errore nella function abbonamento:', error);
             return createErrorResponse(500, 'Errore interno del server', error.message);
         }
     }
@@ -66,7 +66,7 @@ async function handleUpdateAbbonamento(context, requestBody) {
         // Validate the data using the improved validation
         const { error, value } = validateAbbonamento(requestBody);
         if (error) {
-            context.log.error('Validation error:', error.details);
+            context.log('Validation error:', error.details);
             return createErrorResponse(400, 'Dati abbonamento non validi', error.details[0].message);
         }
 
@@ -168,7 +168,7 @@ async function handleUpdateAbbonamento(context, requestBody) {
         }
 
     } catch (error) {
-        context.log.error('Errore nell\'aggiornamento abbonamento:', error);
+        context.log('Errore nell\'aggiornamento abbonamento:', error);
         return createErrorResponse(500, 'Errore nell\'aggiornamento abbonamento', error.message);
     }
 }
@@ -208,7 +208,7 @@ async function handleRetrieveCurrentAbbonamento(context, socioId) {
         });
 
     } catch (error) {
-        context.log.error('Errore nel recupero abbonamento corrente:', error);
+        context.log('Errore nel recupero abbonamento corrente:', error);
         return createErrorResponse(500, 'Errore nel recupero abbonamento', error.message);
     }
 }
@@ -244,7 +244,7 @@ async function handleRetrieveAbbonamentoById(context, abbonamentoId) {
         });
 
     } catch (error) {
-        context.log.error('Errore nel recupero abbonamento per ID:', error);
+        context.log('Errore nel recupero abbonamento per ID:', error);
         return createErrorResponse(500, 'Errore nel recupero abbonamento', error.message);
     }
 }
@@ -278,7 +278,7 @@ async function handleRetrieveAbbonamentiBySocio(context, socioId) {
         });
 
     } catch (error) {
-        context.log.error('Errore nel recupero abbonamenti per socio:', error);
+        context.log('Errore nel recupero abbonamenti per socio:', error);
         return createErrorResponse(500, 'Errore nel recupero abbonamenti', error.message);
     }
 }

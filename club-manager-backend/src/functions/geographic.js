@@ -51,11 +51,11 @@ app.http('geographic', {
                     return await handleGetCacheStats(context);
                 
                 default:
-                    context.log.warn(`Endpoint non trovato: ${action}`);
+                    context.log(`Endpoint non trovato: ${action}`);
                     return createErrorResponse(404, `Endpoint '${action}' non trovato`);
             }
         } catch (error) {
-            context.log.error('Errore nella function geographic:', error);
+            context.log('Errore nella function geographic:', error);
             return createErrorResponse(500, 'Errore interno del server', error.message);
         }
     }
@@ -69,7 +69,7 @@ async function handleRetrieveProvince(context) {
         context.log(`${province.length} province recuperate`);
         return createSuccessResponse(province);
     } catch (error) {
-        context.log.error('Errore nel recupero province:', error);
+        context.log('Errore nel recupero province:', error);
         return createErrorResponse(500, 'Errore nel recupero province', error.message);
     }
 }
@@ -85,7 +85,7 @@ async function handleRetrieveCommune(context, codiceProvincia) {
         context.log(`${comuni.length} comuni recuperati per ${codiceProvincia}`);
         return createSuccessResponse(comuni);
     } catch (error) {
-        context.log.error('Errore nel recupero comuni:', error);
+        context.log('Errore nel recupero comuni:', error);
         return createErrorResponse(500, 'Errore nel recupero comuni', error.message);
     }
 }
@@ -105,7 +105,7 @@ async function handleRetrieveCommuneByName(context, nomeParziale) {
         context.log(`${comuni.length} comuni trovati per "${nomeParziale}"`);
         return createSuccessResponse(comuni);
     } catch (error) {
-        context.log.error('Errore nella ricerca comuni:', error);
+        context.log('Errore nella ricerca comuni:', error);
         return createErrorResponse(500, 'Errore nella ricerca comuni', error.message);
     }
 }
@@ -124,7 +124,7 @@ async function handleRebuildCommunes(context) {
             message: 'Cache comuni ricostruita con successo'
         });
     } catch (error) {
-        context.log.error('Errore nella ricostruzione comuni:', error);
+        context.log('Errore nella ricostruzione comuni:', error);
         return createErrorResponse(500, 'Errore nella ricostruzione comuni', error.message);
     }
 }
@@ -143,7 +143,7 @@ async function handleRebuildStates(context) {
             message: 'Cache province ricostruita con successo'
         });
     } catch (error) {
-        context.log.error('Errore nella ricostruzione province:', error);
+        context.log('Errore nella ricostruzione province:', error);
         return createErrorResponse(500, 'Errore nella ricostruzione province', error.message);
     }
 }
@@ -155,7 +155,7 @@ async function handleTestApi(context) {
         context.log('Test API completato:', testResult);
         return createSuccessResponse(testResult);
     } catch (error) {
-        context.log.error('Errore nel test API:', error);
+        context.log('Errore nel test API:', error);
         return createErrorResponse(500, 'Errore nel test API', error.message);
     }
 }
@@ -166,7 +166,7 @@ async function handleGetCacheStats(context) {
         const stats = geographicService.getCacheStats();
         return createSuccessResponse(stats);
     } catch (error) {
-        context.log.error('Errore nel recupero statistiche:', error);
+        context.log('Errore nel recupero statistiche:', error);
         return createErrorResponse(500, 'Errore nel recupero statistiche', error.message);
     }
 }

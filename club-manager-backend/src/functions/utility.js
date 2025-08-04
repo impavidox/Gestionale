@@ -47,7 +47,7 @@ app.http('utility', {
                     return createErrorResponse(404, `Endpoint '${action}' non trovato`);
             }
         } catch (error) {
-            context.log.error('Errore nella function utility:', error);
+            context.log('Errore nella function utility:', error);
             return createErrorResponse(500, 'Errore interno del server', error.message);
         }
     }
@@ -101,7 +101,7 @@ async function handleLoadNumeroTessera(context) {
         });
         
     } catch (error) {
-        context.log.error('Errore nel caricamento numeri tessera:', error);
+        context.log('Errore nel caricamento numeri tessera:', error);
         return createErrorResponse(500, 'Errore nel caricamento numeri tessera', error.message);
     }
 }
@@ -166,7 +166,7 @@ async function handleRetrieveAbbonamentoByTessera(context, numeroTessera) {
         return createSuccessResponse(result.recordset);
         
     } catch (error) {
-        context.log.error('Errore nel recupero abbonamento per tessera:', error);
+        context.log('Errore nel recupero abbonamento per tessera:', error);
         return createErrorResponse(500, 'Errore nel recupero abbonamento per tessera', error.message);
     }
 }
@@ -244,7 +244,7 @@ async function handleUpdateNumeroTessera(context, updateData) {
         }
         
     } catch (error) {
-        context.log.error('Errore nell\'aggiornamento numero tessera:', error);
+        context.log('Errore nell\'aggiornamento numero tessera:', error);
         return createErrorResponse(500, 'Errore nell\'aggiornamento numero tessera', error.message);
     }
 }
@@ -265,7 +265,7 @@ async function handleUpdateNumeroTesseraAlert(context, updateData) {
         return result;
         
     } catch (error) {
-        context.log.error('Errore nell\'aggiornamento numero tessera con alert:', error);
+        context.log('Errore nell\'aggiornamento numero tessera con alert:', error);
         return createErrorResponse(500, 'Errore nell\'aggiornamento numero tessera con alert', error.message);
     }
 }
@@ -349,7 +349,7 @@ async function handleCntrlNumeroTessera(context, type) {
         });
         
     } catch (error) {
-        context.log.error('Errore nel controllo numeri tessera:', error);
+        context.log('Errore nel controllo numeri tessera:', error);
         return createErrorResponse(500, 'Errore nel controllo numeri tessera', error.message);
     }
 }

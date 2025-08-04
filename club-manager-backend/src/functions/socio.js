@@ -32,9 +32,18 @@ app.http('socio', {
                     }
                 };
             }
-
-            context.log(`Action: ${action}, Params:`, params);
-
+            let requestBody = null;
+            // Only attempt to read body for POST/PUT requests
+            if (request.method === 'POST' || request.method === 'PUT') {
+                try {
+                    // This reads the entire stream ONCE and parses it as JSON
+                    requestBody = await request.json();
+                    context.log('Request body (parsed JSON):', requestBody);
+                } catch (jsonError) {
+                    context.log('Error parsing JSON body:', jsonError.message);
+                    return createErrorResponse(400, 'Invalid JSON body provided', jsonError.message);
+                }
+            }
             switch (action) {
                 case 'retrieveSocio':
                     return await handleRetrieveSocio(context, params);
@@ -43,16 +52,16 @@ app.http('socio', {
                     return await handleRetrieveSocioById(context, params.param1);
                 
                 case 'createSocio':
-                    return await handleCreateSocio(context, request.body);
+                    return await handleCreateSocio(context, requestBody);
                 
                 case 'updateSocio':
-                    return await handleUpdateSocio(context, request.body);
+                    return await handleUpdateSocio(context, requestBody);
                 
                 default:
                     return createErrorResponse(404, `Endpoint '${action}' non trovato`);
             }
         } catch (error) {
-            context.log.error('Errore nella function socio:', error);
+            context.log('Errore nella function socio:', error);
             return createErrorResponse(500, 'Errore interno del server', error.message);
         }
     }
@@ -119,7 +128,7 @@ async function handleRetrieveSocio(context, params) {
         return createSuccessResponse({ items: normalizedItems });
         
     } catch (error) {
-        context.log.error('Errore nel recupero soci:', error);
+        context.log('Errore nel recupero soci:', error);
         return createErrorResponse(500, 'Errore nel recupero soci', error.message);
     }
 }
@@ -166,7 +175,7 @@ async function handleRetrieveSocioById(context, id) {
         return createSuccessResponse(normalizedSocio);
         
     } catch (error) {
-        context.log.error('Errore nel recupero socio:', error);
+        context.log('Errore nel recupero socio:', error);
         return createErrorResponse(500, 'Errore nel recupero socio', error.message);
     }
 }
@@ -175,10 +184,23 @@ async function handleRetrieveSocioById(context, id) {
 
 async function handleCreateSocio(context, socioData) {
     try {
+
+        var CodiceFiscale = require('codice-fiscale-js');
+        socioData.codiceFiscale = new CodiceFiscale({
+                name: socioData.nome,
+                surname: socioData.cognome,
+                gender: socioData.sesso,
+                day: parseInt(socioData.dataNascita.substring(0, 2)),
+                month: parseInt(socioData.dataNascita.substring(3, 5)),
+                year: parseInt(socioData.dataNascita.substring(6, 10)),
+                birthplace: socioData.comuneNascita, 
+                birthplaceProvincia: socioData.provinciaNascita
+            }).code;
+        socioData.isScaduto = 1
+                  
         const { error, value } = validateSocio(socioData);
-        
         if (error) {
-            context.log.warn('Dati socio non validi:', error.details);
+            context.log('Dati socio non validi:', error.details);
             return createErrorResponse(400, 'Dati non validi', error.details);
         }
         const pool = await getPool();
@@ -204,13 +226,13 @@ async function handleCreateSocio(context, socioData) {
                     provinciaNascita, comuneNascita, provinciaResidenza, comuneResidenza, 
                     viaResidenza, capResidenza, telefono, email, scadenzaCertificato,
                     isAgonistico, privacy, dataPrivacy, isTesserato, isEffettivo, 
-                    isVolontario, dataIscrizione, created_at
+                    isVolontario, dataIscrizione, isScaduto, created_at
                 ) OUTPUT INSERTED.id VALUES (
                     @nome, @cognome, @codiceFiscale, @sesso, @dataNascita,
                     @provinciaNascita, @comuneNascita, @provinciaResidenza, @comuneResidenza,
                     @viaResidenza, @capResidenza, @telefono, @email, @scadenzaCertificato,
                     @isAgonistico, @privacy, @dataPrivacy, @isTesserato, @isEffettivo,
-                    @isVolontario, @dataIscrizione, GETDATE()
+                    @isVolontario, @dataIscrizione, @isScaduto, GETDATE()
                 )
             `;
             
@@ -235,7 +257,8 @@ async function handleCreateSocio(context, socioData) {
             request.input('isEffettivo', sql.Int, value.isEffettivo || 0);
             request.input('isVolontario', sql.Int, value.isVolontario || 0);
             request.input('dataIscrizione', sql.Date, value.dataIscrizione || new Date());
-            
+            request.input('isScaduto', sql.Int, value.isVolontario || 0);
+
             const insertResult = await request.query(insertQuery);
             const newSocioId = insertResult.recordset[0].id;
             
@@ -291,14 +314,28 @@ async function handleCreateSocio(context, socioData) {
         }
         
     } catch (error) {
-        context.log.error('Errore nella creazione socio:', error);
+        context.log('Errore nella creazione socio:', error);
         return createErrorResponse(500, 'Errore nella creazione socio', error.message);
     }
 }
 
 async function handleUpdateSocio(context, socioData) {
     try {
+        var CodiceFiscale = require('codice-fiscale-js');
+        socioData.codiceFiscale = new CodiceFiscale({
+                name: socioData.nome,
+                surname: socioData.cognome,
+                gender: socioData.sesso,
+                day: parseInt(socioData.dataNascita.substring(0, 2)),
+                month: parseInt(socioData.dataNascita.substring(3, 5)),
+                year: parseInt(socioData.dataNascita.substring(6, 10)),
+                birthplace: socioData.comuneNascita, 
+                birthplaceProvincia: socioData.provinciaNascita
+            }).code;
+
+        socioData.isScaduto=1;
         const { error, value } = validateSocio(socioData);
+        
         
         if (error) {
             return createErrorResponse(400, 'Dati non validi', error.details);
@@ -326,7 +363,7 @@ async function handleUpdateSocio(context, socioData) {
                     scadenzaCertificato = @scadenzaCertificato,
                     isAgonistico = @isAgonistico, privacy = @privacy, dataPrivacy = @dataPrivacy,
                     isTesserato = @isTesserato, isEffettivo = @isEffettivo, isVolontario = @isVolontario,
-                    dataIscrizione = @dataIscrizione
+                    dataIscrizione = @dataIscrizione, isScaduto = @isScaduto
                 WHERE id = @id
             `;
             
@@ -353,6 +390,7 @@ async function handleUpdateSocio(context, socioData) {
             request.input('isEffettivo', sql.Int, value.isEffettivo || 0);
             request.input('isVolontario', sql.Int, value.isVolontario || 0);
             request.input('dataIscrizione', sql.Date, value.dataIscrizione || null);
+            request.input('isScaduto', sql.Int, value.isVolontario || 0);
             
             const result = await request.query(updateQuery);
             
@@ -450,7 +488,7 @@ async function handleUpdateSocio(context, socioData) {
         }
         
     } catch (error) {
-        context.log.error('Errore nell\'aggiornamento socio:', error);
+        context.log('Errore nell\'aggiornamento socio:', error);
         return createErrorResponse(500, 'Errore nell\'aggiornamento socio', error.message);
     }
 }

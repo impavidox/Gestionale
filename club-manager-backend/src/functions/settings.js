@@ -41,7 +41,7 @@ app.http('setting', {
                     return createErrorResponse(404, `Endpoint '${action}' non trovato`);
             }
         } catch (error) {
-            context.log.error('Errore nella function setting:', error);
+            context.log('Errore nella function setting:', error);
             return createErrorResponse(500, 'Errore interno del server', error.message);
         }
     }
@@ -146,7 +146,7 @@ async function handleGetSetting(context) {
         return createSuccessResponse(settings);
         
     } catch (error) {
-        context.log.error('Errore nel recupero impostazioni:', error);
+        context.log('Errore nel recupero impostazioni:', error);
         return createErrorResponse(500, 'Errore nel recupero impostazioni', error.message);
     }
 }
@@ -158,7 +158,7 @@ async function handleUpdateSetting(context, settingData) {
         // Validate input data
         const { error, value } = validateSetting(settingData);
         if (error) {
-            context.log.warn('Dati impostazioni non validi:', error.details);
+            context.log('Dati impostazioni non validi:', error.details);
             return createErrorResponse(400, 'Dati non validi', error.details);
         }
         
@@ -323,7 +323,7 @@ async function handleUpdateSetting(context, settingData) {
         }
         
     } catch (error) {
-        context.log.error('Errore nell\'aggiornamento impostazioni:', error);
+        context.log('Errore nell\'aggiornamento impostazioni:', error);
         return createErrorResponse(500, 'Errore nell\'aggiornamento impostazioni', error.message);
     }
 }
@@ -394,7 +394,7 @@ async function handleResetSetting(context) {
         }
         
     } catch (error) {
-        context.log.error('Errore nel reset impostazioni:', error);
+        context.log('Errore nel reset impostazioni:', error);
         return createErrorResponse(500, 'Errore nel reset impostazioni', error.message);
     }
 }

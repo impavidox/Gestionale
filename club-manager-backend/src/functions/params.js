@@ -51,7 +51,7 @@ app.http('params', {
                     return createErrorResponse(404, `Endpoint '${action}' non trovato`);
             }
         } catch (error) {
-            context.log.error('Errore nella function params:', error);
+            context.log('Errore nella function params:', error);
             return createErrorResponse(500, 'Errore interno del server', error.message);
         }
     }
@@ -97,7 +97,7 @@ async function handleRetrieveParameters(context) {
         });
         
     } catch (error) {
-        context.log.error('Errore nel recupero parametri:', error);
+        context.log('Errore nel recupero parametri:', error);
         return createErrorResponse(500, 'Errore nel recupero parametri', error.message);
     }
 }
@@ -123,7 +123,7 @@ async function handleRetrieveAnnoSportiva(context) {
         `);
         
         if (result.recordset.length === 0) {
-            context.log.warn('Nessun anno sportivo attivo trovato');
+            context.log('Nessun anno sportivo attivo trovato');
             return createSuccessResponse({
                 id: 0,
                 annoName: new Date().getFullYear().toString(),
@@ -147,7 +147,7 @@ async function handleRetrieveAnnoSportiva(context) {
         return createSuccessResponse(annoSportiva);
         
     } catch (error) {
-        context.log.error('Errore nel recupero anno sportivo:', error);
+        context.log('Errore nel recupero anno sportivo:', error);
         return createErrorResponse(500, 'Errore nel recupero anno sportivo', error.message);
     }
 }
@@ -194,7 +194,7 @@ async function handleRetrieveMesiAttivita(context) {
         return createSuccessResponse(mesiResult);
         
     } catch (error) {
-        context.log.error('Errore nel recupero mesi:', error);
+        context.log('Errore nel recupero mesi:', error);
         return createErrorResponse(500, 'Errore nel recupero mesi', error.message);
     }
 }
@@ -206,7 +206,7 @@ async function handleUpdateParameter(context, paramData) {
         // Validate input data
         const { error, value } = validateParameter(paramData);
         if (error) {
-            context.log.warn('Dati parametro non validi:', error.details);
+            context.log('Dati parametro non validi:', error.details);
             return createErrorResponse(400, 'Dati non validi', error.details);
         }
         
@@ -237,7 +237,7 @@ async function handleUpdateParameter(context, paramData) {
         return createSuccessResponse({ rc: true, message: 'Parametro aggiornato con successo' });
         
     } catch (error) {
-        context.log.error('Errore nell\'aggiornamento parametro:', error);
+        context.log('Errore nell\'aggiornamento parametro:', error);
         return createErrorResponse(500, 'Errore nell\'aggiornamento parametro', error.message);
     }
 }
@@ -249,7 +249,7 @@ async function handleAddParameter(context, paramData) {
         // Validate input data
         const { error, value } = validateParameter(paramData);
         if (error) {
-            context.log.warn('Dati parametro non validi:', error.details);
+            context.log('Dati parametro non validi:', error.details);
             return createErrorResponse(400, 'Dati non validi', error.details);
         }
         
@@ -294,7 +294,7 @@ async function handleAddParameter(context, paramData) {
         });
         
     } catch (error) {
-        context.log.error('Errore nell\'aggiunta parametro:', error);
+        context.log('Errore nell\'aggiunta parametro:', error);
         return createErrorResponse(500, 'Errore nell\'aggiunta parametro', error.message);
     }
 }
@@ -330,7 +330,7 @@ async function handleDeleteParameter(context, parameterId) {
         return createSuccessResponse({ rc: true, message: 'Parametro cancellato con successo' });
         
     } catch (error) {
-        context.log.error('Errore nella cancellazione parametro:', error);
+        context.log('Errore nella cancellazione parametro:', error);
         return createErrorResponse(500, 'Errore nella cancellazione parametro', error.message);
     }
 }
