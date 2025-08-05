@@ -1,5 +1,5 @@
 app.controller('parametri', function($scope) {
-	$scope.viewCommune = false;
+	$scope.viewcomune = false;
 	$scope.viewAttivita = true;
 	$scope.viewAttivitaList = false;
 	$scope.viewCreateAttivita = false;
@@ -16,9 +16,9 @@ app.controller('parametri', function($scope) {
 		1 : 'aperto'
 	}
 	var familyS = 0;
-	$scope.searchCommune = function(){
-		console.log('searchCommune is setted...')
-		$scope.viewCommune = true;
+	$scope.searchcomune = function(){
+		console.log('searchcomune is setted...')
+		$scope.viewcomune = true;
 		$scope.viewAttivita = false;
 		$scope.viewAttivitaList = false;
 		$scope.viewCreateAttivita = false;
@@ -28,7 +28,7 @@ app.controller('parametri', function($scope) {
 	}
 	$scope.attivita = function(){
 		console.log('Attivita is setted...')
-		$scope.viewCommune = false;
+		$scope.viewcomune = false;
 		$scope.viewAttivita = true;
 		$scope.viewCreateAttivita = false;
 		$scope.viewSceltaAtt = false;
@@ -36,7 +36,7 @@ app.controller('parametri', function($scope) {
 		$scope.viewUpdateNumero=false;
 	}
 	$scope.numeroTessera = function(){
-		$scope.viewCommune = false;
+		$scope.viewcomune = false;
 		$scope.viewAttivita = false;
 		$scope.viewCreateAttivita = false;
 		$scope.viewSceltaAtt = false;
@@ -44,9 +44,9 @@ app.controller('parametri', function($scope) {
 		$scope.viewUpdateNumero=false;
 		rest('utility/loadNumeroTessera').get();
 	}
-	$scope.reloadCommunes = function(){
-		console.log('reload communes...');
-		rest('geographic/rebuildCommunes'   ).get();
+	$scope.reloadcomunes = function(){
+		console.log('reload comunes...');
+		rest('geographic/rebuildcomunes'   ).get();
 	}
 
 	$scope.reloadStates = function(){
@@ -74,8 +74,8 @@ app.controller('parametri', function($scope) {
 		});
 		return rc;
 	}
-	$scope.selectNCommune = function(){
-		$scope.dataCommune = rest('geographic/retrieveCommuneByName/' + $scope.nomecommune  ).query()
+	$scope.selectNcomune = function(){
+		$scope.datacomune = rest('geographic/retrievecomuneByName/' + $scope.nomecomune  ).query()
 	}
 	
 	$scope.createAttivita = function(){

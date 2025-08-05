@@ -144,21 +144,7 @@ async function handleRetrieveSocioById(context, id) {
         request.input('id', sql.Int, parseInt(id));
         
         const query = `
-            SELECT s.*, 
-                   -- Get tesserati info
-                   CASE WHEN EXISTS(SELECT 1 FROM tesserati t WHERE t.socioId = s.id) THEN 1 ELSE 0 END as isTesserato,
-                   -- Get effettivi info
-                   CASE WHEN EXISTS(SELECT 1 FROM effettivi e WHERE e.socioId = s.id) THEN 1 ELSE 0 END as isEffettivo,
-                   -- Get volontari info
-                   CASE WHEN EXISTS(SELECT 1 FROM volontari v WHERE v.socioId = s.id) THEN 1 ELSE 0 END as isVolontario,
-                   -- Get main activity info
-                   (SELECT TOP 1 a.nome FROM tesserati t 
-                    INNER JOIN attività a ON t.attivitàId = a.id 
-                    WHERE t.socioId = s.id 
-                    ORDER BY t.id DESC) as nomeAttivita,
-                   (SELECT TOP 1 t.attivitàId FROM tesserati t 
-                    WHERE t.socioId = s.id 
-                    ORDER BY t.id DESC) as attivitaId
+            SELECT s.*
             FROM soci s
             WHERE s.id = @id
         `;

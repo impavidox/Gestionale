@@ -2,10 +2,10 @@ app.controller('dettaglio-utente', function($scope, $rootScope) {
 
 	var birthMM;
 	var birthProv;
-	var birthCommune;
+	var birthcomune;
 	var birthCode;
 	var resProv;
-	var resCommune;
+	var rescomune;
 	var tipoSocio = 1;
 	var compet;
 	var feder;
@@ -77,7 +77,7 @@ app.controller('dettaglio-utente', function($scope, $rootScope) {
 			 birthMM = $scope.mmvalue[dObj.mm].id;
 			 console.log('valeur de mm:' + birthMM);
 			 $scope.anno = dObj.yyyy;
-			 birthCommune = $scope.socioSelected.birthCity;
+			 birthcomune = $scope.socioSelected.birthCity;
 			 birthCode = $scope.socioSelected.birthCityCode;
 			 
 			 $scope.birthProv = $scope.socioSelected.birthProv
@@ -94,7 +94,7 @@ app.controller('dettaglio-utente', function($scope, $rootScope) {
 				 });
 			 });  
 
-			 $scope.listCommNascita = rest('geographic/retrieveCommune/' + $scope.socioSelected.birthProv.trim()).query();
+			 $scope.listCommNascita = rest('geographic/retrievecomune/' + $scope.socioSelected.birthProv.trim()).query();
 			 $scope.listCommNascita.$promise.then(function(r){
 				 r.forEach(function(x){
 					if (x.description.trim() == $scope.socioSelected.birthCity.trim()) $scope.selectedComm = { value: x };
@@ -109,7 +109,7 @@ app.controller('dettaglio-utente', function($scope, $rootScope) {
 			 });
 			 
 			 resProv = $scope.socioSelected.provRes.trim();
-			 $scope.listCommRes = rest('geographic/retrieveCommune/' + $scope.socioSelected.provRes.trim()).query();
+			 $scope.listCommRes = rest('geographic/retrievecomune/' + $scope.socioSelected.provRes.trim()).query();
 			 $scope.listCommRes.$promise.then(function(r){
 				 r.forEach(function(x){
 					if (x.description.trim() == $scope.socioSelected.citta.trim()) $scope.commRes = { value: x };
@@ -205,9 +205,9 @@ app.controller('dettaglio-utente', function($scope, $rootScope) {
         			"cognome" : $scope.cognome.toUpperCase(),
         			"sesso" : $scope.selectedSesso.value.id,
         			"birthday" :  $scope.birthJJ + '-' +birthMM + '-' + $scope.anno,
-        			"birthCommuneCode" : birthCode ,
+        			"birthcomuneCode" : birthCode ,
         			"province" : resProv ,
-        			"city" : ( resCommune == null) ? $scope.socioSelected.citta :  resCommune,
+        			"city" : ( rescomune == null) ? $scope.socioSelected.citta :  rescomune,
         			"corso" : $scope.address ,	
         			"cap" : $scope.cap ,	
         			"tipoSocio" : tipoSocio ,	
@@ -318,18 +318,18 @@ app.controller('dettaglio-utente', function($scope, $rootScope) {
     	birthMM = el.id;
     }
     $scope.provNascitaSelected= function(el){
-    	$scope.listCommNascita = rest('geographic/retrieveCommune/' + el.code).query();
+    	$scope.listCommNascita = rest('geographic/retrievecomune/' + el.code).query();
     }
     $scope.provResSelected = function(el){
-      	$scope.listCommRes = rest('geographic/retrieveCommune/' + el.code).query();
+      	$scope.listCommRes = rest('geographic/retrievecomune/' + el.code).query();
     }
-    $scope.communeNascitaSelected = function(el){
-    	birthCommune = el.description;
+    $scope.comuneNascitaSelected = function(el){
+    	birthcomune = el.description;
     	birthProv = el.provCode
     	birthCode = el.code;
     }
-    $scope.communeResSelected = function(el){
-    	resCommune = el.description;
+    $scope.comuneResSelected = function(el){
+    	rescomune = el.description;
     	resProv = el.provCode
     }
     $scope.tipoSocioSelected= function(el){

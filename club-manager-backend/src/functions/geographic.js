@@ -32,14 +32,14 @@ app.http('geographic', {
                 case 'retrieveProvince':
                     return await handleRetrieveProvince(context);
                 
-                case 'retrieveCommune':
-                    return await handleRetrieveCommune(context, param1);
+                case 'retrievecomune':
+                    return await handleRetrievecomune(context, param1);
                 
-                case 'retrieveCommuneByName':
-                    return await handleRetrieveCommuneByName(context, param1);
+                case 'retrievecomuneByName':
+                    return await handleRetrievecomuneByName(context, param1);
                 
-                case 'rebuildCommunes':
-                    return await handleRebuildCommunes(context);
+                case 'rebuildcomunes':
+                    return await handleRebuildcomunes(context);
                 
                 case 'rebuildStates':
                     return await handleRebuildStates(context);
@@ -74,7 +74,7 @@ async function handleRetrieveProvince(context) {
     }
 }
 
-async function handleRetrieveCommune(context, codiceProvincia) {
+async function handleRetrievecomune(context, codiceProvincia) {
     try {
         if (!codiceProvincia) {
             return createErrorResponse(400, 'Codice provincia richiesto');
@@ -90,7 +90,7 @@ async function handleRetrieveCommune(context, codiceProvincia) {
     }
 }
 
-async function handleRetrieveCommuneByName(context, nomeParziale) {
+async function handleRetrievecomuneByName(context, nomeParziale) {
     try {
         if (!nomeParziale) {
             return createErrorResponse(400, 'Nome comune richiesto per la ricerca');
@@ -110,7 +110,7 @@ async function handleRetrieveCommuneByName(context, nomeParziale) {
     }
 }
 
-async function handleRebuildCommunes(context) {
+async function handleRebuildcomunes(context) {
     try {
         context.log('Ricostruzione cache comuni...');
         geographicService.clearCache();

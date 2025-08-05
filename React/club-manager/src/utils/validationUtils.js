@@ -95,7 +95,7 @@ export const isEmpty = (value) => {
       'nome',
       'cognome',
       'birthday', // o giorno, mese, anno
-      'birthCommuneCode',
+      'birthcomuneCode',
       'province',
       'city',
       'corso', // indirizzo

@@ -38,7 +38,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     cap: '',
     tipoSocio: 3, // Default: socio tesserato
     certifica: null,
-    competition: false,
+    competition: 0,
     telefono: '',
     email: '',
     federazione: ''
@@ -46,10 +46,10 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   
   // Stati per dati correlati
   const [birthProv, setBirthProv] = useState(null);
-  const [birthCommune, setBirthCommune] = useState(null);
+  const [birthcomune, setBirthcomune] = useState(null);
   const [birthCode, setBirthCode] = useState(null);
   const [resProv, setResProv] = useState(null);
-  const [resCommune, setResCommune] = useState(null);
+  const [rescomune, setRescomune] = useState(null);
   
   // Stati per dati di selezione
   const [listProvNascita, setListProvNascita] = useState([]);
@@ -87,8 +87,8 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   
   // Opzioni per selettori
   const sessoArray = [
-    { id: 1, name: 'Maschio' },
-    { id: 2, name: 'Femmina' },
+    { id: 1, name: 'M' },
+    { id: 2, name: 'F' },
   ];
   
   const mmvalue = [
@@ -120,30 +120,14 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         setListProv(province);
         
         // Carica tipi socio
-        const tipiSocioResponse = await socioService.retrieveTipoSocio();
-        console.log(tipiSocioResponse)
-        setListTipiSocio(tipiSocioResponse.data.data);
+        const tipiSocioResponse = ['Effettivo','Tesserato','Volontario'];
+        setListTipiSocio(tipiSocioResponse);
         
         // Carica affiliazioni
-        const affiliazioniResponse = await activityService.retrieveAffiliazione(0);
-        setAffilizioneList(affiliazioniResponse.data.data);
+        //const affiliazioniResponse = await activityService.retrieveAffiliazione(0);  aggiungere metodo federazioni
+        const affiliazioniResponse = ['AICS','CEN'];
+        setAffilizioneList(affiliazioniResponse);
         
-        // Se è un nuovo socio, imposta i valori di default
-        if (mode === 'C') {
-          // Seleziona il tipo socio tesserato di default
-          const tipoTesserato = tipiSocioResponse.data.find(tipo => tipo.tipoId === 3);
-          if (tipoTesserato) {
-            setSelectedTipo({ value: tipoTesserato });
-            setFormData(prev => ({ ...prev, tipoSocio: tipoTesserato.tipoId }));
-            setViewFede(true);
-          }
-          
-          // Seleziona l'affiliazione di default
-          if (affiliazioniResponse.data.length > 0) {
-            setSelectedFederazione({ value: affiliazioniResponse.data[0] });
-            setFormData(prev => ({ ...prev, federazione: affiliazioniResponse.data[0].descrizione }));
-          }
-        }
         
         setLoading(false);
       } catch (error) {
@@ -198,21 +182,21 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
           }
           
           // Imposta i dati di nascita
-          setBirthCommune(existingSocio.birthCity);
+          setBirthcomune(existingSocio.birthCity);
           setBirthCode(existingSocio.birthCityCode);
           setBirthProv(existingSocio.birthProv);
           
           // Carica i comuni di nascita
           if (existingSocio.birthProv) {
-            const communiResponse = await geographicService.retrieveCommune(existingSocio.birthProv.trim());
+            const communiResponse = await geographicService.retrievecomune(existingSocio.birthProv.trim());
             setListCommNascita(communiResponse.data);
             
             // Seleziona il comune di nascita
-            const foundCommune = communiResponse.data.find(comm => 
+            const foundcomune = communiResponse.data.find(comm => 
               comm.description.trim() === existingSocio.birthCity.trim()
             );
-            if (foundCommune) {
-              setSelectedComm({ value: foundCommune });
+            if (foundcomune) {
+              setSelectedComm({ value: foundcomune });
             }
             
             // Seleziona la provincia di nascita
@@ -226,11 +210,11 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
           
           // Imposta i dati di residenza
           setResProv(existingSocio.provRes);
-          setResCommune(existingSocio.citta);
+          setRescomune(existingSocio.citta);
           
           // Carica i comuni di residenza
           if (existingSocio.provRes) {
-            const communiResResponse = await geographicService.retrieveCommune(existingSocio.provRes.trim());
+            const communiResResponse = await geographicService.retrievecomune(existingSocio.provRes.trim());
             setListCommRes(communiResResponse.data);
             
             // Seleziona il comune di residenza
@@ -289,9 +273,17 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   }, [existingSocio, mode, listProvNascita, listProv, listTipiSocio, affiliazioneList]);
   
   // Gestione cambiamento dei campi
-  const handleChange = (name, value) => {
+const handleChange = (name, value) => {
+  // Check if the value is a boolean (from the checkbox)
+  if (typeof value === 'boolean') {
+    // Convert the boolean to 1 (true) or 0 (false)
+    const numericValue = value ? 1 : 0;
+    setFormData(prev => ({ ...prev, [name]: numericValue }));
+  } else {
+    // For all other inputs, use the value as is
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  }
+};
   
   // Gestione selezione mese di nascita
   const handleBirthMMS = (name, selectedOption) => {
@@ -301,9 +293,10 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   // Gestione selezione provincia di nascita
   const handleProvNascitaSelected = async (name, selectedOption) => {
     setSelectedProv(selectedOption.value);
+    setBirthProv(selectedOption.value.value);
     
     try {
-      const response = await geographicService.retrieveCommune(selectedOption.value.value);
+      const response = await geographicService.retrievecomune(selectedOption.value.value);
       const comuni =  response.data.data.map(item => item.nome);
       setListCommNascita(comuni);
     } catch (error) {
@@ -314,9 +307,10 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   // Gestione selezione provincia di residenza
   const handleProvResSelected = async (name, selectedOption) => {
     setProvRes(selectedOption.value);
+    setResProv(selectedOption.value.value);
     
     try {
-      const response = await geographicService.retrieveCommune(selectedOption.value.value);
+      const response = await geographicService.retrievecomune(selectedOption.value.value);
       const comuni =  response.data.data.map(item => item.nome);
       setListCommRes(comuni);
     } catch (error) {
@@ -325,18 +319,17 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   };
   
   // Gestione selezione comune di nascita
-  const handleCommuneNascitaSelected = (name, selectedOption) => {
+  const handlecomuneNascitaSelected = (name, selectedOption) => {
+    console.log(selectedOption.value)
     setSelectedComm(selectedOption.value);
-    setBirthCommune(selectedOption.value.description);
-    setBirthProv(selectedOption.value.provCode);
-    setBirthCode(selectedOption.value.code);
+    setBirthcomune(selectedOption.value.value);
+
   };
   
   // Gestione selezione comune di residenza
-  const handleCommuneResSelected = (name, selectedOption) => {
+  const handlecomuneResSelected = (name, selectedOption) => {
     setCommRes(selectedOption.value);
-    setResCommune(selectedOption.value.description);
-    setResProv(selectedOption.value.provCode);
+    setRescomune(selectedOption.value.value);
   };
   
   // Gestione selezione tipo socio
@@ -350,6 +343,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   // Gestione selezione sesso
   const handleSessoSelected = (name, selectedOption) => {
     setSelectedSesso(selectedOption.value);
+    console.log(selectedSesso)
     setFormData(prev => ({ ...prev, sesso: selectedOption.value.id }));
   };
   
@@ -366,9 +360,9 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     if (!formData.birthJJ) return false;
     if (!selectedMM) return false;
     if (!birthProv) return false;
-    if (!birthCommune) return false;
+    if (!birthcomune) return false;
     if (!resProv) return false;
-    if (!resCommune) return false;
+    if (!rescomune) return false;
     if (!formData.anno) return false;
     if (!formData.address) return false;
     if (!formData.cap) return false;
@@ -404,18 +398,17 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       const body = {
         nome: formData.nome.toUpperCase(),
         cognome: formData.cognome.toUpperCase(),
-        sesso: selectedSesso.value.id,
-        birthday: `${formData.birthJJ}-${selectedMM?.value?.id}-${formData.anno}`,
-        birthProv: birthProv,
-        birthCommune: birthCommune,
-        birthCommuneCode: birthCode,
-        resProv: resProv,
-        resCommune: resCommune,
-        address: formData.address,
-        cap: formData.cap,
+        sesso: selectedSesso.label,
+        dataNascita: `${formData.birthJJ}-${selectedMM?.value}-${formData.anno}`,
+        provinciaNascita: birthProv,
+        comuneNascita: birthcomune,
+        provinciaResidenza: resProv,
+        comuneResidenza: rescomune,
+        viaResidenza: formData.address,
+        capResidenza: formData.cap,
         tipoSocio: formData.tipoSocio,
-        certifica: formData.certifica ? formatDateForApi(formData.certifica) : null,
-        competition: formData.competition === undefined ? false : formData.competition,
+        scadenzaCertificato: formData.certifica ? formatDateForApi(formData.certifica) : null,
+        isAgonistico: formData.competition === undefined ? false : formData.competition,
         telefono: formData.telefono || null,
         email: formData.email || null,
         privacy: formData.privacy === undefined ? true : formData.privacy,
@@ -423,7 +416,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       };
       
       let response;
-      
+      console.log(body)
       if (mode === 'C') {
         // Crea un nuovo socio
         response = await socioService.createSocio(body);
@@ -650,7 +643,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
                     name="birthComm"
                     value={selectedComm}
                     options={listCommNascita}
-                    onChange={handleCommuneNascitaSelected}
+                    onChange={handlecomuneNascitaSelected}
                     isDisabled={!selectedProv}
                     required
                   />
@@ -675,7 +668,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
                     name="commRes"
                     value={commRes}
                     options={listCommRes}
-                    onChange={handleCommuneResSelected}
+                    onChange={handlecomuneResSelected}
                     isDisabled={!provRes}
                     required
                   />
@@ -764,6 +757,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
                     name="competition"
                     checked={formData.competition}
                     onChange={handleChange}
+      
                   />
                 </Col>
               </Row>

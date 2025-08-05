@@ -7,12 +7,7 @@ const endpoints = {
       RETRIEVE: 'socio/retrieveSocio',
       RETRIEVE_BY_ID: 'socio/retrieveSocioById',
       CREATE: 'socio/createSocio',
-      UPDATE: 'socio/updateSocio',
-      CONTROL_USER_TYPE: 'socio/controlUserType',
-      UPDATE_FEDERAZIONE: 'socio/updateFederazione',
-      RETRIEVE_TIPO_SOCIO: 'socio/retrieveTipoSocio',
-      RETRIEVE_LIBRO_SOCIO: 'socio/retrieveLibroSocio',
-      RETRIEVE_MAIL: 'socio/retrieveSocioMail'
+      UPDATE: 'socio/updateSocio'
     },
     
     // Abbonamenti
@@ -53,9 +48,9 @@ const endpoints = {
     // Geografici
     GEOGRAPHIC: {
       RETRIEVE_PROVINCE: 'geographic/retrieveProvince',
-      RETRIEVE_COMMUNE: 'geographic/retrieveCommune',
-      RETRIEVE_COMMUNE_BY_NAME: 'geographic/retrieveCommuneByName',
-      REBUILD_COMMUNES: 'geographic/rebuildCommunes',
+      RETRIEVE_comune: 'geographic/retrievecomune',
+      RETRIEVE_comune_BY_NAME: 'geographic/retrievecomuneByName',
+      REBUILD_comuneS: 'geographic/rebuildcomunes',
       REBUILD_STATES: 'geographic/rebuildStates'
     },
     

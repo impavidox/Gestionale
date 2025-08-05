@@ -18,8 +18,8 @@ const geographicService = {
    * @param {string} codeProvincia - Codice della provincia
    * @returns {Promise} Promise con l'elenco dei comuni
    */
-  retrieveCommune: (codeProvincia) => {
-    return api.get(`${endpoints.GEOGRAPHIC.RETRIEVE_COMMUNE}/${codeProvincia}`);
+  retrievecomune: (codeProvincia) => {
+    return api.get(`${endpoints.GEOGRAPHIC.RETRIEVE_comune}/${codeProvincia}`);
   },
   
   /**
@@ -27,16 +27,16 @@ const geographicService = {
    * @param {string} nomeComuneParziale - Nome parziale del comune
    * @returns {Promise} Promise con l'elenco dei comuni trovati
    */
-  retrieveCommuneByName: (nomeComuneParziale) => {
-    return api.get(`${endpoints.GEOGRAPHIC.RETRIEVE_COMMUNE_BY_NAME}/${nomeComuneParziale}`);
+  retrievecomuneByName: (nomeComuneParziale) => {
+    return api.get(`${endpoints.GEOGRAPHIC.RETRIEVE_comune_BY_NAME}/${nomeComuneParziale}`);
   },
   
   /**
    * Aggiorna il database dei comuni
    * @returns {Promise} Promise con il risultato dell'operazione
    */
-  rebuildCommunes: () => {
-    return api.get(endpoints.GEOGRAPHIC.REBUILD_COMMUNES);
+  rebuildcomunes: () => {
+    return api.get(endpoints.GEOGRAPHIC.REBUILD_comuneS);
   },
   
   /**

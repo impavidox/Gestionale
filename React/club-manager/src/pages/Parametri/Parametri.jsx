@@ -34,7 +34,7 @@ const Parametri = () => {
   const [updateMode, setUpdateMode] = useState(false);
   
   // Stati per la ricerca comune
-  const [nomeCommune, setNomeCommune] = useState('');
+  const [nomecomune, setNomecomune] = useState('');
   const [comuni, setComuni] = useState([]);
   
   // Stati per numero tessera
@@ -94,7 +94,7 @@ const Parametri = () => {
     setSelectedFamily(null);
     setSelectedActivity(null);
     setActivities([]);
-    setNomeCommune('');
+    setNomecomune('');
     setComuni([]);
     setNumeroTesseraSearch('');
     setAbbonamenti([]);
@@ -165,12 +165,12 @@ const Parametri = () => {
   
   // Gestione ricerca comune
   const handleSearchComune = async () => {
-    if (!nomeCommune) return;
+    if (!nomecomune) return;
     
     try {
       setLoading(true);
       
-      const response = await geographicService.retrieveCommuneByName(nomeCommune);
+      const response = await geographicService.retrievecomuneByName(nomecomune);
       setComuni(response.data);
       
       setLoading(false);
@@ -188,7 +188,7 @@ const Parametri = () => {
     try {
       setLoading(true);
       
-      await geographicService.rebuildCommunes();
+      await geographicService.rebuildcomunes();
       
       setSuccess('Comuni ricaricati con successo.');
       setAlertVariant('success');
@@ -392,9 +392,9 @@ const Parametri = () => {
                     <Col md={9}>
                       <TextField
                         label="Nome Comune"
-                        name="nomeCommune"
-                        value={nomeCommune}
-                        onChange={(name, value) => setNomeCommune(value)}
+                        name="nomecomune"
+                        value={nomecomune}
+                        onChange={(name, value) => setNomecomune(value)}
                         placeholder="Inserisci il nome del comune"
                       />
                     </Col>

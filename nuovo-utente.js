@@ -2,10 +2,10 @@ app.controller('nuovo-utente', function($scope, $rootScope) {
 
 	var birthMM;
 	var birthProv;
-	var birthCommune;
+	var birthcomune;
 	var birthCode;
 	var resProv;
-	var resCommune;
+	var rescomune;
 	var tipoSocio = 1;
 	var compet;
 	var feder;
@@ -95,8 +95,8 @@ app.controller('nuovo-utente', function($scope, $rootScope) {
     
     	console.log('nome:' + $scope.nome + ", cognome:" + $scope.cognome + ",sesso:" + $scope.selectedSesso.value.id);
     	console.log('Birthday = ' + $scope.birthJJ + '-' +birthMM + '-' + $scope.anno)	
-     	console.log('Birthday = ' + birthProv + ' / ' + birthCommune)	
-       	console.log('Residence = ' + resProv + ' / ' + resCommune	+ ' address:' + $scope.address + '/' + $scope.cap)
+     	console.log('Birthday = ' + birthProv + ' / ' + birthcomune)	
+       	console.log('Residence = ' + resProv + ' / ' + rescomune	+ ' address:' + $scope.address + '/' + $scope.cap)
     	console.log('tipo socio = ' + tipoSocio + ' ceritica:' + $scope.certifica + ' competition:' + $scope.competition)
     	console.log('federazione = ' + feder )
     	compet = false;
@@ -110,10 +110,10 @@ app.controller('nuovo-utente', function($scope, $rootScope) {
         			"sesso" : $scope.selectedSesso.value.id,
         			"birthday" :  $scope.birthJJ + '-' +birthMM + '-' + $scope.anno,
         			"birthProv" : birthProv ,
-        			"birthCommune" : birthCommune ,
-        			"birthCommuneCode" : birthCode ,
+        			"birthcomune" : birthcomune ,
+        			"birthcomuneCode" : birthCode ,
         			"resProv" : resProv ,
-        			"resCommune" : resCommune ,
+        			"rescomune" : rescomune ,
         			"address" : $scope.address ,	
         			"cap" : $scope.cap ,	
         			"tipoSocio" : tipoSocio ,	
@@ -150,9 +150,9 @@ app.controller('nuovo-utente', function($scope, $rootScope) {
     	if ($scope.birthJJ == undefined) return false;
     	if (birthMM == undefined) return false;
     	if (birthProv == undefined) return false;
-    	if (birthCommune == undefined) return false;
+    	if (birthcomune == undefined) return false;
        	if (resProv == undefined) return false;
-       	if (resCommune == undefined) return false;
+       	if (rescomune == undefined) return false;
        	if ($scope.anno == undefined) return false;
     	if ($scope.address == undefined) return false;
     	if ($scope.cap == undefined) return false;
@@ -224,18 +224,18 @@ app.controller('nuovo-utente', function($scope, $rootScope) {
     	birthMM = el.id;
     }
     $scope. provNascitaSelected= function(el){
-    	$scope.listCommNascita = rest('geographic/retrieveCommune/' + el.code).query();
+    	$scope.listCommNascita = rest('geographic/retrievecomune/' + el.code).query();
     }
     $scope.provResSelected = function(el){
-      	$scope.listCommRes = rest('geographic/retrieveCommune/' + el.code).query();
+      	$scope.listCommRes = rest('geographic/retrievecomune/' + el.code).query();
     }
-    $scope.communeNascitaSelected = function(el){
-    	birthCommune = el.description;
+    $scope.comuneNascitaSelected = function(el){
+    	birthcomune = el.description;
     	birthProv = el.provCode
     	birthCode = el.code;
     }
-    $scope.communeResSelected = function(el){
-    	resCommune = el.description;
+    $scope.comuneResSelected = function(el){
+    	rescomune = el.description;
     	resProv = el.provCode
     }
     $scope.tipoSocioSelected= function(el){
