@@ -32,6 +32,9 @@ app.http('activities', {
                 case 'retrieveAllActivities':
                     return await handleRetrieveAllActivities(context);
                 
+                case 'retrieveCodes':
+                    return await handleRetrieveCodes(context);
+                
                 case 'retrieveActivitiesByFederazione':
                     return await handleRetrieveActivitiesByFederazione(context, param1);
                 
@@ -88,6 +91,34 @@ async function handleRetrieveAllActivities(context) {
             LEFT JOIN federazioni f ON a.federazioneId = f.id
             LEFT JOIN sezioni s ON a.sezioneId = s.id
             ORDER BY f.nome, a.nome
+        `);
+        
+        // Normalize response for frontend compatibility
+        const normalizedActivities = result.recordset.map(activity => normalizeAttivitaResponse(activity));
+        
+        context.log(`${result.recordset.length} attività recuperate`);
+        return createSuccessResponse(normalizedActivities);
+        
+    } catch (error) {
+        context.log.error('Errore nel recupero attività:', error);
+        return createErrorResponse(500, 'Errore nel recupero attività', error.message);
+    }
+}
+
+async function handleRetrieveCodes(context) {
+    try {
+        context.log('Recupero tutte le attività con codice');
+        
+        const pool = await getPool();
+        const request = pool.request();
+        
+        const result = await request.query(`
+            SELECT DISTINCT
+                a.codice,
+                f.nome
+            FROM attività a
+            LEFT JOIN mappingCodici f ON a.codice = f.codice
+            WHERE a.codice IS NOT NULL
         `);
         
         // Normalize response for frontend compatibility

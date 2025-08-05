@@ -38,6 +38,10 @@ const activityService = {
   retrieveFamilies: () => {
     return api.get(endpoints.ACTIVITIES.RETRIEVE_FAMILIES);
   },
+
+  retrieveActivitiesCodes: () => {
+    return api.get(endpoints.ACTIVITIES.RETRIEVE_CODES);
+  },
   
   /**
    * Aggiorna un'attività

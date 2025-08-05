@@ -42,7 +42,8 @@ const endpoints = {
       RETRIEVE_FAMILIES: 'activities/retrieveFederazioni',
       UPDATE: 'activities/updateActivity',
       REMOVE: 'activities/removeActivity',
-      RETRIEVE_AFFILIAZIONE: 'activities/retrieveAffiliazioneForLibro'
+      RETRIEVE_AFFILIAZIONE: 'activities/retrieveAffiliazioneForLibro',
+      RETRIEVE_CODES:'activities/retrieveCodes'
     },
     
     // Geografici

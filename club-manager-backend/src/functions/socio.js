@@ -249,17 +249,18 @@ async function handleCreateSocio(context, socioData) {
             const newSocioId = insertResult.recordset[0].id;
             
             // If socio is marked as tesserato, effettivo, or volontario, create corresponding records
-            const currentYear = new Date().getFullYear().toString();  //make function to take from 2024/2025 2025
-            
-            if (value.isTesserato && socioData.attivitaId) {
+            const getFiscalYear = (date = new Date()) => (date < new Date(date.getFullYear(), 8, 1) ? date.getFullYear() : date.getFullYear() + 1).toString();  //make function to take from 2024/2025 2025
+            const currentYear = getFiscalYear(); 
+
+            if (value.isTesserato && socioData.codice) {
                 const tesseratoRequest = new sql.Request(transaction);
                 tesseratoRequest.input('socioId', sql.Int, newSocioId);
-                tesseratoRequest.input('attivitàId', sql.Int, socioData.attivitaId);
+                tesseratoRequest.input('codice', sql.VarChar(5), socioData.codice);
                 tesseratoRequest.input('annoValidità', sql.VarChar(4), currentYear);
                 
                 await tesseratoRequest.query(`
-                    INSERT INTO tesserati (socioId, attivitàId, annoValidità)
-                    VALUES (@socioId, @attivitàId, @annoValidità)
+                    INSERT INTO tesserati (socioId, codice, annoValidità)
+                    VALUES (@socioId, @codice, @annoValidità)
                 `);
             }
             
@@ -385,15 +386,15 @@ async function handleUpdateSocio(context, socioData) {
                 return createErrorResponse(404, 'Socio non trovato');
             }
             
-            // Update related tables based on flags
-            const currentYear = new Date().getFullYear().toString();
+            const getFiscalYear = (date = new Date()) => (date < new Date(date.getFullYear(), 8, 1) ? date.getFullYear() : date.getFullYear() + 1).toString();  //make function to take from 2024/2025 2025
+            const currentYear = getFiscalYear(); 
             
             // Handle tesserati status
-            if (value.isTesserato && socioData.attivitaId) {
+            if (value.isTesserato && socioData.codice) {
                 // Ensure tesserato record exists
                 const tesseratoCheck = new sql.Request(transaction);
                 tesseratoCheck.input('socioId', sql.Int, value.id);
-                tesseratoCheck.input('attivitàId', sql.Int, socioData.attivitaId);
+                tesseratoCheck.input('codice', sql.VarChar(5), socioData.attivitaId);
                 tesseratoCheck.input('annoValidità', sql.VarChar(4), currentYear);
                 
                 const tesseratoExists = await tesseratoCheck.query(`
@@ -403,7 +404,7 @@ async function handleUpdateSocio(context, socioData) {
                 
                 if (tesseratoExists.recordset[0].count === 0) {
                     await tesseratoCheck.query(`
-                        INSERT INTO tesserati (socioId, attivitàId, annoValidità)
+                        INSERT INTO tesserati (socioId, codice, annoValidità)
                         VALUES (@socioId, @attivitàId, @annoValidità)
                     `);
                 }
