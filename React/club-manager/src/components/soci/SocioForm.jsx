@@ -30,13 +30,18 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     nome: '',
     cognome: '',
     sesso: 1,
-    privacy: true,
+    privacy: 0,
     birthJJ: '',
     birthMM: '',
     anno: '',
     address: '',
     cap: '',
-    tipoSocio: 3, // Default: socio tesserato
+    // Changed: tipoSocio is now an object with multiple selections
+    tipoSocio: {
+      effettivo: false,
+      tesserato: false,
+      volontario: false
+    },
     certifica: null,
     competition: 0,
     telefono: '',
@@ -54,6 +59,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   // Stati per dati di selezione
   const [listProvNascita, setListProvNascita] = useState([]);
   const [listProv, setListProv] = useState([]);
+  const [listCodes,setListProvCodes]=useState([]);
   const [listCommNascita, setListCommNascita] = useState([]);
   const [listCommRes, setListCommRes] = useState([]);
   const [listTipiSocio, setListTipiSocio] = useState([]);
@@ -65,7 +71,6 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   const [selectedComm, setSelectedComm] = useState(null);
   const [provRes, setProvRes] = useState(null);
   const [commRes, setCommRes] = useState(null);
-  const [selectedTipo, setSelectedTipo] = useState(null);
   const [selectedMM, setSelectedMM] = useState(null);
   const [selectedFederazione, setSelectedFederazione] = useState(null);
   
@@ -115,11 +120,12 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         // Carica province
         const provinceNascitaResponse = await geographicService.retrieveProvince();
         const province = provinceNascitaResponse.data.data.map(item => item.nome);
+        const provinceCodes= provinceNascitaResponse.data.data;
+        setListProvCodes(provinceCodes);
         setListProvNascita(province);
-
         setListProv(province);
         
-        // Carica tipi socio
+        // Carica tipi socio (now just for reference, not used in selector)
         const tipiSocioResponse = ['Effettivo','Tesserato','Volontario'];
         setListTipiSocio(tipiSocioResponse);
         
@@ -127,7 +133,6 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         //const affiliazioniResponse = await activityService.retrieveAffiliazione(0);  aggiungere metodo federazioni
         const affiliazioniResponse = ['AICS','CEN'];
         setAffilizioneList(affiliazioniResponse);
-        
         
         setLoading(false);
       } catch (error) {
@@ -156,6 +161,18 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
             dObj.yyyy = birthDate.getFullYear();
           }
           
+          // Convert existing tipo socio to checkbox format
+          const tipoSocioCheckboxes = {
+            effettivo: existingSocio.isEffettivo ? 1 : 0,
+            tesserato: existingSocio.isTesserato ? 1 : 0,
+            volontario: existingSocio.isVolontario ? 1 : 0
+          };
+          
+          // Show federation dropdown if tesserato is selected
+          if (existingSocio.isTesserato) {
+            setViewFede(true);
+          }
+          
           // Imposta i dati del form
           setFormData({
             nome: existingSocio.nome || '',
@@ -169,7 +186,8 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
             email: existingSocio.email || '',
             certifica: existingSocio.dateCertificat ? new Date(existingSocio.dateCertificat) : null,
             competition: existingSocio.typeCertificat || false,
-            federazione: existingSocio.federazione || ''
+            federazione: existingSocio.federazione || '',
+            tipoSocio: tipoSocioCheckboxes
           });
           
           // Imposta il sesso
@@ -234,29 +252,13 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
             }
           }
           
-          // Imposta il tipo socio
-          if (existingSocio.tipo) {
-            const foundTipo = listTipiSocio.find(tipo => 
-              tipo.tipoId === existingSocio.tipo.tipoId
+          // Seleziona la federazione se tesserato
+          if (tipoSocioCheckboxes.tesserato && existingSocio.federazione) {
+            const foundFederazione = affiliazioneList.find(fed => 
+              fed === existingSocio.federazione || fed.descrizione === existingSocio.federazione
             );
-            if (foundTipo) {
-              setSelectedTipo({ value: foundTipo });
-              setFormData(prev => ({ ...prev, tipoSocio: foundTipo.tipoId }));
-              
-              // Mostra il campo federazione se necessario
-              if (foundTipo.tipoId === 3) {
-                setViewFede(true);
-                
-                // Seleziona la federazione
-                if (existingSocio.federazione) {
-                  const foundFederazione = affiliazioneList.find(fed => 
-                    fed.descrizione === existingSocio.federazione
-                  );
-                  if (foundFederazione) {
-                    setSelectedFederazione({ value: foundFederazione });
-                  }
-                }
-              }
+            if (foundFederazione) {
+              setSelectedFederazione({ value: foundFederazione });
             }
           }
           
@@ -270,20 +272,41 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         setLoading(false);
       }
     }
-  }, [existingSocio, mode, listProvNascita, listProv, listTipiSocio, affiliazioneList]);
+  }, [existingSocio, mode, listProvNascita, listProv, affiliazioneList]);
   
   // Gestione cambiamento dei campi
-const handleChange = (name, value) => {
-  // Check if the value is a boolean (from the checkbox)
-  if (typeof value === 'boolean') {
-    // Convert the boolean to 1 (true) or 0 (false)
-    const numericValue = value ? 1 : 0;
-    setFormData(prev => ({ ...prev, [name]: numericValue }));
-  } else {
-    // For all other inputs, use the value as is
-    setFormData(prev => ({ ...prev, [name]: value }));
-  }
-};
+  const handleChange = (name, value) => {
+    // Check if it's a tipoSocio checkbox
+    if (name.startsWith('tipoSocio.')) {
+      const tipoKey = name.split('.')[1]; // Get 'effettivo', 'tesserato', or 'volontario'
+      const numericValue = value ? 1 : 0;
+      
+      setFormData(prev => ({
+        ...prev,
+        tipoSocio: {
+          ...prev.tipoSocio,
+          [tipoKey]: numericValue
+        }
+      }));
+      
+      // Show/hide federation dropdown based on tesserato checkbox
+      if (tipoKey === 'tesserato') {
+        setViewFede(value);
+        if (!value) {
+          // Clear federation if tesserato is unchecked
+          setSelectedFederazione(null);
+          setFormData(prev => ({ ...prev, federazione: '' }));
+        }
+      }
+    } else if (typeof value === 'boolean') {
+      // Convert the boolean to 1 (true) or 0 (false) for other checkboxes
+      const numericValue = value ? 1 : 0;
+      setFormData(prev => ({ ...prev, [name]: numericValue }));
+    } else {
+      // For all other inputs, use the value as is
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
   
   // Gestione selezione mese di nascita
   const handleBirthMMS = (name, selectedOption) => {
@@ -320,10 +343,8 @@ const handleChange = (name, value) => {
   
   // Gestione selezione comune di nascita
   const handlecomuneNascitaSelected = (name, selectedOption) => {
-    console.log(selectedOption.value)
     setSelectedComm(selectedOption.value);
     setBirthcomune(selectedOption.value.value);
-
   };
   
   // Gestione selezione comune di residenza
@@ -332,25 +353,16 @@ const handleChange = (name, value) => {
     setRescomune(selectedOption.value.value);
   };
   
-  // Gestione selezione tipo socio
-  const handleTipoSocioSelected = (name, selectedOption) => {
-    setSelectedTipo(selectedOption.value);
-    const tipoId = selectedOption.value.tipoId;
-    setFormData(prev => ({ ...prev, tipoSocio: tipoId }));
-    setViewFede(tipoId === 3);
-  };
-  
   // Gestione selezione sesso
   const handleSessoSelected = (name, selectedOption) => {
     setSelectedSesso(selectedOption.value);
-    console.log(selectedSesso)
     setFormData(prev => ({ ...prev, sesso: selectedOption.value.id }));
   };
   
   // Gestione selezione federazione
   const handleFedeSelected = (name, selectedOption) => {
-    setSelectedFederazione(selectedOption.value.value);
-    setFormData(prev => ({ ...prev, federazione: selectedOption.value.descrizione }));
+    setSelectedFederazione(selectedOption.value);
+    setFormData(prev => ({ ...prev, federazione: selectedOption.value.descrizione || selectedOption.value }));
   };
   
   // Validazione dei parametri
@@ -366,12 +378,17 @@ const handleChange = (name, value) => {
     if (!formData.anno) return false;
     if (!formData.address) return false;
     if (!formData.cap) return false;
+    
+    // Check if at least one tipo socio is selected
+    const hasSelectedTipo = Object.values(formData.tipoSocio).some(value => value);
+    if (!hasSelectedTipo) return false;
+    
     return true;
   };
   
   // Controllo prima della creazione
   const cnntrlCreate = () => {
-    if (formData.tipoSocio === 3) {
+    if (formData.tipoSocio.tesserato) {
       if (!formData.federazione) {
         setViewAlert1(true);
       } else {
@@ -400,13 +417,16 @@ const handleChange = (name, value) => {
         cognome: formData.cognome.toUpperCase(),
         sesso: selectedSesso.label,
         dataNascita: `${formData.birthJJ}-${selectedMM?.value}-${formData.anno}`,
-        provinciaNascita: birthProv,
+        provinciaNascita: listCodes.find(p => p.nome === birthProv).provCode,
         comuneNascita: birthcomune,
-        provinciaResidenza: resProv,
+        provinciaResidenza: listCodes.find(p => p.nome === resProv).provCode,
         comuneResidenza: rescomune,
         viaResidenza: formData.address,
         capResidenza: formData.cap,
-        tipoSocio: formData.tipoSocio,
+        // Send individual boolean flags for each tipo socio
+        isTesserato: formData.tipoSocio.tesserato ? 1 : 0,
+        isEffettivo: formData.tipoSocio.effettivo ? 1 : 0,
+        isVolontario: formData.tipoSocio.volontario ? 1 : 0,
         scadenzaCertificato: formData.certifica ? formatDateForApi(formData.certifica) : null,
         isAgonistico: formData.competition === undefined ? false : formData.competition,
         telefono: formData.telefono || null,
@@ -501,7 +521,7 @@ const handleChange = (name, value) => {
           <Modal.Header closeButton>
             <Modal.Title>Selezione Federazione</Modal.Title>
           </Modal.Header>
-          <Modal.Body>È necessario selezionare una federazione per questo tipo di socio.</Modal.Body>
+          <Modal.Body>È necessario selezionare una federazione per il socio tesserato.</Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setViewAlert1(false)}>
               Chiudi
@@ -716,20 +736,37 @@ const handleChange = (name, value) => {
                 </Col>
               </Row>
               
-              <h5 className="mt-4">Tipo Socio e Certificato</h5>
+              <h5 className="mt-4">Tipo Socio</h5>
               <Row>
-                <Col md={6}>
-                  <SelectField
-                    label="Tipo Socio"
-                    name="tipoSocio"
-                    value={selectedTipo}
-                    options={listTipiSocio}
-                    onChange={handleTipoSocioSelected}
-                    required
+                <Col md={4}>
+                  <CheckboxField
+                    label="Effettivo"
+                    name="tipoSocio.effettivo"
+                    checked={formData.tipoSocio.effettivo}
+                    onChange={handleChange}
                   />
                 </Col>
-                <Col md={6}>
-                  {viewFede && (
+                <Col md={4}>
+                  <CheckboxField
+                    label="Tesserato"
+                    name="tipoSocio.tesserato"
+                    checked={formData.tipoSocio.tesserato}
+                    onChange={handleChange}
+                  />
+                </Col>
+                <Col md={4}>
+                  <CheckboxField
+                    label="Volontario"
+                    name="tipoSocio.volontario"
+                    checked={formData.tipoSocio.volontario}
+                    onChange={handleChange}
+                  />
+                </Col>
+              </Row>
+              
+              {viewFede && (
+                <Row>
+                  <Col md={6}>
                     <SelectField
                       label="Federazione"
                       name="federazione"
@@ -738,10 +775,11 @@ const handleChange = (name, value) => {
                       onChange={handleFedeSelected}
                       required={viewFede}
                     />
-                  )}
-                </Col>
-              </Row>
+                  </Col>
+                </Row>
+              )}
               
+              <h5 className="mt-4">Certificato Medico</h5>
               <Row>
                 <Col md={6}>
                   <DateField
@@ -757,7 +795,6 @@ const handleChange = (name, value) => {
                     name="competition"
                     checked={formData.competition}
                     onChange={handleChange}
-      
                   />
                 </Col>
               </Row>
