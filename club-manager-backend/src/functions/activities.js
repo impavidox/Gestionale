@@ -1,7 +1,7 @@
 const { app } = require('@azure/functions');
 const { getPool, sql } = require('../../shared/database/connection');
 const { createSuccessResponse, createErrorResponse } = require('../../shared/utils/responseHelper');
-const { validateActivity } = require('../../shared/models/Activity');
+const { validateAttivita, validateFederazione, validateSezione, normalizeAttivitaResponse } = require('../../shared/models/Activity');
 
 app.http('activities', {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -32,14 +32,17 @@ app.http('activities', {
                 case 'retrieveAllActivities':
                     return await handleRetrieveAllActivities(context);
                 
-                case 'retrieveActivitiesByFamily':
-                    return await handleRetrieveActivitiesByFamily(context, param1);
+                case 'retrieveActivitiesByFederazione':
+                    return await handleRetrieveActivitiesByFederazione(context, param1);
                 
-                case 'retrieveFullActivitiesByFamily':
-                    return await handleRetrieveFullActivitiesByFamily(context, param1);
+                case 'retrieveFullActivitiesByFederazione':
+                    return await handleRetrieveFullActivitiesByFederazione(context, param1);
                 
-                case 'retrieveFamilies':
-                    return await handleRetrieveFamilies(context);
+                case 'retrieveFederazioni':
+                    return await handleRetrieveFederazioni(context);
+                
+                case 'retrieveSezioni':
+                    return await handleRetrieveSezioni(context);
                 
                 case 'updateActivity':
                     return await handleUpdateActivity(context, request.body);
@@ -47,14 +50,17 @@ app.http('activities', {
                 case 'removeActivity':
                     return await handleRemoveActivity(context, request.body);
                 
-                case 'retrieveAffiliazioneForLibro':
-                    return await handleRetrieveAffiliazioneForLibro(context, param1);
+                case 'createFederazione':
+                    return await handleCreateFederazione(context, request.body);
+                
+                case 'createSezione':
+                    return await handleCreateSezione(context, request.body);
                 
                 default:
                     return createErrorResponse(404, `Endpoint '${action}' non trovato`);
             }
         } catch (error) {
-            context.log('Errore nella function activities:', error);
+            context.log.error('Errore nella function activities:', error);
             return createErrorResponse(500, 'Errore interno del server', error.message);
         }
     }
@@ -71,146 +77,180 @@ async function handleRetrieveAllActivities(context) {
         const result = await request.query(`
             SELECT 
                 a.id,
-                a.description,
-                a.familyId,
-                f.description as familyDescription,
-                a.libertas,
-                a.fgi,
-                a.fita,
-                a.filkjm,
-                a.active
-            FROM Activities a
-            LEFT JOIN ActivityFamilies f ON a.familyId = f.id
-            WHERE a.active = 1
-            ORDER BY f.description, a.description
+                a.nome,
+                a.federazioneId,
+                f.nome as federazioneNome,
+                a.sezioneId,
+                s.nome as sezioneNome,
+                a.codice,
+                a.emailReferente
+            FROM attività a
+            LEFT JOIN federazioni f ON a.federazioneId = f.id
+            LEFT JOIN sezioni s ON a.sezioneId = s.id
+            ORDER BY f.nome, a.nome
         `);
         
+        // Normalize response for frontend compatibility
+        const normalizedActivities = result.recordset.map(activity => normalizeAttivitaResponse(activity));
+        
         context.log(`${result.recordset.length} attività recuperate`);
-        return createSuccessResponse(result.recordset);
+        return createSuccessResponse(normalizedActivities);
         
     } catch (error) {
-        context.log('Errore nel recupero attività:', error);
+        context.log.error('Errore nel recupero attività:', error);
         return createErrorResponse(500, 'Errore nel recupero attività', error.message);
     }
 }
 
-async function handleRetrieveActivitiesByFamily(context, familyId) {
+async function handleRetrieveActivitiesByFederazione(context, federazioneId) {
     try {
-        if (!familyId) {
-            return createErrorResponse(400, 'ID famiglia richiesto');
+        if (!federazioneId) {
+            return createErrorResponse(400, 'ID federazione richiesto');
         }
         
-        context.log(`Recupero attività per famiglia: ${familyId}`);
+        context.log(`Recupero attività per federazione: ${federazioneId}`);
         
         const pool = await getPool();
         const request = pool.request();
-        request.input('familyId', sql.Int, parseInt(familyId));
-        
-        const result = await request.query(`
-            SELECT 
-                id,
-                description,
-                familyId,
-                libertas,
-                fgi,
-                fita,
-                filkjm,
-                active
-            FROM Activities 
-            WHERE familyId = @familyId AND active = 1
-            ORDER BY description
-        `);
-        
-        context.log(`${result.recordset.length} attività recuperate per famiglia ${familyId}`);
-        return createSuccessResponse(result.recordset);
-        
-    } catch (error) {
-        context.log('Errore nel recupero attività per famiglia:', error);
-        return createErrorResponse(500, 'Errore nel recupero attività per famiglia', error.message);
-    }
-}
-
-async function handleRetrieveFullActivitiesByFamily(context, familyId) {
-    try {
-        if (!familyId) {
-            return createErrorResponse(400, 'ID famiglia richiesto');
-        }
-        
-        context.log(`Recupero attività complete per famiglia: ${familyId}`);
-        
-        const pool = await getPool();
-        const request = pool.request();
-        request.input('familyId', sql.Int, parseInt(familyId));
+        request.input('federazioneId', sql.Int, parseInt(federazioneId));
         
         const result = await request.query(`
             SELECT 
                 a.id,
-                a.description,
-                a.familyId,
-                f.description as familyDescription,
-                a.libertas,
-                a.fgi,
-                a.fita,
-                a.filkjm,
-                a.active,
-                a.createdDate,
-                a.updatedDate
-            FROM Activities a
-            LEFT JOIN ActivityFamilies f ON a.familyId = f.id
-            WHERE a.familyId = @familyId
-            ORDER BY a.description
+                a.nome,
+                a.federazioneId,
+                f.nome as federazioneNome,
+                a.sezioneId,
+                s.nome as sezioneNome,
+                a.codice,
+                a.emailReferente
+            FROM attività a
+            LEFT JOIN federazioni f ON a.federazioneId = f.id
+            LEFT JOIN sezioni s ON a.sezioneId = s.id
+            WHERE a.federazioneId = @federazioneId
+            ORDER BY a.nome
         `);
         
-        // Include affiliation details
-        for (let activity of result.recordset) {
-            const affiliationRequest = pool.request();
-            affiliationRequest.input('activityId', sql.Int, activity.id);
-            
-            const affiliations = await affiliationRequest.query(`
-                SELECT 
-                    af.id,
-                    af.descrizione,
-                    af.active
-                FROM ActivityAffiliations af
-                WHERE af.activityId = @activityId
-            `);
-            
-            activity.affiliations = affiliations.recordset;
-        }
+        const normalizedActivities = result.recordset.map(activity => normalizeAttivitaResponse(activity));
         
-        context.log(`${result.recordset.length} attività complete recuperate per famiglia ${familyId}`);
-        return createSuccessResponse(result.recordset);
+        context.log(`${result.recordset.length} attività recuperate per federazione ${federazioneId}`);
+        return createSuccessResponse(normalizedActivities);
         
     } catch (error) {
-        context.log('Errore nel recupero attività complete per famiglia:', error);
-        return createErrorResponse(500, 'Errore nel recupero attività complete per famiglia', error.message);
+        context.log.error('Errore nel recupero attività per federazione:', error);
+        return createErrorResponse(500, 'Errore nel recupero attività per federazione', error.message);
     }
 }
 
-async function handleRetrieveFamilies(context) {
+async function handleRetrieveFullActivitiesByFederazione(context, federazioneId) {
     try {
-        context.log('Recupero famiglie di attività');
+        if (!federazioneId) {
+            return createErrorResponse(400, 'ID federazione richiesto');
+        }
+        
+        context.log(`Recupero attività complete per federazione: ${federazioneId}`);
+        
+        const pool = await getPool();
+        const request = pool.request();
+        request.input('federazioneId', sql.Int, parseInt(federazioneId));
+        
+        const result = await request.query(`
+            SELECT 
+                a.id,
+                a.nome,
+                a.federazioneId,
+                f.nome as federazioneNome,
+                a.sezioneId,
+                s.nome as sezioneNome,
+                a.codice,
+                a.emailReferente,
+                -- Get count of tesserati for this activity
+                (SELECT COUNT(*) FROM tesserati t WHERE t.attivitàId = a.id) as numeroTesserati,
+                -- Get recent activity
+                (SELECT COUNT(*) FROM ricevuteAttività ra WHERE ra.attivitàId = a.id AND ra.created_at >= DATEADD(month, -6, GETDATE())) as ricevuteRecenti
+            FROM attività a
+            LEFT JOIN federazioni f ON a.federazioneId = f.id
+            LEFT JOIN sezioni s ON a.sezioneId = s.id
+            WHERE a.federazioneId = @federazioneId
+            ORDER BY a.nome
+        `);
+        
+        const normalizedActivities = result.recordset.map(activity => {
+            const normalized = normalizeAttivitaResponse(activity);
+            return {
+                ...normalized,
+                numeroTesserati: activity.numeroTesserati || 0,
+                ricevuteRecenti: activity.ricevuteRecenti || 0,
+                active: true
+            };
+        });
+        
+        context.log(`${result.recordset.length} attività complete recuperate per federazione ${federazioneId}`);
+        return createSuccessResponse(normalizedActivities);
+        
+    } catch (error) {
+        context.log.error('Errore nel recupero attività complete per federazione:', error);
+        return createErrorResponse(500, 'Errore nel recupero attività complete per federazione', error.message);
+    }
+}
+
+async function handleRetrieveFederazioni(context) {
+    try {
+        context.log('Recupero federazioni');
         
         const pool = await getPool();
         const request = pool.request();
         
         const result = await request.query(`
             SELECT 
-                id,
-                description,
-                active,
-                createdDate
-            FROM ActivityFamilies 
-            WHERE active = 1
-            ORDER BY description
+                f.id,
+                f.nome
+            FROM federazioni f
+            ORDER BY f.nome
         `);
         
-        context.log(`${result.recordset.length} famiglie recuperate`);
-        return createSuccessResponse(result.recordset);
+        // Add frontend compatibility fields
+        const federazioni = result.recordset.map(fed => ({
+            id: fed.id,
+            nome: fed.nome
+        }));
+        
+        context.log(`${result.recordset.length} federazioni recuperate`);
+        return createSuccessResponse(federazioni);
         
     } catch (error) {
-        context.log('Errore nel recupero famiglie:', error);
-        return createErrorResponse(500, 'Errore nel recupero famiglie', error.message);
+        context.log.error('Errore nel recupero federazioni:', error);
+        return createErrorResponse(500, 'Errore nel recupero federazioni', error.message);
+    }
+}
+
+async function handleRetrieveSezioni(context) {
+    try {
+        context.log('Recupero sezioni');
+        
+        const pool = await getPool();
+        const request = pool.request();
+        
+        const result = await request.query(`
+            SELECT 
+                s.id,
+                s.nome
+            FROM sezioni s
+            ORDER BY s.nome
+        `);
+        
+        // Add frontend compatibility fields
+        const sezioni = result.recordset.map(sez => ({
+            id: sez.id,
+            nome: sez.nome
+        }));
+        
+        context.log(`${result.recordset.length} sezioni recuperate`);
+        return createSuccessResponse(sezioni);
+        
+    } catch (error) {
+        context.log.error('Errore nel recupero sezioni:', error);
+        return createErrorResponse(500, 'Errore nel recupero sezioni', error.message);
     }
 }
 
@@ -219,9 +259,9 @@ async function handleUpdateActivity(context, activityData) {
         context.log('Aggiornamento/creazione attività:', activityData);
         
         // Validate input data
-        const { error, value } = validateActivity(activityData);
+        const { error, value } = validateAttivita(activityData);
         if (error) {
-            context.log('Dati attività non validi:', error.details);
+            context.log.warn('Dati attività non validi:', error.details);
             return createErrorResponse(400, 'Dati non validi', error.details);
         }
         
@@ -233,48 +273,41 @@ async function handleUpdateActivity(context, activityData) {
             const request = new sql.Request(transaction);
             
             // Check if it's an update or create
-            if (value.attId && value.attId > 0) {
+            if (value.id && value.id > 0) {
                 // Update existing activity
-                request.input('id', sql.Int, value.attId);
-                request.input('description', sql.NVarChar(255), value.description);
-                request.input('familyId', sql.Int, value.familyId);
-                request.input('libertas', sql.Bit, value.libertas || false);
-                request.input('fgi', sql.Bit, value.fgi || false);
-                request.input('fita', sql.Bit, value.fita || false);
-                request.input('filkjm', sql.Bit, value.filkjm || false);
-                request.input('updatedDate', sql.DateTime, new Date());
+                request.input('id', sql.Int, value.id);
+                request.input('nome', sql.NVarChar(255), value.nome);
+                request.input('federazioneId', sql.Int, value.federazioneId);
+                request.input('sezioneId', sql.Int, value.sezioneId);
+                request.input('codice', sql.NVarChar(255), value.codice || null);
+                request.input('emailReferente', sql.NVarChar(255), value.emailReferente || null);
                 
                 await request.query(`
-                    UPDATE Activities 
+                    UPDATE attività 
                     SET 
-                        description = @description,
-                        familyId = @familyId,
-                        libertas = @libertas,
-                        fgi = @fgi,
-                        fita = @fita,
-                        filkjm = @filkjm,
-                        updatedDate = @updatedDate
+                        nome = @nome,
+                        federazioneId = @federazioneId,
+                        sezioneId = @sezioneId,
+                        codice = @codice,
+                        emailReferente = @emailReferente
                     WHERE id = @id
                 `);
                 
-                context.log(`Attività ${value.attId} aggiornata`);
+                context.log(`Attività ${value.id} aggiornata`);
                 
             } else {
                 // Create new activity
-                request.input('description', sql.NVarChar(255), value.description);
-                request.input('familyId', sql.Int, value.familyId);
-                request.input('libertas', sql.Bit, value.libertas || false);
-                request.input('fgi', sql.Bit, value.fgi || false);
-                request.input('fita', sql.Bit, value.fita || false);
-                request.input('filkjm', sql.Bit, value.filkjm || false);
-                request.input('active', sql.Bit, true);
-                request.input('createdDate', sql.DateTime, new Date());
+                request.input('nome', sql.NVarChar(255), value.nome);
+                request.input('federazioneId', sql.Int, value.federazioneId);
+                request.input('sezioneId', sql.Int, value.sezioneId);
+                request.input('codice', sql.NVarChar(255), value.codice || null);
+                request.input('emailReferente', sql.NVarChar(255), value.emailReferente || null);
                 
                 const result = await request.query(`
-                    INSERT INTO Activities 
-                    (description, familyId, libertas, fgi, fita, filkjm, active, createdDate)
+                    INSERT INTO attività 
+                    (nome, federazioneId, sezioneId, codice, emailReferente)
                     VALUES 
-                    (@description, @familyId, @libertas, @fgi, @fita, @filkjm, @active, @createdDate);
+                    (@nome, @federazioneId, @sezioneId, @codice, @emailReferente);
                     SELECT SCOPE_IDENTITY() as newId;
                 `);
                 
@@ -291,18 +324,19 @@ async function handleUpdateActivity(context, activityData) {
         }
         
     } catch (error) {
-        context.log('Errore nell\'aggiornamento attività:', error);
+        context.log.error('Errore nell\'aggiornamento attività:', error);
         return createErrorResponse(500, 'Errore nell\'aggiornamento attività', error.message);
     }
 }
 
 async function handleRemoveActivity(context, activityData) {
     try {
-        if (!activityData.attId) {
+        if (!activityData.id && !activityData.attId) {
             return createErrorResponse(400, 'ID attività richiesto per la cancellazione');
         }
         
-        context.log(`Rimozione attività: ${activityData.attId}`);
+        const activityId = activityData.id || activityData.attId;
+        context.log(`Rimozione attività: ${activityId}`);
         
         const pool = await getPool();
         const transaction = new sql.Transaction(pool);
@@ -310,30 +344,34 @@ async function handleRemoveActivity(context, activityData) {
         
         try {
             const request = new sql.Request(transaction);
-            request.input('id', sql.Int, activityData.attId);
+            request.input('id', sql.Int, activityId);
             
             // Check if activity is in use
             const checkResult = await request.query(`
-                SELECT COUNT(*) as count 
-                FROM Abbonamenti 
-                WHERE attivitaId = @id
+                SELECT 
+                    (SELECT COUNT(*) FROM tesserati WHERE attivitàId = @id) as tesserati,
+                    (SELECT COUNT(*) FROM ricevuteAttività WHERE attivitàId = @id) as ricevute
             `);
             
-            if (checkResult.recordset[0].count > 0) {
+            const usage = checkResult.recordset[0];
+            if (usage.tesserati > 0 || usage.ricevute > 0) {
                 await transaction.rollback();
-                return createErrorResponse(400, 'Impossibile cancellare: attività in uso da abbonamenti esistenti');
+                return createErrorResponse(400, 'Impossibile cancellare: attività in uso da tesserati o ricevute esistenti');
             }
             
-            // Soft delete - set active to false
-            request.input('updatedDate', sql.DateTime, new Date());
-            await request.query(`
-                UPDATE Activities 
-                SET active = 0, updatedDate = @updatedDate
-                WHERE id = @id
+            // Delete the activity
+            const deleteResult = await request.query(`
+                DELETE FROM attività WHERE id = @id;
+                SELECT @@ROWCOUNT as deletedRows;
             `);
             
+            if (deleteResult.recordset[0].deletedRows === 0) {
+                await transaction.rollback();
+                return createErrorResponse(404, 'Attività non trovata');
+            }
+            
             await transaction.commit();
-            context.log(`Attività ${activityData.attId} rimossa`);
+            context.log(`Attività ${activityId} rimossa`);
             return createSuccessResponse({ rc: true, message: 'Attività rimossa con successo' });
             
         } catch (error) {
@@ -342,44 +380,95 @@ async function handleRemoveActivity(context, activityData) {
         }
         
     } catch (error) {
-        context.log('Errore nella rimozione attività:', error);
+        context.log.error('Errore nella rimozione attività:', error);
         return createErrorResponse(500, 'Errore nella rimozione attività', error.message);
     }
 }
 
-async function handleRetrieveAffiliazioneForLibro(context, param) {
+async function handleCreateFederazione(context, federazioneData) {
     try {
-        context.log(`Recupero affiliazioni per libro: ${param}`);
+        context.log('Creazione federazione:', federazioneData);
+        
+        const { error, value } = validateFederazione(federazioneData);
+        if (error) {
+            return createErrorResponse(400, 'Dati federazione non validi', error.details);
+        }
         
         const pool = await getPool();
         const request = pool.request();
         
-        // param could be 0 for all or specific activity ID
-        let query = `
-            SELECT DISTINCT
-                af.id,
-                af.descrizione,
-                af.active,
-                a.description as activityDescription
-            FROM ActivityAffiliations af
-            LEFT JOIN Activities a ON af.activityId = a.id
-            WHERE af.active = 1
-        `;
+        // Check if name already exists
+        request.input('nome', sql.NVarChar(255), value.nome);
+        const checkResult = await request.query(`
+            SELECT COUNT(*) as count FROM federazioni WHERE nome = @nome
+        `);
         
-        if (param && param !== '0') {
-            request.input('activityId', sql.Int, parseInt(param));
-            query += ` AND af.activityId = @activityId`;
+        if (checkResult.recordset[0].count > 0) {
+            return createErrorResponse(400, 'Una federazione con questo nome esiste già');
         }
         
-        query += ` ORDER BY af.descrizione`;
+        // Create new federazione
+        const result = await request.query(`
+            INSERT INTO federazioni (nome)
+            VALUES (@nome);
+            SELECT SCOPE_IDENTITY() as newId;
+        `);
         
-        const result = await request.query(query);
+        const newId = result.recordset[0].newId;
+        context.log(`Nuova federazione creata con ID: ${newId}`);
         
-        context.log(`${result.recordset.length} affiliazioni recuperate`);
-        return createSuccessResponse(result.recordset);
+        return createSuccessResponse({ 
+            rc: true, 
+            message: 'Federazione creata con successo', 
+            id: newId 
+        });
         
     } catch (error) {
-        context.log('Errore nel recupero affiliazioni:', error);
-        return createErrorResponse(500, 'Errore nel recupero affiliazioni', error.message);
+        context.log.error('Errore nella creazione federazione:', error);
+        return createErrorResponse(500, 'Errore nella creazione federazione', error.message);
+    }
+}
+
+async function handleCreateSezione(context, sezioneData) {
+    try {
+        context.log('Creazione sezione:', sezioneData);
+        
+        const { error, value } = validateSezione(sezioneData);
+        if (error) {
+            return createErrorResponse(400, 'Dati sezione non validi', error.details);
+        }
+        
+        const pool = await getPool();
+        const request = pool.request();
+        
+        // Check if name already exists
+        request.input('nome', sql.NVarChar(255), value.nome);
+        const checkResult = await request.query(`
+            SELECT COUNT(*) as count FROM sezioni WHERE nome = @nome
+        `);
+        
+        if (checkResult.recordset[0].count > 0) {
+            return createErrorResponse(400, 'Una sezione con questo nome esiste già');
+        }
+        
+        // Create new sezione
+        const result = await request.query(`
+            INSERT INTO sezioni (nome)
+            VALUES (@nome);
+            SELECT SCOPE_IDENTITY() as newId;
+        `);
+        
+        const newId = result.recordset[0].newId;
+        context.log(`Nuova sezione creata con ID: ${newId}`);
+        
+        return createSuccessResponse({ 
+            rc: true, 
+            message: 'Sezione creata con successo', 
+            id: newId 
+        });
+        
+    } catch (error) {
+        context.log.error('Errore nella creazione sezione:', error);
+        return createErrorResponse(500, 'Errore nella creazione sezione', error.message);
     }
 }

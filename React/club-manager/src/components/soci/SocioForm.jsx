@@ -46,7 +46,8 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     competition: 0,
     telefono: '',
     email: '',
-    federazione: ''
+    federazione: '',
+    activityId: null
   });
   
   // Stati per dati correlati
@@ -63,7 +64,8 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   const [listCommNascita, setListCommNascita] = useState([]);
   const [listCommRes, setListCommRes] = useState([]);
   const [listTipiSocio, setListTipiSocio] = useState([]);
-  const [affiliazioneList, setAffilizioneList] = useState([]);
+  const [federazioneList, setFederazioneList] = useState([]);
+  const [activitiesList, setActivitiesList] = useState([]);
   
   // Stati per i selettori
   const [selectedSesso, setSelectedSesso] = useState({ value: { id: 1, name: 'Maschio' } });
@@ -73,6 +75,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   const [commRes, setCommRes] = useState(null);
   const [selectedMM, setSelectedMM] = useState(null);
   const [selectedFederazione, setSelectedFederazione] = useState(null);
+  const [selectedActivity, setSelectedActivity] = useState(null);
   
   // Stati per la UI
   const [viewFede, setViewFede] = useState(false);
@@ -129,10 +132,9 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         const tipiSocioResponse = ['Effettivo','Tesserato','Volontario'];
         setListTipiSocio(tipiSocioResponse);
         
-        // Carica affiliazioni
-        //const affiliazioniResponse = await activityService.retrieveAffiliazione(0);  aggiungere metodo federazioni
-        const affiliazioniResponse = ['AICS','CEN'];
-        setAffilizioneList(affiliazioniResponse);
+        // Carica federazioni
+        const federazioniResponse = await activityService.retrieveFamilies(); 
+        setFederazioneList(federazioniResponse.data.data);
         
         setLoading(false);
       } catch (error) {
@@ -187,7 +189,8 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
             certifica: existingSocio.dateCertificat ? new Date(existingSocio.dateCertificat) : null,
             competition: existingSocio.typeCertificat || false,
             federazione: existingSocio.federazione || '',
-            tipoSocio: tipoSocioCheckboxes
+            tipoSocio: tipoSocioCheckboxes,
+            activityId: existingSocio.activityId || null
           });
           
           // Imposta il sesso
@@ -254,11 +257,47 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
           
           // Seleziona la federazione se tesserato
           if (tipoSocioCheckboxes.tesserato && existingSocio.federazione) {
-            const foundFederazione = affiliazioneList.find(fed => 
+            const foundFederazione = federazioneList.find(fed => 
               fed === existingSocio.federazione || fed.descrizione === existingSocio.federazione
             );
             if (foundFederazione) {
               setSelectedFederazione({ value: foundFederazione });
+              
+              // Load activities for the existing federation
+              try {
+                const federationId = foundFederazione.id || foundFederazione;
+                const activitiesResponse = await activityService.retrieveActivitiesByFederation(federationId);
+                const activities = activitiesResponse.data || activitiesResponse;
+                setActivitiesList(activities);
+                
+                // Select existing activity if present
+                if (existingSocio.activityId) {
+                  const foundActivity = activities.find(activity => 
+                    activity.id === existingSocio.activityId
+                  );
+                  if (foundActivity) {
+                    setSelectedActivity({ value: foundActivity });
+                  }
+                }
+              } catch (error) {
+                console.error('Errore nel caricamento delle attività:', error);
+                // Fallback data for testing
+                const fallbackActivities = [
+                  { id: 1, name: 'Pallavolo', description: 'Pallavolo' },
+                  { id: 2, name: 'Calcio', description: 'Calcio' },
+                  { id: 3, name: 'Tennis', description: 'Tennis' }
+                ];
+                setActivitiesList(fallbackActivities);
+                
+                if (existingSocio.activityId) {
+                  const foundActivity = fallbackActivities.find(activity => 
+                    activity.id === existingSocio.activityId
+                  );
+                  if (foundActivity) {
+                    setSelectedActivity({ value: foundActivity });
+                  }
+                }
+              }
             }
           }
           
@@ -272,7 +311,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         setLoading(false);
       }
     }
-  }, [existingSocio, mode, listProvNascita, listProv, affiliazioneList]);
+  }, [existingSocio, mode, listProvNascita, listProv, federazioneList]);
   
   // Gestione cambiamento dei campi
   const handleChange = (name, value) => {
@@ -295,7 +334,9 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         if (!value) {
           // Clear federation if tesserato is unchecked
           setSelectedFederazione(null);
-          setFormData(prev => ({ ...prev, federazione: '' }));
+          setSelectedActivity(null);
+          setActivitiesList([]);
+          setFormData(prev => ({ ...prev, federazione: '', activityId: null }));
         }
       }
     } else if (typeof value === 'boolean') {
@@ -360,9 +401,36 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   };
   
   // Gestione selezione federazione
-  const handleFedeSelected = (name, selectedOption) => {
+  const handleFedeSelected = async (name, selectedOption) => {
+    
     setSelectedFederazione(selectedOption.value);
     setFormData(prev => ({ ...prev, federazione: selectedOption.value.descrizione || selectedOption.value }));
+    // Clear previous activity selection
+    setSelectedActivity(null);
+    setFormData(prev => ({ ...prev, activityId: null }));
+    setActivitiesList([]);
+    
+    // Load activities for the selected federation
+    try {
+      const federationId = federazioneList.find(item=> item.nome === selectedOption.value.value).id;
+      const activitiesResponse = await activityService.retrieveActivitiesByFamily(federationId);
+      // Assuming the response contains an array of activities with id and name/description
+      setActivitiesList(activitiesResponse.data || activitiesResponse);
+    } catch (error) {
+      console.error('Errore nel caricamento delle attività:', error);
+      // Fallback data for testing
+      setActivitiesList([
+        { id: 1, name: 'Pallavolo', description: 'Pallavolo' },
+        { id: 2, name: 'Calcio', description: 'Calcio' },
+        { id: 3, name: 'Tennis', description: 'Tennis' }
+      ]);
+    }
+  };
+  
+  // Gestione selezione attività
+  const handleActivitySelected = (name, selectedOption) => {
+    setSelectedActivity(selectedOption.value);
+    setFormData(prev => ({ ...prev, activityId: selectedOption.value.id }));
   };
   
   // Validazione dei parametri
@@ -391,6 +459,9 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     if (formData.tipoSocio.tesserato) {
       if (!formData.federazione) {
         setViewAlert1(true);
+      } else if (!formData.activityId) {
+        setError('È necessario selezionare un\'attività per il socio tesserato.');
+        return;
       } else {
         handleCreate();
       }
@@ -432,7 +503,8 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         telefono: formData.telefono || null,
         email: formData.email || null,
         privacy: formData.privacy === undefined ? true : formData.privacy,
-        federazione: formData.federazione || null
+        federazione: formData.federazione || null,
+        activityId: formData.activityId || null
       };
       
       let response;
@@ -771,9 +843,20 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
                       label="Federazione"
                       name="federazione"
                       value={selectedFederazione}
-                      options={affiliazioneList}
+                      options={federazioneList.map(item => item.nome)}
                       onChange={handleFedeSelected}
                       required={viewFede}
+                    />
+                  </Col>
+                  <Col md={6}>
+                    <SelectField
+                      label="Attività"
+                      name="activity"
+                      value={selectedActivity}
+                      options={activitiesList}
+                      onChange={handleActivitySelected}
+                      isDisabled={!selectedFederazione}
+                      required={viewFede && selectedFederazione}
                     />
                   </Col>
                 </Row>
