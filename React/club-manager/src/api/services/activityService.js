@@ -21,6 +21,16 @@ const activityService = {
   retrieveActivitiesByFamily: (familyId) => {
     return api.get(`${endpoints.ACTIVITIES.RETRIEVE_BY_FAMILY}/${familyId}`);
   },
+
+    /**
+   * Recupera le attività per una famiglia specifica
+   * @param {number} sezioneId - ID della famiglia
+   * @returns {Promise} Promise con le attività della famiglia
+   */
+  retrieveActivitiesBySezione: (sezioneId) => {
+    return api.get(`${endpoints.ACTIVITIES.RETRIEVE_BY_SEZIONE}/${sezioneId}`);
+  },
+  
   
   /**
    * Recupera tutte le informazioni sulle attività per una famiglia
@@ -41,6 +51,15 @@ const activityService = {
 
   retrieveActivitiesCodes: () => {
     return api.get(endpoints.ACTIVITIES.RETRIEVE_CODES);
+  },
+
+
+  /**
+   * Recupera le famiglie di attività
+   * @returns {Promise} Promise con le famiglie
+   */
+  retrieveSezioni: () => {
+    return api.get(endpoints.ACTIVITIES.RETRIEVE_SEZIONI);
   },
   
   /**

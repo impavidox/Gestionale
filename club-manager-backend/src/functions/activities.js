@@ -37,6 +37,9 @@ app.http('activities', {
                 
                 case 'retrieveActivitiesByFederazione':
                     return await handleRetrieveActivitiesByFederazione(context, param1);
+
+                case 'retrieveActivitiesBySezione':
+                    return await handleRetrieveActivitiesBySezione(context, param1);
                 
                 case 'retrieveFullActivitiesByFederazione':
                     return await handleRetrieveFullActivitiesByFederazione(context, param1);
@@ -172,6 +175,45 @@ async function handleRetrieveActivitiesByFederazione(context, federazioneId) {
         return createErrorResponse(500, 'Errore nel recupero attività per federazione', error.message);
     }
 }
+
+async function handleRetrieveActivitiesBySezione(context, sezioneId) {
+    try {
+        if (!sezioneId) {
+            return createErrorResponse(400, 'ID sezione richiesto');
+        }
+        
+        context.log(`Recupero attività per federazione: ${sezioneId}`);
+        
+        const pool = await getPool();
+        const request = pool.request();
+        request.input('sezioneId', sql.Int, parseInt(sezioneId));
+        
+        const result = await request.query(`
+            SELECT 
+                a.id,
+                a.nome,
+                a.federazioneId,
+                a.sezioneId,
+                s.nome as sezioneNome,
+                a.codice,
+                a.emailReferente
+            FROM attività a
+            LEFT JOIN sezioni s ON a.sezioneId = s.id
+            WHERE a.sezioneId = @sezioneId
+            ORDER BY a.nome
+        `);
+        
+        const normalizedActivities = result.recordset.map(activity => normalizeAttivitaResponse(activity));
+        
+        context.log(`${result.recordset.length} attività recuperate per sezione ${sezioneId}`);
+        return createSuccessResponse(normalizedActivities);
+        
+    } catch (error) {
+        context.log.error('Errore nel recupero attività per sezione:', error);
+        return createErrorResponse(500, 'Errore nel recupero attività per sezione', error.message);
+    }
+}
+
 
 async function handleRetrieveFullActivitiesByFederazione(context, federazioneId) {
     try {

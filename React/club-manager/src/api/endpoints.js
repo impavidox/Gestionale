@@ -38,8 +38,10 @@ const endpoints = {
     ACTIVITIES: {
       RETRIEVE_ALL: 'activities/retrieveAllActivities',
       RETRIEVE_BY_FAMILY: 'activities/retrieveActivitiesByFederazione',
+      RETRIEVE_BY_SEZIONE:'activities/retrieveActivitiesBySezione',
       RETRIEVE_FULL_BY_FAMILY: 'activities/retrieveFullActivitiesByFamily',
       RETRIEVE_FAMILIES: 'activities/retrieveFederazioni',
+      RETRIEVE_SEZIONI: 'activities/retrieveSezioni',
       UPDATE: 'activities/updateActivity',
       REMOVE: 'activities/removeActivity',
       RETRIEVE_AFFILIAZIONE: 'activities/retrieveAffiliazioneForLibro',

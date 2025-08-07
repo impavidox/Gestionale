@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Button } from 'react-bootstrap';
+import { Container, Row, Col, Button, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import SocioFilters from '../../components/soci/SocioFilters';
 import SocioList from '../../components/soci/SocioList';
 import SocioForm from '../../components/soci/SocioForm';
+import Loader from '../../components/common/Loader';
 import socioService from '../../api/services/socioService';
 
 /**
- * Pagina per l'elenco e la gestione dei soci
+ * Pagina per l'elenco e la gestione dei soci - Updated Version
  */
 const ElencoSoci = () => {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ const ElencoSoci = () => {
   // Stati per la gestione della pagina
   const [soci, setSoci] = useState([]);
   const [filtri, setFiltri] = useState({
-    cognome: null,
+    cognome: '',
     scadenza: 0,
     attivita: 0,
     scadute: false,
@@ -27,27 +28,53 @@ const ElencoSoci = () => {
   const [showDetailSocio, setShowDetailSocio] = useState(false);
   const [selectedSocio, setSelectedSocio] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showError, setShowError] = useState(false);
 
   // Esegue la ricerca dei soci
   const fetchSoci = async (filters) => {
     setLoading(true);
+    setError('');
+    setShowError(false);
+    
     try {
+      console.log('Fetching soci with filters:', filters);
+      
       const response = await socioService.retrieveSocio(
         null, // nome
-        filters.cognome,
+        filters.cognome || null,
         filters.scadenza,
         filters.attivita,
         filters.scadute,
         filters.anno
       );
-      console.log(response.data)
-      setSoci(response.data.data.items);
-      console.log(soci)
+      
+      console.log('API Response:', response);
+      
+      // Handle different response structures
+      let socioData = [];
+      if (response.data) {
+        if (response.data.data && response.data.data.items) {
+          socioData = response.data.data.items;
+        } else if (response.data.items) {
+          socioData = response.data.items;
+        } else if (Array.isArray(response.data)) {
+          socioData = response.data;
+        } else if (response.data.success && response.data.result) {
+          socioData = response.data.result;
+        }
+      }
+      
+      console.log('Processed soci data:', socioData);
+      
+      setSoci(socioData);
       setShowSearchResults(true);
       setShowDetailSocio(false);
+      
     } catch (error) {
       console.error('Errore nella ricerca dei soci:', error);
-      alert('Si è verificato un errore durante la ricerca dei soci. Riprova più tardi.');
+      setError('Si è verificato un errore durante la ricerca dei soci. Riprova più tardi.');
+      setShowError(true);
     } finally {
       setLoading(false);
     }
@@ -55,6 +82,7 @@ const ElencoSoci = () => {
 
   // Gestione della ricerca
   const handleSearch = (newFilters) => {
+    console.log('Search triggered with filters:', newFilters);
     setFiltri(newFilters);
     fetchSoci(newFilters);
   };
@@ -87,7 +115,7 @@ const ElencoSoci = () => {
     });
   };
 
-  // Gestione della selezione di un socio
+  // Gestione della selezione di un socio per modifica
   const handleSelectSocio = (socio) => {
     setSelectedSocio(socio);
     setShowDetailSocio(true);
@@ -98,6 +126,9 @@ const ElencoSoci = () => {
   const handleSaveSocio = (socio) => {
     // Aggiorna la lista dei soci
     fetchSoci(filtri);
+    setShowDetailSocio(false);
+    setShowSearchResults(true);
+    setSelectedSocio(null);
   };
 
   // Gestione della chiusura del dettaglio
@@ -107,9 +138,22 @@ const ElencoSoci = () => {
     setSelectedSocio(null);
   };
 
+  // Gestione refresh della lista (chiamata dal SocioList dopo operazioni)
+  const handleRefreshSoci = () => {
+    fetchSoci(filtri);
+  };
+
   return (
     <Container className="mt-4 mb-5">
       <h2 className="mb-4">Gestione Soci</h2>
+      
+      {showError && (
+        <Alert variant="danger" onClose={() => setShowError(false)} dismissible>
+          {error}
+        </Alert>
+      )}
+      
+      {loading && <Loader />}
       
       {!showDetailSocio && (
         <>
@@ -128,20 +172,33 @@ const ElencoSoci = () => {
             <Row>
               <Col>
                 <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h4>Risultati della ricerca</h4>
+                  <h4>
+                    Risultati della ricerca 
+                    {soci.length > 0 && (
+                      <span className="text-muted fs-6 ms-2">({soci.length} soci trovati)</span>
+                    )}
+                  </h4>
                   <Button
                     variant="success"
                     onClick={() => navigate('/soci/nuovo')}
                   >
+                    <i className="bi bi-person-plus me-1"></i>
                     Nuovo Socio
                   </Button>
                 </div>
                 
-                <SocioList
-                  soci={soci}
-                  onSelect={handleSelectSocio}
-                  onRefresh={() => fetchSoci(filtri)}
-                />
+                {soci.length === 0 ? (
+                  <div className="text-center my-5">
+                    <p className="text-muted">Nessun socio trovato con i filtri specificati.</p>
+                    <p>Prova a modificare i criteri di ricerca.</p>
+                  </div>
+                ) : (
+                  <SocioList
+                    soci={soci}
+                    onSelect={handleSelectSocio}
+                    onRefresh={handleRefreshSoci}
+                  />
+                )}
               </Col>
             </Row>
           )}
@@ -156,6 +213,7 @@ const ElencoSoci = () => {
               className="mb-3"
               onClick={handleCloseDetail}
             >
+              <i className="bi bi-arrow-left me-1"></i>
               Torna all'elenco
             </Button>
             
