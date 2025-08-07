@@ -78,14 +78,7 @@ async function handleRetrieveSocio(context, params) {
         const request = pool.request();
         
         let query = `
-            SELECT s.*, 
-                   -- Check if socio is tesserato for any activity
-                   CASE WHEN EXISTS(SELECT 1 FROM tesserati t WHERE t.socioId = s.id) THEN 1 ELSE 0 END as isTesserato,
-                   -- Get main activity info if tesserato
-                   (SELECT TOP 1 a.nome FROM tesserati t 
-                    INNER JOIN attività a ON t.attivitàId = a.id 
-                    WHERE t.socioId = s.id 
-                    ORDER BY t.id DESC) as nomeAttivita
+            SELECT s.*
             FROM soci s
             WHERE 1=1
         `;

@@ -93,14 +93,15 @@ const SocioList = ({ soci = [], onSelect, onRefresh }) => {
         <Table striped bordered hover responsive className="mt-3">
           <thead>
             <tr>
-              <th>Tessera</th>
               <th>Cognome</th>
               <th>Nome</th>
-              <th>Residenza</th>
+              <th>Tipo</th>
+              <th>N. Socio</th>
               <th>Telefono</th>
+              <th>Data di Nascita</th>
+              <th>Codice Fiscale</th>
               <th>Certificato</th>
-              <th>Stato</th>
-              <th>Azioni</th>
+              <th>Quota Ass.</th>
             </tr>
           </thead>
           <tbody>
@@ -108,26 +109,19 @@ const SocioList = ({ soci = [], onSelect, onRefresh }) => {
               const abbonamentoStatus = getAbbonamentoStatus(socio);
               
               return (
-                <tr key={socio.id}>
-                  <td>{socio.tesseraNumber || '---'}</td>
+                <tr key={socio.id} onClick={() => handleSelectSocio(socio)}>
                   <td>{socio.cognome}</td>
                   <td>{socio.nome}</td>
-                  <td>{socio.citta}</td>
-                  <td>{socio.tel || '---'}</td>
-                  <td>{socio.dateCertificat ? formatDateDisplay(socio.dateCertificat) : '---'}</td>
+                  <td>{socio.TipoSocio}</td>
+                  <td>{socio.NSocio}</td>
+                  <td>{socio.telefono}</td>
+                  <td>{socio.dataNascita ? formatDateDisplay(socio.dataNascita) : '---'}</td>
+                  <td>{socio.codiceFiscale}</td>
+                  <td>{socio.scadenzaCertificato ? formatDateDisplay(socio.scadenzaCertificato) : '---'}</td>
                   <td>
                     <Badge bg={abbonamentoStatus.variant}>
                       {abbonamentoStatus.label}
                     </Badge>
-                  </td>
-                  <td>
-                    <Button 
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleSelectSocio(socio)}
-                    >
-                      Azioni
-                    </Button>
                   </td>
                 </tr>
               );
