@@ -5,14 +5,6 @@ import endpoints from '../endpoints';
  * Servizio per la gestione delle ricevute
  */
 const ricevutaService = {
-  /**
-   * Crea una nuova ricevuta per un socio
-   * @param {number} idSocio - ID del socio
-   * @returns {Promise} Promise con la nuova ricevuta
-   */
-  createNewRicevuta: (idSocio) => {
-    return api.get(`${endpoints.RICEVUTA.CREATE_NEW}/${idSocio}`);
-  },
   
   /**
    * Recupera i dati per la costruzione di una ricevuta
@@ -30,8 +22,8 @@ const ricevutaService = {
    * @param {Object} ricevutaData - Dati della ricevuta
    * @returns {Promise} Promise con la risposta del server
    */
-  printNewRicevuta: (ricevutaData) => {
-    return api.post(endpoints.RICEVUTA.PRINT_NEW, ricevutaData);
+  createNewRicevuta: (ricevutaData) => {
+    return api.post(endpoints.RICEVUTA.CREATE_NEW, ricevutaData);
   },
   
   /**
@@ -40,8 +32,8 @@ const ricevutaService = {
    * @param {number} tesseraNumber - Numero tessera
    * @returns {Promise} Promise con le ricevute dell'utente
    */
-  retrieveRicevutaForUser: (idSocio, tesseraNumber) => {
-    return api.get(`${endpoints.RICEVUTA.RETRIEVE_FOR_USER}/${idSocio}/${tesseraNumber}`);
+  retrieveRicevutaForUser: (idSocio) => {
+    return api.get(`${endpoints.RICEVUTA.RETRIEVE_FOR_USER}/${idSocio}`);
   },
   
   /**

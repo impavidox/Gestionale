@@ -1,7 +1,7 @@
 const { app } = require('@azure/functions');
 const { getPool, sql } = require('../../shared/database/connection');
 const { createSuccessResponse, createErrorResponse } = require('../../shared/utils/responseHelper');
-const { validateRicevuta } = require('../../shared/models/Ricevuta');
+const { validateRicevutaAttivita, normalizeRicevutaAttivitaResponse } = require('../../shared/models/RicevutaAttivita');
 
 app.http('ricevuta', {
     methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
@@ -29,10 +29,21 @@ app.http('ricevuta', {
             }
 
             context.log(`Action: ${action}, Params: ${param1}, ${param2}, ${param3}`);
-
+            let requestBody = null;
+            // Only attempt to read body for POST/PUT requests
+            if (request.method === 'POST' || request.method === 'PUT') {
+                try {
+                    // This reads the entire stream ONCE and parses it as JSON
+                    requestBody = await request.json();
+                    context.log('Request body (parsed JSON):', requestBody);
+                } catch (jsonError) {
+                    context.log('Error parsing JSON body:', jsonError.message);
+                    return createErrorResponse(400, 'Invalid JSON body provided', jsonError.message);
+                }
+            }
             switch (action) {
                 case 'createNewRicevuta':
-                    return await handleCreateNewRicevuta(context, param1);
+                    return await handleCreateNewRicevuta(context,  requestBody);
                 
                 case 'buildRicevuta':
                     return await handleBuildRicevuta(context, param1, param2, param3);
@@ -41,7 +52,7 @@ app.http('ricevuta', {
                     return await handlePrintNewRicevuta(context, request.body);
                 
                 case 'retrieveRicevutaForUser':
-                    return await handleRetrieveRicevutaForUser(context, param1, param2);
+                    return await handleRetrieveRicevutaForUser(context, param1);
                 
                 case 'updateIncassi':
                     return await handleUpdateIncassi(context, request.body);
@@ -62,125 +73,11 @@ app.http('ricevuta', {
     }
 });
 
-// Handler functions
-async function handleCreateNewRicevuta(context, socioId) {
-    try {
-        if (!socioId) {
-            return createErrorResponse(400, 'ID socio richiesto');
-        }
-        
-        const pool = await getPool();
-        const request = pool.request();
-        request.input('socioId', sql.Int, parseInt(socioId));
-        
-        // Recupera dati socio e abbonamento corrente
-        const query = `
-            SELECT 
-                s.id as socioId, s.nome, s.cognome, s.codiceFiscale,
-                a.id as abbonamentoId, a.numeroTessera, a.importo, a.attivitaId,
-                act.nome as attivitaNome
-            FROM Soci s
-            INNER JOIN Abbonamenti a ON s.id = a.socioId AND a.attivo = 1
-            INNER JOIN Attivita act ON a.attivitaId = act.id
-            WHERE s.id = @socioId AND s.attivo = 1
-        `;
-        
-        const result = await request.query(query);
-        
-        if (result.recordset.length === 0) {
-            return createErrorResponse(404, 'Socio o abbonamento non trovato');
-        }
-        
-        const data = result.recordset[0];
-        
-        // Genera numero ricevuta
-        const annoCorrente = new Date().getFullYear();
-        const numeroRequest = pool.request();
-        numeroRequest.input('anno', sql.Int, annoCorrente);
-        
-        const numeroQuery = `
-            SELECT COUNT(*) as count FROM Ricevute 
-            WHERE YEAR(data) = @anno AND annullata = 0
-        `;
-        
-        const numeroResult = await numeroRequest.query(numeroQuery);
-        const progressivo = numeroResult.recordset[0].count + 1;
-        const numeroRicevuta = `${annoCorrente}/${progressivo.toString().padStart(4, '0')}`;
-        
-        context.log(`Preparata ricevuta ${numeroRicevuta} per socio ${socioId}`);
-        
-        return createSuccessResponse({
-            socio: {
-                id: data.socioId,
-                nome: data.nome,
-                cognome: data.cognome,
-                codiceFiscale: data.codiceFiscale
-            },
-            abbonamento: {
-                id: data.abbonamentoId,
-                numeroTessera: data.numeroTessera,
-                importo: data.importo,
-                attivitaId: data.attivitaId,
-                attivitaNome: data.attivitaNome
-            },
-            ricevuta: {
-                numero: numeroRicevuta,
-                data: new Date().toISOString(),
-                importo: data.importo,
-                causale: `Quota associativa ${data.attivitaNome}`
-            }
-        });
-        
-    } catch (error) {
-        context.log('Errore nella creazione ricevuta:', error);
-        return createErrorResponse(500, 'Errore nella creazione ricevuta', error.message);
-    }
-}
 
-async function handleBuildRicevuta(context, socioId, abbonamentoId, ricevutaId) {
-    try {
-        if (!socioId || !abbonamentoId || !ricevutaId) {
-            return createErrorResponse(400, 'ID socio, abbonamento e ricevuta richiesti');
-        }
-        
-        const pool = await getPool();
-        const request = pool.request();
-        request.input('socioId', sql.Int, parseInt(socioId));
-        request.input('abbonamentoId', sql.Int, parseInt(abbonamentoId));
-        request.input('ricevutaId', sql.Int, parseInt(ricevutaId));
-        
-        const query = `
-            SELECT 
-                s.*, 
-                a.numeroTessera, a.importo as importoAbbonamento, a.attivitaId,
-                r.*, 
-                act.nome as attivitaNome
-            FROM Soci s
-            INNER JOIN Abbonamenti a ON s.id = a.socioId
-            INNER JOIN Ricevute r ON a.id = r.abbonamentoId
-            INNER JOIN Attivita act ON a.attivitaId = act.id
-            WHERE s.id = @socioId AND a.id = @abbonamentoId AND r.id = @ricevutaId
-              AND s.attivo = 1 AND a.attivo = 1
-        `;
-        
-        const result = await request.query(query);
-        
-        if (result.recordset.length === 0) {
-            return createErrorResponse(404, 'Dati non trovati');
-        }
-        
-        context.log(`Ricevuta costruita per socio ${socioId}`);
-        return createSuccessResponse(result.recordset[0]);
-        
-    } catch (error) {
-        context.log('Errore nella costruzione ricevuta:', error);
-        return createErrorResponse(500, 'Errore nella costruzione ricevuta', error.message);
-    }
-}
 
-async function handlePrintNewRicevuta(context, ricevutaData) {
+async function handleCreateNewRicevuta(context, ricevutaData) {
     try {
-        const { error, value } = validateRicevuta(ricevutaData);
+        const { error, value } = validateRicevutaAttivita(ricevutaData,context);
         
         if (error) {
             context.log('Dati ricevuta non validi:', error.details);
@@ -194,40 +91,34 @@ async function handlePrintNewRicevuta(context, ricevutaData) {
         try {
             const request = new sql.Request(transaction);
             
-            // Verifica che il numero ricevuta non esista già
-            request.input('numero', sql.NVarChar, value.numero);
-            const checkResult = await request.query('SELECT id FROM Ricevute WHERE numero = @numero');
-            
-            if (checkResult.recordset.length > 0) {
-                await transaction.rollback();
-                return createErrorResponse(409, 'Numero ricevuta già esistente');
-            }
-            
             const insertQuery = `
-                INSERT INTO Ricevute (
-                    numero, socioId, abbonamentoId, data, importo, causale,
-                    incassato, modalitaPagamento, note, annullata, dataCreazione
+                INSERT INTO ricevuteAttività (
+                    attivitàId, socioId, importoRicevuta, importoIncassato, 
+                    tipologiaPagamento, quotaAss, scadenzaQuota, 
+                    dataRicevuta, scadenzaPagamento, created_at
                 ) OUTPUT INSERTED.id VALUES (
-                    @numero, @socioId, @abbonamentoId, @data, @importo, @causale,
-                    @incassato, @modalitaPagamento, @note, 0, GETDATE()
+                    @attivitaId, @socioId, @importoRicevuta, @importoIncassato,
+                    @tipologiaPagamento, @quotaAss, @scadenzaQuota,
+                    @dataRicevuta, @scadenzaPagamento, GETDATE()
                 )
             `;
             
+            request.input('attivitaId', sql.Int, value.attivitàId);
             request.input('socioId', sql.Int, value.socioId);
-            request.input('abbonamentoId', sql.Int, value.abbonamentoId);
-            request.input('data', sql.Date, value.data || new Date());
-            request.input('importo', sql.Decimal(10, 2), value.importo);
-            request.input('causale', sql.NVarChar, value.causale);
-            request.input('incassato', sql.Bit, value.incassato || false);
-            request.input('modalitaPagamento', sql.NVarChar, value.modalitaPagamento || '');
-            request.input('note', sql.NVarChar, value.note || '');
+            request.input('importoRicevuta', sql.Int, value.importoRicevuta || 0);
+            request.input('importoIncassato', sql.Int, value.importoIncassato || 0);
+            request.input('tipologiaPagamento', sql.Int, value.tipologiaPagamento || 0);
+            request.input('quotaAss', sql.Int, value.quotaAss || 0);
+            request.input('scadenzaQuota', sql.Date, value.scadenzaQuota || null);
+            request.input('dataRicevuta', sql.Date, value.dataRicevuta || new Date());
+            request.input('scadenzaPagamento', sql.Date, value.scadenzaPagamento || null);
             
             const result = await request.query(insertQuery);
             const ricevutaId = result.recordset[0].id;
             
             await transaction.commit();
             
-            context.log(`Ricevuta ${value.numero} creata con ID: ${ricevutaId}`);
+            context.log(`Ricevuta attività creata con ID: ${ricevutaId}`);
             
             return createSuccessResponse({
                 id: ricevutaId,
@@ -241,12 +132,12 @@ async function handlePrintNewRicevuta(context, ricevutaData) {
         }
         
     } catch (error) {
-        context.log('Errore nella stampa ricevuta:', error);
-        return createErrorResponse(500, 'Errore nella stampa ricevuta', error.message);
+        context.log('Errore nella creazione ricevuta:', error);
+        return createErrorResponse(500, 'Errore nella creazione ricevuta', error.message);
     }
 }
 
-async function handleRetrieveRicevutaForUser(context, socioId, numeroTessera) {
+async function handleRetrieveRicevutaForUser(context, socioId) {
     try {
         if (!socioId) {
             return createErrorResponse(400, 'ID socio richiesto');
@@ -257,28 +148,37 @@ async function handleRetrieveRicevutaForUser(context, socioId, numeroTessera) {
         request.input('socioId', sql.Int, parseInt(socioId));
         
         let query = `
-            SELECT r.*, 
-                   a.numeroTessera, 
-                   act.nome as attivitaNome,
-                   s.nome + ' ' + s.cognome as socioNome
-            FROM Ricevute r
-            INNER JOIN Abbonamenti a ON r.abbonamentoId = a.id
-            INNER JOIN Attivita act ON a.attivitaId = act.id
-            INNER JOIN Soci s ON r.socioId = s.id
-            WHERE r.socioId = @socioId AND r.annullata = 0
+            WITH ProgressiveReceipts AS (
+                SELECT
+                    ra.*,
+                    a.nome AS attivitaNome,
+                    s.nome + ' ' + s.cognome AS socioNome,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY
+                        CASE
+                            WHEN MONTH(ra.dataRicevuta) >= 9 THEN YEAR(ra.dataRicevuta)
+                            ELSE YEAR(ra.dataRicevuta) - 1
+                        END
+                        ORDER BY
+                        ra.dataRicevuta, ra.id
+                    ) AS numero_ricevuta_progressivo
+                FROM
+                    ricevuteAttività ra
+                    INNER JOIN attività a ON ra.attivitàId = a.id
+                    INNER JOIN soci s ON ra.socioId = s.id
+            )
+            SELECT *
+            FROM ProgressiveReceipts
+            WHERE socioId = @socioId;
         `;
         
-        if (numeroTessera) {
-            query += ` AND a.numeroTessera = @numeroTessera`;
-            request.input('numeroTessera', sql.NVarChar, numeroTessera);
-        }
-        
-        query += ` ORDER BY r.data DESC`;
         
         const result = await request.query(query);
         
+        const ricevute = result.recordset.map(row => normalizeRicevutaAttivitaResponse(row));
+        
         context.log(`${result.recordset.length} ricevute trovate per socio ${socioId}`);
-        return createSuccessResponse({ items: result.recordset });
+        return createSuccessResponse({ items: ricevute });
         
     } catch (error) {
         context.log('Errore nel recupero ricevute utente:', error);
@@ -288,23 +188,22 @@ async function handleRetrieveRicevutaForUser(context, socioId, numeroTessera) {
 
 async function handleUpdateIncassi(context, incassoData) {
     try {
-        if (!incassoData.ricevutaId) {
+        if (!incassoData.ricevutaId && !incassoData.id) {
             return createErrorResponse(400, 'ID ricevuta richiesto');
         }
         
+        const ricevutaId = incassoData.ricevutaId || incassoData.id;
+        
         const pool = await getPool();
         const request = pool.request();
-        request.input('ricevutaId', sql.Int, incassoData.ricevutaId);
-        request.input('incassato', sql.Bit, incassoData.incassato || false);
-        request.input('dataIncasso', sql.DateTime, incassoData.dataIncasso || new Date());
-        request.input('modalitaPagamento', sql.NVarChar, incassoData.modalitaPagamento || '');
+        request.input('ricevutaId', sql.Int, ricevutaId);
+        request.input('importoIncassato', sql.Int, incassoData.importoIncassato || 0);
+        request.input('tipologiaPagamento', sql.Int, incassoData.tipologiaPagamento || 0);
         
         const updateQuery = `
-            UPDATE Ricevute SET 
-                incassato = @incassato,
-                dataIncasso = @dataIncasso,
-                modalitaPagamento = @modalitaPagamento,
-                dataModifica = GETDATE()
+            UPDATE ricevuteAttività SET 
+                importoIncassato = @importoIncassato,
+                tipologiaPagamento = @tipologiaPagamento
             WHERE id = @ricevutaId
         `;
         
@@ -314,7 +213,7 @@ async function handleUpdateIncassi(context, incassoData) {
             return createErrorResponse(404, 'Ricevuta non trovata');
         }
         
-        context.log(`Incasso aggiornato per ricevuta ${incassoData.ricevutaId}`);
+        context.log(`Incasso aggiornato per ricevuta ${ricevutaId}`);
         
         return createSuccessResponse({
             returnCode: true,
@@ -322,39 +221,36 @@ async function handleUpdateIncassi(context, incassoData) {
         });
         
     } catch (error) {
-        context.log('Errore nell\'aggiornamento incassi:', error);
+        context.log.error('Errore nell\'aggiornamento incassi:', error);
         return createErrorResponse(500, 'Errore nell\'aggiornamento incassi', error.message);
     }
 }
 
 async function handleAnnulRicevuta(context, annullamentoData) {
     try {
-        if (!annullamentoData.ricevutaId) {
+        if (!annullamentoData.ricevutaId && !annullamentoData.id) {
             return createErrorResponse(400, 'ID ricevuta richiesto');
         }
         
+        const ricevutaId = annullamentoData.ricevutaId || annullamentoData.id;
+        
         const pool = await getPool();
         const request = pool.request();
-        request.input('ricevutaId', sql.Int, annullamentoData.ricevutaId);
-        request.input('motivoAnnullamento', sql.NVarChar, annullamentoData.motivo || '');
-        request.input('dataAnnullamento', sql.DateTime, new Date());
+        request.input('ricevutaId', sql.Int, ricevutaId);
         
-        const updateQuery = `
-            UPDATE Ricevute SET 
-                annullata = 1,
-                dataAnnullamento = @dataAnnullamento,
-                motivoAnnullamento = @motivoAnnullamento,
-                dataModifica = GETDATE()
-            WHERE id = @ricevutaId
+        // For this new schema, we'll delete the record instead of marking as annullata
+        // since the original schema doesn't have annullata fields
+        const deleteQuery = `
+            DELETE FROM ricevuteAttività WHERE id = @ricevutaId
         `;
         
-        const result = await request.query(updateQuery);
+        const result = await request.query(deleteQuery);
         
         if (result.rowsAffected[0] === 0) {
             return createErrorResponse(404, 'Ricevuta non trovata');
         }
         
-        context.log(`Ricevuta ${annullamentoData.ricevutaId} annullata`);
+        context.log(`Ricevuta ${ricevutaId} annullata (cancellata)`);
         
         return createSuccessResponse({
             returnCode: true,
@@ -362,7 +258,7 @@ async function handleAnnulRicevuta(context, annullamentoData) {
         });
         
     } catch (error) {
-        context.log('Errore nell\'annullamento ricevuta:', error);
+        context.log.error('Errore nell\'annullamento ricevuta:', error);
         return createErrorResponse(500, 'Errore nell\'annullamento ricevuta', error.message);
     }
 }
@@ -380,20 +276,23 @@ async function handlePrepareScheda(context, socioId) {
         const query = `
             SELECT 
                 s.*, 
-                a.numeroTessera, a.dataIscrizione, a.dataScadenza,
-                act.nome as attivitaNome, 
-                COUNT(r.id) as numeroRicevute,
-                SUM(CASE WHEN r.incassato = 1 THEN r.importo ELSE 0 END) as totaleIncassato
-            FROM Soci s
-            LEFT JOIN Abbonamenti a ON s.id = a.socioId AND a.attivo = 1
-            LEFT JOIN Attivita act ON a.attivitaId = act.id
-            LEFT JOIN Ricevute r ON a.id = r.abbonamentoId AND r.annullata = 0
-            WHERE s.id = @socioId AND s.attivo = 1
-            GROUP BY s.id, s.nome, s.cognome, s.codiceFiscale, s.dataNascita, s.luogoNascita,
-                     s.provinciaNascita, s.indirizzo, s.civico, s.cap, s.comune, s.provincia,
-                     s.telefono, s.cellulare, s.email, s.tipoSocio, s.privacy, s.federazione,
-                     s.numeroTesseraFederale, a.numeroTessera, a.dataIscrizione, a.dataScadenza,
-                     act.nome
+                -- Get tesserato info
+                (SELECT TOP 1 a.nome FROM tesserati t 
+                 INNER JOIN attività a ON t.attivitàId = a.id 
+                 WHERE t.socioId = s.id 
+                 ORDER BY t.id DESC) as attivitaNome,
+                -- Get receipt statistics
+                COUNT(ra.id) as numeroRicevute,
+                SUM(ra.importoIncassato) as totaleIncassato,
+                SUM(ra.importoRicevuta) as totaleRicevute
+            FROM soci s
+            LEFT JOIN ricevuteAttività ra ON s.id = ra.socioId
+            WHERE s.id = @socioId
+            GROUP BY s.id, s.nome, s.cognome, s.codiceFiscale, s.sesso, s.dataNascita, 
+                     s.provinciaNascita, s.comuneNascita, s.provinciaResidenza, s.comuneResidenza,
+                     s.viaResidenza, s.capResidenza, s.telefono, s.email, s.scadenzaCertificato,
+                     s.isAgonistico, s.privacy, s.dataPrivacy, s.isTesserato, s.isEffettivo,
+                     s.isVolontario, s.dataIscrizione, s.created_at
         `;
         
         const result = await request.query(query);
@@ -402,11 +301,22 @@ async function handlePrepareScheda(context, socioId) {
             return createErrorResponse(404, 'Socio non trovato');
         }
         
+        const socio = result.recordset[0];
+        
+        // Normalize the response
+        const scheda = {
+            ...normalizeSocioResponse(socio),
+            attivitaNome: socio.attivitaNome,
+            numeroRicevute: socio.numeroRicevute || 0,
+            totaleIncassato: (socio.totaleIncassato || 0) / 100, // Convert from cents
+            totaleRicevute: (socio.totaleRicevute || 0) / 100    // Convert from cents
+        };
+        
         context.log(`Scheda preparata per socio ${socioId}`);
-        return createSuccessResponse(result.recordset[0]);
+        return createSuccessResponse(scheda);
         
     } catch (error) {
-        context.log('Errore nella preparazione scheda:', error);
+        context.log.error('Errore nella preparazione scheda:', error);
         return createErrorResponse(500, 'Errore nella preparazione scheda', error.message);
     }
 }

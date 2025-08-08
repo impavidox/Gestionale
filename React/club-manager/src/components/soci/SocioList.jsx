@@ -23,6 +23,7 @@ const SocioList = ({ soci = [], onSelect, onRefresh }) => {
   const [selectedSocio, setSelectedSocio] = useState(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [showRicevutaModal, setShowRicevutaModal] = useState(false);
+  const [tipologiePagamento, setTipologiePagamento]= useState([{nome:'POS',id:1}, {nome:'Contanti',id:2}, {nome:'Bonifico',id:3}]);
   
   // Stati per il form della ricevuta
   const [ricevutaData, setRicevutaData] = useState({
@@ -166,10 +167,9 @@ const handleCreaNuovaRicevuta = () => {
     try {
       setLoading(true);
       const response = await ricevutaService.retrieveRicevutaForUser(
-        selectedSocio.id,
-        selectedSocio.tesseraNumber || selectedSocio.NSocio || 0
+        selectedSocio.id
       );
-      
+      console.log(response)
       // Qui potresti navigare verso una pagina dedicata all'elenco ricevute
       // o aprire un altro modal con la lista delle ricevute
       goNewTab('ricevute', { 
@@ -269,22 +269,19 @@ const handleCreaNuovaRicevuta = () => {
       setShowAlert(false);
 
       const ricevutaPayload = {
-        tipo: 0, // Nuova ricevuta
-        dataRicevuta: formatDateForApi(new Date()),
-        idSocio: selectedSocio.id,
-        periodo: `${ricevutaData.scadenzaQuota.getFullYear()}`,
-        dataQuota: formatDateForApi(ricevutaData.scadenzaQuota),
-        scadenzaAbbonamento: formatDateForApi(ricevutaData.scadenzaAbbonamento),
-        sommaPay: parseFloat(ricevutaData.somma),
-        sommaIncassata: parseFloat(ricevutaData.sommaIncassata) || 0,
-        registrato: false,
-        quotaAssociativa: ricevutaData.quotaAssociativa,
-        attivita: ricevutaData.attivita.id,
-        sezione: ricevutaData.sezione.id,
-        affiliazione: 1 // Default
+        dataRicevuta: formatDateForApi(ricevutaData.dataRicevuta),
+        socioId: selectedSocio.id,
+        scadenzaQuota: formatDateForApi(ricevutaData.scadenzaQuota),
+        scadenzaPagamento: formatDateForApi(ricevutaData.scadenzaAbbonamento),
+        importoRicevuta: parseFloat(ricevutaData.somma),
+        importoIncassato: parseFloat(ricevutaData.sommaIncassata) || 0,
+        tipologiaPagamento: tipologiePagamento.find(item=>item.nome===ricevutaData.tipologiaPagamento.value).id,
+        quotaAss: Number(ricevutaData.quotaAssociativa),
+        attivitàId: attivita.find(item=>item.nome===ricevutaData.attivita.value).id,
+        sezione: sezioni.find(item=>item.nome===ricevutaData.sezione.value).id,
       };
-
-      const response = await ricevutaService.printNewRicevuta(ricevutaPayload);
+      console.log(ricevutaPayload)
+      const response = await ricevutaService.createNewRicevuta(ricevutaPayload);
       
       if (response.data.testPrint || response.data.success) {
         setSuccess('Ricevuta creata con successo');
@@ -452,7 +449,7 @@ const handleCreaNuovaRicevuta = () => {
                   label="Tipologia Pagamento"
                   name="tipologiaPagamento"
                   value={ricevutaData.tipologiaPagamento}
-                  options={['POS','Bonifico','Contanti']}
+                  options={tipologiePagamento.map(item=>item.nome)}
                   onChange={handlePagamentoChange}
                   placeholder="Seleziona metodo pagamento"
                   required

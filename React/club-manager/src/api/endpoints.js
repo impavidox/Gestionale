@@ -20,7 +20,6 @@ const endpoints = {
     RICEVUTA: {
       CREATE_NEW: 'ricevuta/createNewRicevuta',
       BUILD: 'ricevuta/buildRicevuta',
-      PRINT_NEW: 'ricevuta/printNewRicevuta',
       RETRIEVE_FOR_USER: 'ricevuta/retrieveRicevutaForUser',
       UPDATE_INCASSI: 'ricevuta/updateIncassi',
       ANNUL: 'ricevuta/annulRicevuta',
