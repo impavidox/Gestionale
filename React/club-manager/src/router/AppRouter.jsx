@@ -14,6 +14,7 @@ import PrimaNota from '../pages/PrimaNota/PrimaNota';
 import StampaPrimaNota from '../pages/PrimaNota/StampaPrimaNota';
 import StampaRicevuta from '../pages/Ricevute/StampaRicevuta';
 import GestioneRicevute from '../pages/Ricevute/GestioneRicevute';
+import RicevuteElenco from '../pages/Ricevute/RicevuteElenco';
 import Parametri from '../pages/Parametri/Parametri';
 import EmailManager from '../pages/Email/EmailManager';
 import RicercaStampa from '../pages/Soci/RicercaStampa';
@@ -45,6 +46,7 @@ const AppRouter = () => {
           {/* Gestione Ricevute */}
           <Route path="ricevute">
             <Route index element={<GestioneRicevute />} />
+            <Route path="elenco" element={<RicevuteElenco />} />
           </Route>
           
           {/* Parametri */}

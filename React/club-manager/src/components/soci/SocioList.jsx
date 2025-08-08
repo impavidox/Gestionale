@@ -162,26 +162,19 @@ const handleCreaNuovaRicevuta = () => {
     handleCloseModals();
   };
 
+
   // Gestione elenco ricevute
   const handleElencoRicevute = async () => {
     try {
       setLoading(true);
-      const response = await ricevutaService.retrieveRicevutaForUser(
-        selectedSocio.id
-      );
-      console.log(response)
-      // Qui potresti navigare verso una pagina dedicata all'elenco ricevute
-      // o aprire un altro modal con la lista delle ricevute
-      goNewTab('ricevute', { 
-        socioId: selectedSocio.id,
-        cognome: selectedSocio.cognome,
-        nome: selectedSocio.nome
-      });
+      
+      // Navigate to the new RicevuteElenco page with URL parameters
+      navigate(`/ricevute/elenco?socioId=${selectedSocio.id}&cognome=${encodeURIComponent(selectedSocio.cognome)}&nome=${encodeURIComponent(selectedSocio.nome)}`);
       
       handleCloseModals();
     } catch (error) {
-      console.error('Errore nel recupero delle ricevute:', error);
-      setError('Errore nel recupero delle ricevute del socio');
+      console.error('Errore nella navigazione alle ricevute:', error);
+      setError('Errore nella navigazione alle ricevute del socio');
       setAlertVariant('danger');
       setShowAlert(true);
     } finally {
