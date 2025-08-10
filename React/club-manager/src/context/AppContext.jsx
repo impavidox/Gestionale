@@ -13,7 +13,7 @@ export const useApp = () => useContext(AppContext);
  * Contiene lo stato globale e le funzioni comuni
  */
 export const AppProvider = ({ children }) => {
-  const [loading, setLoading] = useState(0);
+  const [loadingCount, setLoadingCount] = useState(0);
   const [conf, setConf] = useState(null);
   const [annoSportiva, setAnnoSportiva] = useState(null);
   const [selActiv, setSelActiv] = useState([]);
@@ -23,13 +23,22 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     const handleLoading = (event) => {
       if (event.detail.loading) {
-        setLoading(prevLoading => prevLoading + 1);
+        setLoadingCount(prevCount => {
+          const newCount = prevCount + 1;
+          console.log('Loading started, count:', newCount);
+          return newCount;
+        });
       } else {
-        setLoading(prevLoading => Math.max(0, prevLoading - 1));
+        setLoadingCount(prevCount => {
+          const newCount = Math.max(0, prevCount - 1);
+          console.log('Loading ended, count:', newCount);
+          return newCount;
+        });
       }
     };
 
     document.addEventListener('api-loading', handleLoading);
+    
     return () => {
       document.removeEventListener('api-loading', handleLoading);
     };
@@ -43,6 +52,11 @@ export const AppProvider = ({ children }) => {
         setConf(response.data);
       } catch (error) {
         console.error('Errore nel caricamento delle impostazioni:', error);
+        // Set default config to prevent errors
+        setConf({
+          clubName: 'Club Manager',
+          appVersion: '1.0.0'
+        });
       }
     };
 
@@ -54,10 +68,17 @@ export const AppProvider = ({ children }) => {
     const fetchAnnoSportiva = async () => {
       try {
         const response = await api.get(endpoints.PARAMS.RETRIEVE_ANNO_SPORTIVA);
-        setAnnoSportiva(response.data);
-        console.log('Anno sportiva:', response.data.annoName);
+        const annoData = response.data?.data || response.data;
+        setAnnoSportiva(annoData);
+        console.log('Anno sportiva:', annoData?.annoName);
       } catch (error) {
         console.error('Errore nel caricamento dell\'anno sportivo:', error);
+        // Set fallback year
+        const currentYear = new Date().getFullYear();
+        setAnnoSportiva({
+          id: 1,
+          annoName: `${currentYear}/${currentYear + 1}`
+        });
       }
     };
 
@@ -69,9 +90,11 @@ export const AppProvider = ({ children }) => {
     const fetchActivities = async () => {
       try {
         const response = await api.get(endpoints.ACTIVITIES.RETRIEVE_ALL);
-        setSelActiv(response.data);
+        const activitiesData = response.data?.data || response.data || [];
+        setSelActiv(activitiesData);
       } catch (error) {
         console.error('Errore nel caricamento delle attività:', error);
+        setSelActiv([]);
       }
     };
 
@@ -83,9 +106,11 @@ export const AppProvider = ({ children }) => {
     const fetchAffiliazioni = async () => {
       try {
         const response = await api.get(`${endpoints.ACTIVITIES.RETRIEVE_AFFILIAZIONE}/0`);
-        setSelAffiliazione(response.data);
+        const affiliazioniData = response.data?.data || response.data || [];
+        setSelAffiliazione(affiliazioniData);
       } catch (error) {
         console.error('Errore nel caricamento delle affiliazioni:', error);
+        setSelAffiliazione([]);
       }
     };
 
@@ -129,16 +154,28 @@ export const AppProvider = ({ children }) => {
     return `${myDate.getDate()}/${myDate.getMonth() + 1}/${myDate.getFullYear()}`;
   };
 
+  // Manual loading control functions
+  const startLoading = () => {
+    setLoadingCount(prev => prev + 1);
+  };
+
+  const stopLoading = () => {
+    setLoadingCount(prev => Math.max(0, prev - 1));
+  };
+
   // Valori che verranno condivisi tramite il contesto
   const value = {
-    loading: loading > 0,
+    loading: loadingCount > 0,
+    loadingCount,
     conf,
     annoSportiva,
     selActiv,
     selAffiliazione,
     goNewTab,
     retrieveDate,
-    formatDate
+    formatDate,
+    startLoading,
+    stopLoading
   };
 
   return (

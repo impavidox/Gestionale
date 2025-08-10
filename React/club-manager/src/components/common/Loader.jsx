@@ -1,11 +1,11 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 
-const Loader = ({ size = 'md', fullScreen = false }) => {
+const Loader = ({ size = 'sm', fullScreen = false, forceShow = false }) => {
   const { loading } = useApp();
 
-  // Fix: Check if loading is greater than 0 instead of just truthy
-  if (loading <= 0) return null;
+  // Only show if loading is true OR forceShow is true
+  if (!loading && !forceShow) return null;
 
   const getSizeClasses = () => {
     switch (size) {
