@@ -41,24 +41,36 @@ app.http('ricevuta', {
                     return createErrorResponse(400, 'Invalid JSON body provided', jsonError.message);
                 }
             }
+
+            // Parse query parameters for GET requests
+            let queryParams = {};
+            if (request.method === 'GET' && request.url) {
+                const url = new URL(request.url);
+                queryParams = Object.fromEntries(url.searchParams);
+                context.log('Query parameters:', queryParams);
+            }
+
             switch (action) {
                 case 'createNewRicevuta':
-                    return await handleCreateNewRicevuta(context,  requestBody);
+                    return await handleCreateNewRicevuta(context, requestBody);
                 
                 case 'buildRicevuta':
                     return await handleBuildRicevuta(context, param1, param2, param3);
                 
                 case 'printNewRicevuta':
-                    return await handlePrintNewRicevuta(context, request.body);
+                    return await handlePrintNewRicevuta(context, requestBody);
                 
                 case 'retrieveRicevutaForUser':
                     return await handleRetrieveRicevutaForUser(context, param1);
                 
+                case 'retrieveAllByDateRange':
+                    return await handleRetrieveAllByDateRange(context, queryParams);
+                
                 case 'updateIncassi':
-                    return await handleUpdateIncassi(context, request.body);
+                    return await handleUpdateIncassi(context, requestBody);
                 
                 case 'annulRicevuta':
-                    return await handleAnnulRicevuta(context, request.body);
+                    return await handleAnnulRicevuta(context, requestBody);
                 
                 case 'prepareScheda':
                     return await handlePrepareScheda(context, param1);
@@ -73,11 +85,148 @@ app.http('ricevuta', {
     }
 });
 
+// Helper function to parse date from DD-MM-YYYY format
+function parseDate(dateString) {
+    if (!dateString) return null;
+    
+    // Handle DD-MM-YYYY format
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed in JS
+        const year = parseInt(parts[2], 10);
+        return new Date(year, month, day);
+    }
+    
+    // Fallback to standard date parsing
+    return new Date(dateString);
+}
 
+async function handleRetrieveAllByDateRange(context, queryParams) {
+    try {
+        const { startDate, endDate, type } = queryParams;
+        
+        if (!startDate || !endDate) {
+            return createErrorResponse(400, 'startDate e endDate sono richiesti (formato DD-MM-YYYY)');
+        }
+        
+        // Parse dates from DD-MM-YYYY format
+        const parsedStartDate = parseDate(startDate);
+        const parsedEndDate = parseDate(endDate);
+        
+        if (!parsedStartDate || !parsedEndDate) {
+            return createErrorResponse(400, 'Date non valide. Usare formato DD-MM-YYYY');
+        }
+        
+        context.log(`Recupero ricevute dal ${startDate} al ${endDate}, tipo: ${type || 'tutti'}`);
+        
+        const pool = await getPool();
+        const request = pool.request();
+        
+        // Build the query
+        let whereClause = 'WHERE ra.dataRicevuta >= @startDate AND ra.dataRicevuta <= @endDate';
+        
+        // Add type filter if specified
+        if (type && parseInt(type) > 0) {
+            whereClause += ' AND ra.tipologiaPagamento = @tipoPagamento';
+            request.input('tipoPagamento', sql.Int, parseInt(type));
+        }
+        
+        request.input('startDate', sql.Date, parsedStartDate);
+        request.input('endDate', sql.Date, parsedEndDate);
+        
+        const query = `
+            WITH ProgressiveReceipts AS (
+                SELECT
+                    ra.*,
+                    a.nome AS attivitaNome,
+                    s.nome AS socioNome,
+                    s.cognome AS socioCognome,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY
+                        CASE
+                            WHEN MONTH(ra.dataRicevuta) >= 9 THEN YEAR(ra.dataRicevuta)
+                            ELSE YEAR(ra.dataRicevuta) - 1
+                        END
+                        ORDER BY
+                        ra.dataRicevuta, ra.id
+                    ) AS numero_ricevuta_progressivo
+                FROM
+                    ricevuteAttività ra
+                    INNER JOIN attività a ON ra.attivitàId = a.id
+                    INNER JOIN soci s ON ra.socioId = s.id
+                ${whereClause}
+            )
+            SELECT *
+            FROM ProgressiveReceipts
+            ORDER BY dataRicevuta, id;
+        `;
+        
+        const result = await request.query(query);
+        
+        // Process the results
+        const ricevute = result.recordset.map(row => {
+            const normalized = normalizeRicevutaAttivitaResponse(row);
+            
+            // Add additional fields needed for Prima Nota
+            return {
+                ...normalized,
+                numero: row.numero_ricevuta_progressivo,
+                attivitaNome: row.attivitaNome,
+                socioNome: row.socioNome,
+                socioCognome: row.socioCognome,
+                // Convert amounts from cents to euros for display
+                importoRicevutaEuro: (row.importoRicevuta || 0),
+                importoIncassatoEuro: (row.importoIncassato || 0)
+            };
+        });
+        
+        // Calculate totals by payment type
+        const totaliPerTipo = {
+            1: { nome: 'POS', totale: 0, count: 0 },
+            2: { nome: 'Contanti', totale: 0, count: 0 },
+            3: { nome: 'Bonifico', totale: 0, count: 0 }
+        };
+        
+        let totaleGenerale = 0;
+        
+        ricevute.forEach(ricevuta => {
+            const tipo = ricevuta.tipologiaPagamento || 2; // Default to Contanti
+            const importo = ricevuta.importoRicevutaEuro || 0;
+            
+            if (totaliPerTipo[tipo]) {
+                totaliPerTipo[tipo].totale += importo;
+                totaliPerTipo[tipo].count += 1;
+            }
+            
+            totaleGenerale += importo;
+        });
+        
+        context.log(`${ricevute.length} ricevute trovate nel periodo ${startDate} - ${endDate}`);
+        
+        return createSuccessResponse({
+            items: ricevute,
+            totaleGenerale,
+            totaliPerTipo,
+            periodo: {
+                inizio: startDate,
+                fine: endDate
+            },
+            filtro: {
+                tipo: type ? parseInt(type) : 0,
+                descrizione: type ? totaliPerTipo[parseInt(type)]?.nome || 'Tutti' : 'Tutti'
+            }
+        });
+        
+    } catch (error) {
+        context.log('Errore nel recupero ricevute per data range:', error);
+        return createErrorResponse(500, 'Errore nel recupero ricevute per data range', error.message);
+    }
+}
 
 async function handleCreateNewRicevuta(context, ricevutaData) {
     try {
-        const { error, value } = validateRicevutaAttivita(ricevutaData,context);
+        const { error, value } = validateRicevutaAttivita(ricevutaData, context);
         
         if (error) {
             context.log('Dati ricevuta non validi:', error.details);
@@ -123,6 +272,7 @@ async function handleCreateNewRicevuta(context, ricevutaData) {
             return createSuccessResponse({
                 id: ricevutaId,
                 returnCode: true,
+                testPrint: true,
                 message: 'Ricevuta creata con successo'
             });
             
@@ -134,6 +284,83 @@ async function handleCreateNewRicevuta(context, ricevutaData) {
     } catch (error) {
         context.log('Errore nella creazione ricevuta:', error);
         return createErrorResponse(500, 'Errore nella creazione ricevuta', error.message);
+    }
+}
+
+async function handleBuildRicevuta(context, socioId, abboId, ricevutaId) {
+    try {
+        if (!socioId || !ricevutaId) {
+            return createErrorResponse(400, 'socioId e ricevutaId sono richiesti');
+        }
+        
+        const pool = await getPool();
+        const request = pool.request();
+        request.input('socioId', sql.Int, parseInt(socioId));
+        request.input('ricevutaId', sql.Int, parseInt(ricevutaId));
+        
+        const query = `
+            SELECT 
+                ra.*,
+                s.nome AS socioNome,
+                s.cognome AS socioCognome,
+                s.codiceFiscale,
+                a.nome AS attivitaNome,
+                ROW_NUMBER() OVER (
+                    PARTITION BY
+                    CASE
+                        WHEN MONTH(ra.dataRicevuta) >= 9 THEN YEAR(ra.dataRicevuta)
+                        ELSE YEAR(ra.dataRicevuta) - 1
+                    END
+                    ORDER BY
+                    ra.dataRicevuta, ra.id
+                ) AS numero_ricevuta_progressivo
+            FROM ricevuteAttività ra
+            INNER JOIN soci s ON ra.socioId = s.id
+            INNER JOIN attività a ON ra.attivitàId = a.id
+            WHERE ra.socioId = @socioId AND ra.id = @ricevutaId
+        `;
+        
+        const result = await request.query(query);
+        
+        if (result.recordset.length === 0) {
+            return createErrorResponse(404, 'Ricevuta non trovata');
+        }
+        
+        const ricevuta = result.recordset[0];
+        const normalized = normalizeRicevutaAttivitaResponse(ricevuta);
+        
+        // Add additional fields for receipt display
+        const ricevutaCompleta = {
+            ...normalized,
+            numero: ricevuta.numero_ricevuta_progressivo,
+            nFattura: `${new Date().getFullYear()}-${ricevuta.numero_ricevuta_progressivo}`,
+            socioNome: ricevuta.socioNome,
+            socioCognome: ricevuta.socioCognome,
+            codiceFiscale: ricevuta.codiceFiscale,
+            attivitaNome: ricevuta.attivitaNome,
+            // Convert amounts from cents to euros
+            pagato: (ricevuta.importoRicevuta || 0) / 100,
+            incassato: (ricevuta.importoIncassato || 0) / 100
+        };
+        
+        context.log(`Ricevuta ${ricevutaId} recuperata per socio ${socioId}`);
+        return createSuccessResponse(ricevutaCompleta);
+        
+    } catch (error) {
+        context.log('Errore nel build ricevuta:', error);
+        return createErrorResponse(500, 'Errore nel build ricevuta', error.message);
+    }
+}
+
+async function handlePrintNewRicevuta(context, ricevutaData) {
+    try {
+        // This endpoint is used for both creating and updating receipts for printing
+        // For now, we'll delegate to the create function
+        return await handleCreateNewRicevuta(context, ricevutaData);
+        
+    } catch (error) {
+        context.log('Errore nella stampa ricevuta:', error);
+        return createErrorResponse(500, 'Errore nella stampa ricevuta', error.message);
     }
 }
 
@@ -169,13 +396,21 @@ async function handleRetrieveRicevutaForUser(context, socioId) {
             )
             SELECT *
             FROM ProgressiveReceipts
-            WHERE socioId = @socioId;
+            WHERE socioId = @socioId
+            ORDER BY dataRicevuta DESC;
         `;
-        
         
         const result = await request.query(query);
         
-        const ricevute = result.recordset.map(row => normalizeRicevutaAttivitaResponse(row));
+        const ricevute = result.recordset.map(row => {
+            const normalized = normalizeRicevutaAttivitaResponse(row);
+            return {
+                ...normalized,
+                numero: row.numero_ricevuta_progressivo,
+                attivitaNome: row.attivitaNome,
+                socioNome: row.socioNome
+            };
+        });
         
         context.log(`${result.recordset.length} ricevute trovate per socio ${socioId}`);
         return createSuccessResponse({ items: ricevute });
@@ -217,6 +452,7 @@ async function handleUpdateIncassi(context, incassoData) {
         
         return createSuccessResponse({
             returnCode: true,
+            rc: true,
             message: 'Incasso aggiornato con successo'
         });
         
@@ -228,11 +464,11 @@ async function handleUpdateIncassi(context, incassoData) {
 
 async function handleAnnulRicevuta(context, annullamentoData) {
     try {
-        if (!annullamentoData.ricevutaId && !annullamentoData.id) {
+        if (!annullamentoData.ricevutaId && !annullamentoData.id && !annullamentoData.idRicevuta) {
             return createErrorResponse(400, 'ID ricevuta richiesto');
         }
         
-        const ricevutaId = annullamentoData.ricevutaId || annullamentoData.id;
+        const ricevutaId = annullamentoData.ricevutaId || annullamentoData.id || annullamentoData.idRicevuta;
         
         const pool = await getPool();
         const request = pool.request();
@@ -254,6 +490,8 @@ async function handleAnnulRicevuta(context, annullamentoData) {
         
         return createSuccessResponse({
             returnCode: true,
+            rc: true,
+            success: true,
             message: 'Ricevuta annullata con successo'
         });
         
@@ -303,9 +541,23 @@ async function handlePrepareScheda(context, socioId) {
         
         const socio = result.recordset[0];
         
-        // Normalize the response
+        // Normalize the response (you'll need to implement normalizeSocioResponse)
         const scheda = {
-            ...normalizeSocioResponse(socio),
+            id: socio.id,
+            nome: socio.nome,
+            cognome: socio.cognome,
+            codiceFiscale: socio.codiceFiscale,
+            dataNascita: socio.dataNascita,
+            provinciaNascita: socio.provinciaNascita,
+            comuneNascita: socio.comuneNascita,
+            provinciaResidenza: socio.provinciaResidenza,
+            comuneResidenza: socio.comuneResidenza,
+            viaResidenza: socio.viaResidenza,
+            capResidenza: socio.capResidenza,
+            telefono: socio.telefono,
+            email: socio.email,
+            scadenzaCertificato: socio.scadenzaCertificato,
+            isAgonistico: socio.isAgonistico,
             attivitaNome: socio.attivitaNome,
             numeroRicevute: socio.numeroRicevute || 0,
             totaleIncassato: (socio.totaleIncassato || 0) / 100, // Convert from cents

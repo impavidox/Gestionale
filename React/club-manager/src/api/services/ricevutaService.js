@@ -29,11 +29,26 @@ const ricevutaService = {
   /**
    * Recupera le ricevute per un utente
    * @param {number} idSocio - ID del socio
-   * @param {number} tesseraNumber - Numero tessera
    * @returns {Promise} Promise con le ricevute dell'utente
    */
   retrieveRicevutaForUser: (idSocio) => {
     return api.get(`${endpoints.RICEVUTA.RETRIEVE_FOR_USER}/${idSocio}`);
+  },
+
+  /**
+   * Recupera tutte le ricevute in un range di date
+   * @param {string} startDate - Data inizio (formato DD-MM-YYYY)
+   * @param {string} endDate - Data fine (formato DD-MM-YYYY)
+   * @param {number} type - Tipo di ricevuta (opzionale)
+   * @returns {Promise} Promise con le ricevute nel periodo
+   */
+  retrieveAllByDateRange: (startDate, endDate, type = 0) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    if (type) params.append('type', type);
+    
+    return api.get(`${endpoints.RICEVUTA.RETRIEVE_ALL_BY_DATE_RANGE}?${params.toString()}`);
   },
   
   /**

@@ -21,6 +21,7 @@ const endpoints = {
       CREATE_NEW: 'ricevuta/createNewRicevuta',
       BUILD: 'ricevuta/buildRicevuta',
       RETRIEVE_FOR_USER: 'ricevuta/retrieveRicevutaForUser',
+      RETRIEVE_ALL_BY_DATE_RANGE: 'ricevuta/retrieveAllByDateRange', // New endpoint
       UPDATE_INCASSI: 'ricevuta/updateIncassi',
       ANNUL: 'ricevuta/annulRicevuta',
       PREPARE_SCHEDA: 'ricevuta/prepareScheda'
