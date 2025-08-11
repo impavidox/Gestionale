@@ -7,7 +7,9 @@ const endpoints = {
       RETRIEVE: 'socio/retrieveSocio',
       RETRIEVE_BY_ID: 'socio/retrieveSocioById',
       CREATE: 'socio/createSocio',
-      UPDATE: 'socio/updateSocio'
+      UPDATE: 'socio/updateSocio',
+      RETRIEVE_LIBRO_SOCI: 'socio/retrieveLibroSoci',
+      RETRIEVE_STATS: 'socio/retrieveStats'
     },
     
     // Abbonamenti
@@ -21,7 +23,7 @@ const endpoints = {
       CREATE_NEW: 'ricevuta/createNewRicevuta',
       BUILD: 'ricevuta/buildRicevuta',
       RETRIEVE_FOR_USER: 'ricevuta/retrieveRicevutaForUser',
-      RETRIEVE_ALL_BY_DATE_RANGE: 'ricevuta/retrieveAllByDateRange', // New endpoint
+      RETRIEVE_ALL_BY_DATE_RANGE: 'ricevuta/retrieveAllByDateRange',
       UPDATE_INCASSI: 'ricevuta/updateIncassi',
       ANNUL: 'ricevuta/annulRicevuta',
       PREPARE_SCHEDA: 'ricevuta/prepareScheda'

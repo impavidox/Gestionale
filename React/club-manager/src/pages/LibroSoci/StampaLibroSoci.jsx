@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Table, Button } from 'react-bootstrap';
-import { useParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import Loader from '../../components/common/Loader';
 import Alert from '../../components/common/Alert';
 import socioService from '../../api/services/socioService';
-import activityService from '../../api/services/activityService';
 import { formatDateDisplay } from '../../utils/dateUtils';
 
 /**
@@ -12,21 +11,25 @@ import { formatDateDisplay } from '../../utils/dateUtils';
  */
 const StampaLibroSoci = () => {
   // Prende i parametri dall'URL
-  const { affiliazione, begin, end, tipo } = useParams();
+  const [searchParams] = useSearchParams();
+  
+  const tipo = parseInt(searchParams.get('tipo') || '1');
+  const anno = parseInt(searchParams.get('anno') || new Date().getFullYear());
+  const titoloParam = searchParams.get('titolo') || '';
   
   // Stati per i dati
   const [soci, setSoci] = useState([]);
-  const [affiliazioneData, setAffilizioneData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // Titoli in base al tipo
-  const getTitoloTipo = (tipoCode) => {
-    return tipoCode === '1' ? 'EFFETTIVI' : 'TESSERATI';
-  };
-  
-  const getHeaderTipo = (tipoCode) => {
-    return tipoCode === '1' ? 'TIPO DI SOCIO' : 'TESSERATO';
+  // Mapping dei tipi
+  const getTipoNome = (tipoCode) => {
+    const tipi = {
+      1: 'Soci Effettivi',
+      2: 'Soci Volontari', 
+      3: 'Soci Tesserati'
+    };
+    return tipi[tipoCode] || 'Libro Soci';
   };
   
   // Carica i dati all'avvio
@@ -36,20 +39,8 @@ const StampaLibroSoci = () => {
       setError('');
       
       try {
-        // Carica affiliazione
-        const affiliazioniResponse = await activityService.retrieveAffiliazione(1);
-        const foundAffiliazione = affiliazioniResponse.data.find(a => a.id.toString() === affiliazione);
-        setAffilizioneData(foundAffiliazione);
-        
-        // Carica dati libro soci
-        const response = await socioService.retrieveLibroSocio(
-          parseInt(affiliazione),
-          parseInt(begin),
-          parseInt(end),
-          parseInt(tipo)
-        );
-        
-        setSoci(response.data);
+        const response = await socioService.retrieveLibroSoci(tipo, anno);
+        setSoci(response.data.data || response.data || []);
       } catch (err) {
         console.error('Errore nel caricamento dei dati per la stampa:', err);
         setError('Si è verificato un errore nel caricamento dei dati per la stampa.');
@@ -59,11 +50,24 @@ const StampaLibroSoci = () => {
     };
     
     fetchData();
-  }, [affiliazione, begin, end, tipo]);
+  }, [tipo, anno]);
   
   // Gestione della stampa
   const handlePrint = () => {
     window.print();
+  };
+
+  // Genera numero socio progressivo
+  const generateNumeroSocio = (index) => {
+    return (index + 1).toString().padStart(4, '0');
+  };
+
+  // Formatta luogo di nascita
+  const formatLuogoNascita = (socio) => {
+    if (socio.comuneNascita && socio.provinciaNascita) {
+      return `${socio.comuneNascita} (${socio.provinciaNascita})`;
+    }
+    return socio.comuneNascita || 'N/D';
   };
   
   // Loader durante il caricamento
@@ -89,16 +93,10 @@ const StampaLibroSoci = () => {
       <Card className="shadow-sm">
         <Card.Body>
           <div className="text-center mb-4">
-            <h2>LIBRO SOCI {getTitoloTipo(tipo)}</h2>
-            <p className="mb-1">
-              {affiliazioneData ? `Affiliazione: ${affiliazioneData.descrizione}` : ''}
-            </p>
-            <p className="mb-1">
-              Numeri tessera: da {begin} a {end}
-            </p>
-            <p>
-              Data stampa: {formatDateDisplay(new Date())}
-            </p>
+            <h2>{titoloParam || getTipoNome(tipo)}</h2>
+            <p className="mb-1">Anno Sportivo: {anno}/{anno + 1}</p>
+            <p className="mb-1">Totale soci: {soci.length}</p>
+            <p>Data stampa: {formatDateDisplay(new Date())}</p>
           </div>
           
           {soci.length === 0 ? (
@@ -107,39 +105,44 @@ const StampaLibroSoci = () => {
             <Table bordered responsive>
               <thead>
                 <tr>
-                  <th>Tessera</th>
-                  <th>Cognome</th>
-                  <th>Nome</th>
-                  <th>Codice Fiscale</th>
-                  <th>Città</th>
-                  <th>{getHeaderTipo(tipo)}</th>
-                  {tipo === '2' && <th>Federazione</th>}
+                  <th style={{ width: '8%' }}>N. Socio</th>
+                  <th style={{ width: '12%' }}>Data Adesione</th>
+                  <th style={{ width: '15%' }}>Cognome</th>
+                  <th style={{ width: '15%' }}>Nome</th>
+                  <th style={{ width: '12%' }}>Data di Nascita</th>
+                  <th style={{ width: '18%' }}>Luogo di Nascita</th>
+                  <th style={{ width: '15%' }}>Codice Fiscale</th>
+                  <th style={{ width: '15%' }}>Email</th>
                 </tr>
               </thead>
               <tbody>
-                {soci.map((socio) => (
+                {soci.map((socio, index) => (
                   <tr key={socio.id}>
-                    <td>{socio.tesseraNumber || '---'}</td>
-                    <td>{socio.cognome}</td>
-                    <td>{socio.nome}</td>
-                    <td>{socio.codeFiscale}</td>
-                    <td>{socio.citta}</td>
-                    <td>
-                      {tipo === '1' 
-                        ? (socio.tipo?.descrizione || '---')
-                        : (socio.tesseraNumber ? 'Sì' : 'No')
-                      }
+                    <td className="text-center">
+                      <strong>{generateNumeroSocio(index)}</strong>
                     </td>
-                    {tipo === '2' && <td>{socio.federazione || '---'}</td>}
+                    <td>{formatDateDisplay(socio.dataAdesione || socio.dataIscrizione)}</td>
+                    <td><strong>{socio.cognome}</strong></td>
+                    <td>{socio.nome}</td>
+                    <td>{formatDateDisplay(socio.dataNascita)}</td>
+                    <td>{formatLuogoNascita(socio)}</td>
+                    <td className="font-monospace small">{socio.codiceFiscale}</td>
+                    <td className="small">{socio.email || 'N/D'}</td>
                   </tr>
                 ))}
               </tbody>
             </Table>
           )}
           
-          <div className="mt-5 pt-5 text-center">
-            <p>Data e firma</p>
-            <div className="mt-5">_______________________</div>
+          <div className="row mt-5 pt-5">
+            <div className="col-6 text-center">
+              <p><strong>Il Presidente</strong></p>
+              <div className="mt-5">_______________________</div>
+            </div>
+            <div className="col-6 text-center">
+              <p><strong>Il Segretario</strong></p>
+              <div className="mt-5">_______________________</div>
+            </div>
           </div>
         </Card.Body>
       </Card>

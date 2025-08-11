@@ -32,6 +32,7 @@ app.http('socio', {
                     }
                 };
             }
+            
             let requestBody = null;
             // Only attempt to read body for POST/PUT requests
             if (request.method === 'POST' || request.method === 'PUT') {
@@ -44,6 +45,7 @@ app.http('socio', {
                     return createErrorResponse(400, 'Invalid JSON body provided', jsonError.message);
                 }
             }
+            
             switch (action) {
                 case 'retrieveSocio':
                     return await handleRetrieveSocio(context, params);
@@ -56,6 +58,12 @@ app.http('socio', {
                 
                 case 'updateSocio':
                     return await handleUpdateSocio(context, requestBody);
+                
+                case 'retrieveLibroSoci':
+                    return await handleRetrieveLibroSoci(context, params.param1, params.param2);
+                
+                case 'retrieveStats':
+                    return await handleRetrieveStats(context);
                 
                 default:
                     return createErrorResponse(404, `Endpoint '${action}' non trovato`);
@@ -78,7 +86,14 @@ async function handleRetrieveSocio(context, params) {
         const request = pool.request();
         
         let query = `
-            SELECT s.*
+            SELECT s.*,
+                   CASE 
+                       WHEN s.isEffettivo = 1 THEN 'Effettivo'
+                       WHEN s.isTesserato = 1 THEN 'Tesserato'
+                       WHEN s.isVolontario = 1 THEN 'Volontario'
+                       ELSE 'N/D'
+                   END as TipoSocio,
+                   ROW_NUMBER() OVER (ORDER BY s.id) as NSocio
             FROM soci s
             WHERE 1=1
         `;
@@ -159,11 +174,8 @@ async function handleRetrieveSocioById(context, id) {
     }
 }
 
-//a posto
-
 async function handleCreateSocio(context, socioData) {
     try {
-
         var CodiceFiscale = require('codice-fiscale-js');
         socioData.codiceFiscale = new CodiceFiscale({
                 name: socioData.nome,
@@ -236,35 +248,52 @@ async function handleCreateSocio(context, socioData) {
             request.input('isEffettivo', sql.Int, value.isEffettivo || 0);
             request.input('isVolontario', sql.Int, value.isVolontario || 0);
             request.input('dataIscrizione', sql.Date, value.dataIscrizione || new Date());
-            request.input('isScaduto', sql.Int, value.isVolontario || 0);
+            request.input('isScaduto', sql.Int, value.isScaduto || 0);
 
             const insertResult = await request.query(insertQuery);
             const newSocioId = insertResult.recordset[0].id;
             
-            // If socio is marked as tesserato, effettivo, or volontario, create corresponding records
-            const getFiscalYear = (date = new Date()) => (date < new Date(date.getFullYear(), 8, 1) ? date.getFullYear() : date.getFullYear() + 1).toString();  //make function to take from 2024/2025 2025
+            // Get current sports year
+            const getFiscalYear = (date = new Date()) => (date < new Date(date.getFullYear(), 8, 1) ? date.getFullYear() : date.getFullYear() + 1).toString();
             const currentYear = getFiscalYear(); 
 
+            // Handle membership types
             if (value.isTesserato && socioData.codice) {
                 const tesseratoRequest = new sql.Request(transaction);
                 tesseratoRequest.input('socioId', sql.Int, newSocioId);
                 tesseratoRequest.input('codice', sql.VarChar(5), socioData.codice);
                 tesseratoRequest.input('annoValidità', sql.VarChar(4), currentYear);
+                tesseratoRequest.input('dataAdesione', sql.Date, value.dataIscrizione || new Date());
                 
-                await tesseratoRequest.query(`
-                    INSERT INTO tesserati (socioId, codice, annoValidità)
-                    VALUES (@socioId, @codice, @annoValidità)
+                // Get attivitàId from codice
+                const attivitaResult = await tesseratoRequest.query(`
+                    SELECT id FROM attività WHERE codice = @codice
                 `);
+                
+                if (attivitaResult.recordset.length > 0) {
+                    tesseratoRequest.input('attivitàId', sql.Int, attivitaResult.recordset[0].id);
+                    
+                    await tesseratoRequest.query(`
+                        INSERT INTO tesserati (socioId, codice, attivitàId, annoValidità, dataAdesione)
+                        VALUES (@socioId, @codice, @attivitàId, @annoValidità, @dataAdesione)
+                    `);
+                } else {
+                    await tesseratoRequest.query(`
+                        INSERT INTO tesserati (socioId, codice, annoValidità, dataAdesione)
+                        VALUES (@socioId, @codice, @annoValidità, @dataAdesione)
+                    `);
+                }
             }
             
             if (value.isEffettivo) {
                 const effettivoRequest = new sql.Request(transaction);
                 effettivoRequest.input('socioId', sql.Int, newSocioId);
                 effettivoRequest.input('annoValidità', sql.VarChar(4), currentYear);
+                effettivoRequest.input('dataAdesione', sql.Date, value.dataIscrizione || new Date());
                 
                 await effettivoRequest.query(`
-                    INSERT INTO effettivi (socioId, annoValidità)
-                    VALUES (@socioId, @annoValidità)
+                    INSERT INTO effettivi (socioId, annoValidità, dataAdesione)
+                    VALUES (@socioId, @annoValidità, @dataAdesione)
                 `);
             }
             
@@ -272,10 +301,11 @@ async function handleCreateSocio(context, socioData) {
                 const volontarioRequest = new sql.Request(transaction);
                 volontarioRequest.input('socioId', sql.Int, newSocioId);
                 volontarioRequest.input('annoValidità', sql.VarChar(4), currentYear);
+                volontarioRequest.input('dataAdesione', sql.Date, value.dataIscrizione || new Date());
                 
                 await volontarioRequest.query(`
-                    INSERT INTO volontari (socioId, annoValidità)
-                    VALUES (@socioId, @annoValidità)
+                    INSERT INTO volontari (socioId, annoValidità, dataAdesione)
+                    VALUES (@socioId, @annoValidità, @dataAdesione)
                 `);
             }
             
@@ -285,7 +315,8 @@ async function handleCreateSocio(context, socioData) {
             return createSuccessResponse({ 
                 id: newSocioId, 
                 returnCode: true, 
-                message: 'Socio creato con successo' 
+                message: 'Socio creato con successo',
+                socio: { id: newSocioId, ...value }
             });
             
         } catch (dbError) {
@@ -313,9 +344,8 @@ async function handleUpdateSocio(context, socioData) {
                 birthplaceProvincia: socioData.provinciaNascita
             }).code;
 
-        socioData.isScaduto=1;
+        socioData.isScaduto = 1;
         const { error, value } = validateSocio(socioData);
-        
         
         if (error) {
             return createErrorResponse(400, 'Dati non validi', error.details);
@@ -370,7 +400,7 @@ async function handleUpdateSocio(context, socioData) {
             request.input('isEffettivo', sql.Int, value.isEffettivo || 0);
             request.input('isVolontario', sql.Int, value.isVolontario || 0);
             request.input('dataIscrizione', sql.Date, value.dataIscrizione || null);
-            request.input('isScaduto', sql.Int, value.isVolontario || 0);
+            request.input('isScaduto', sql.Int, value.isScaduto || 0);
             
             const result = await request.query(updateQuery);
             
@@ -379,15 +409,14 @@ async function handleUpdateSocio(context, socioData) {
                 return createErrorResponse(404, 'Socio non trovato');
             }
             
-            const getFiscalYear = (date = new Date()) => (date < new Date(date.getFullYear(), 8, 1) ? date.getFullYear() : date.getFullYear() + 1).toString();  //make function to take from 2024/2025 2025
+            const getFiscalYear = (date = new Date()) => (date < new Date(date.getFullYear(), 8, 1) ? date.getFullYear() : date.getFullYear() + 1).toString();
             const currentYear = getFiscalYear(); 
             
             // Handle tesserati status
             if (value.isTesserato && socioData.codice) {
-                // Ensure tesserato record exists
+                // Check if tesserato record exists for current year
                 const tesseratoCheck = new sql.Request(transaction);
                 tesseratoCheck.input('socioId', sql.Int, value.id);
-                tesseratoCheck.input('codice', sql.VarChar(5), socioData.attivitaId);
                 tesseratoCheck.input('annoValidità', sql.VarChar(4), currentYear);
                 
                 const tesseratoExists = await tesseratoCheck.query(`
@@ -396,10 +425,44 @@ async function handleUpdateSocio(context, socioData) {
                 `);
                 
                 if (tesseratoExists.recordset[0].count === 0) {
-                    await tesseratoCheck.query(`
-                        INSERT INTO tesserati (socioId, codice, annoValidità)
-                        VALUES (@socioId, @attivitàId, @annoValidità)
+                    tesseratoCheck.input('codice', sql.VarChar(5), socioData.codice);
+                    tesseratoCheck.input('dataAdesione', sql.Date, value.dataIscrizione || new Date());
+                    
+                    // Get attivitàId from codice
+                    const attivitaResult = await tesseratoCheck.query(`
+                        SELECT id FROM attività WHERE codice = @codice
                     `);
+                    
+                    if (attivitaResult.recordset.length > 0) {
+                        tesseratoCheck.input('attivitàId', sql.Int, attivitaResult.recordset[0].id);
+                        
+                        await tesseratoCheck.query(`
+                            INSERT INTO tesserati (socioId, codice, attivitàId, annoValidità, dataAdesione)
+                            VALUES (@socioId, @codice, @attivitàId, @annoValidità, @dataAdesione)
+                        `);
+                    } else {
+                        await tesseratoCheck.query(`
+                            INSERT INTO tesserati (socioId, codice, annoValidità, dataAdesione)
+                            VALUES (@socioId, @codice, @annoValidità, @dataAdesione)
+                        `);
+                    }
+                } else {
+                    // Update existing record
+                    tesseratoCheck.input('codice', sql.VarChar(5), socioData.codice);
+                    
+                    const attivitaResult = await tesseratoCheck.query(`
+                        SELECT id FROM attività WHERE codice = @codice
+                    `);
+                    
+                    if (attivitaResult.recordset.length > 0) {
+                        tesseratoCheck.input('attivitàId', sql.Int, attivitaResult.recordset[0].id);
+                        
+                        await tesseratoCheck.query(`
+                            UPDATE tesserati 
+                            SET codice = @codice, attivitàId = @attivitàId 
+                            WHERE socioId = @socioId AND annoValidità = @annoValidità
+                        `);
+                    }
                 }
             } else if (!value.isTesserato) {
                 // Remove tesserato records if flag is false
@@ -420,9 +483,11 @@ async function handleUpdateSocio(context, socioData) {
                 `);
                 
                 if (effettivoExists.recordset[0].count === 0) {
+                    effettivoCheck.input('dataAdesione', sql.Date, value.dataIscrizione || new Date());
+                    
                     await effettivoCheck.query(`
-                        INSERT INTO effettivi (socioId, annoValidità)
-                        VALUES (@socioId, @annoValidità)
+                        INSERT INTO effettivi (socioId, annoValidità, dataAdesione)
+                        VALUES (@socioId, @annoValidità, @dataAdesione)
                     `);
                 }
             } else {
@@ -443,9 +508,11 @@ async function handleUpdateSocio(context, socioData) {
                 `);
                 
                 if (volontarioExists.recordset[0].count === 0) {
+                    volontarioCheck.input('dataAdesione', sql.Date, value.dataIscrizione || new Date());
+                    
                     await volontarioCheck.query(`
-                        INSERT INTO volontari (socioId, annoValidità)
-                        VALUES (@socioId, @annoValidità)
+                        INSERT INTO volontari (socioId, annoValidità, dataAdesione)
+                        VALUES (@socioId, @annoValidità, @dataAdesione)
                     `);
                 }
             } else {
@@ -473,3 +540,178 @@ async function handleUpdateSocio(context, socioData) {
     }
 }
 
+async function handleRetrieveLibroSoci(context, tipoSocio, annoValidita) {
+    try {
+        if (!tipoSocio) {
+            return createErrorResponse(400, 'Tipo socio richiesto');
+        }
+        
+        const tipo = parseInt(tipoSocio);
+        const anno = parseInt(annoValidita) || new Date().getFullYear();
+        
+        context.log('Recupero libro soci:', { tipo, anno });
+        
+        const pool = await getPool();
+        const request = pool.request();
+        
+        let query = '';
+        
+        // Determina la query in base al tipo di socio
+        switch (tipo) {
+            case 1: // Effettivi
+                query = `
+                    SELECT 
+                        s.id,
+                        s.nome,
+                        s.cognome,
+                        s.codiceFiscale,
+                        s.dataNascita,
+                        s.comuneNascita,
+                        s.provinciaNascita,
+                        s.email,
+                        s.telefono,
+                        s.dataIscrizione,
+                        e.annoValidità,
+                        ROW_NUMBER() OVER (ORDER BY s.cognome, s.nome) as numeroSocio
+                    FROM soci s
+                    INNER JOIN effettivi e ON s.id = e.socioId
+                    WHERE e.annoValidità = @anno
+                    ORDER BY s.cognome, s.nome
+                `;
+                break;
+                
+            case 2: // Volontari
+                query = `
+                    SELECT 
+                        s.id,
+                        s.nome,
+                        s.cognome,
+                        s.codiceFiscale,
+                        s.dataNascita,
+                        s.comuneNascita,
+                        s.provinciaNascita,
+                        s.email,
+                        s.telefono,
+                        s.dataIscrizione,
+                        v.annoValidità,
+                        ROW_NUMBER() OVER (ORDER BY s.cognome, s.nome) as numeroSocio
+                    FROM soci s
+                    INNER JOIN volontari v ON s.id = v.socioId
+                    WHERE v.annoValidità = @anno
+                    ORDER BY s.cognome, s.nome
+                `;
+                break;
+                
+            case 3: // Tesserati
+                query = `
+                    SELECT 
+                        s.id,
+                        s.nome,
+                        s.cognome,
+                        s.codiceFiscale,
+                        s.dataNascita,
+                        s.comuneNascita,
+                        s.provinciaNascita,
+                        s.email,
+                        s.telefono,
+                        s.dataIscrizione,
+                        t.annoValidità,
+                        t.codice,
+                        a.nome as attivitaNome,
+                        ROW_NUMBER() OVER (ORDER BY s.cognome, s.nome) as numeroSocio
+                    FROM soci s
+                    INNER JOIN tesserati t ON s.id = t.socioId
+                    LEFT JOIN mappingCodici a ON t.codice = a.codice
+                    WHERE t.annoValidità = @anno
+                    ORDER BY s.cognome, s.nome
+                `;
+                break;
+                
+            default:
+                return createErrorResponse(400, 'Tipo socio non valido. Valori consentiti: 1=Effettivi, 2=Volontari, 3=Tesserati');
+        }
+        
+        request.input('anno', sql.VarChar(4), anno.toString());
+        
+        const result = await request.query(query);
+        
+        // Normalize response data
+        const normalizedItems = result.recordset.map(item => ({
+            id: item.id,
+            nome: item.nome,
+            cognome: item.cognome,
+            codiceFiscale: item.codiceFiscale,
+            dataNascita: item.dataNascita,
+            comuneNascita: item.comuneNascita,
+            provinciaNascita: item.provinciaNascita,
+            email: item.email,
+            telefono: item.telefono,
+            dataIscrizione: item.dataIscrizione,
+            annoValidità: item.annoValidità,
+            numeroSocio: item.numeroSocio,
+            // Per i tesserati, includi anche informazioni sull'attività
+            ...(tipo === 3 && {
+                codice: item.codice,
+                attivitaNome: item.attivitaNome
+            })
+        }));
+        
+        context.log(`${result.recordset.length} soci trovati per tipo ${tipo}, anno ${anno}`);
+        return createSuccessResponse({ 
+            items: normalizedItems,
+            tipo: tipo,
+            anno: anno,
+            count: normalizedItems.length
+        });
+        
+    } catch (error) {
+        context.log('Errore nel recupero libro soci:', error);
+        return createErrorResponse(500, 'Errore nel recupero libro soci', error.message);
+    }
+}
+
+async function handleRetrieveStats(context) {
+    try {
+        const pool = await getPool();
+        const request = pool.request();
+        
+        // Get current year
+        const currentYear = new Date().getFullYear();
+        
+        // Get stats for current year
+        const statsQuery = `
+            SELECT 
+                COUNT(*) as totSoci,
+                SUM(CASE WHEN isEffettivo = 1 THEN 1 ELSE 0 END) as totEffettivi,
+                SUM(CASE WHEN isTesserato = 1 THEN 1 ELSE 0 END) as totTesserati,
+                SUM(CASE WHEN isVolontario = 1 THEN 1 ELSE 0 END) as totVolontari,
+                SUM(CASE WHEN scadenzaCertificato < GETDATE() THEN 1 ELSE 0 END) as certificatiScaduti,
+                SUM(CASE WHEN scadenzaCertificato BETWEEN GETDATE() AND DATEADD(MONTH, 1, GETDATE()) THEN 1 ELSE 0 END) as certificatiInScadenza
+            FROM soci
+            WHERE created_at >= DATEFROMPARTS(@currentYear, 9, 1) 
+               OR created_at >= DATEFROMPARTS(@previousYear, 9, 1)
+        `;
+        
+        request.input('currentYear', sql.Int, currentYear);
+        request.input('previousYear', sql.Int, currentYear - 1);
+        
+        const statsResult = await request.query(statsQuery);
+        const stats = statsResult.recordset[0];
+        
+        context.log('Statistiche soci recuperate:', stats);
+        return createSuccessResponse({
+            totSoci: stats.totSoci || 0,
+            sociAttivi: (stats.totEffettivi || 0) + (stats.totTesserati || 0) + (stats.totVolontari || 0),
+            totEffettivi: stats.totEffettivi || 0,
+            totTesserati: stats.totTesserati || 0,
+            totVolontari: stats.totVolontari || 0,
+            certificatiScaduti: stats.certificatiScaduti || 0,
+            certificatiInScadenza: stats.certificatiInScadenza || 0,
+            tasseDaPagare: 0 // This would need to be calculated based on business logic
+        });
+        
+    } catch (error) {
+        context.log('Errore nel recupero statistiche:', error);
+        return createErrorResponse(500, 'Errore nel recupero statistiche', error.message);
+    }
+}
