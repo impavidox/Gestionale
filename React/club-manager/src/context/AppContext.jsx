@@ -44,24 +44,6 @@ export const AppProvider = ({ children }) => {
     };
   }, []);
 
-  // Caricamento delle impostazioni all'avvio
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const response = await api.get(endpoints.SETTING.GET_SETTING);
-        setConf(response.data);
-      } catch (error) {
-        console.error('Errore nel caricamento delle impostazioni:', error);
-        // Set default config to prevent errors
-        setConf({
-          clubName: 'Club Manager',
-          appVersion: '1.0.0'
-        });
-      }
-    };
-
-    fetchSettings();
-  }, []);
 
   // Caricamento dell'anno sportivo attuale
   useEffect(() => {

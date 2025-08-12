@@ -52,16 +52,6 @@ const SocioFilters = ({
   const [selectedAnno, setSelectedAnno] = useState(null);
   const [selectedScadenza, setSelectedScadenza] = useState(scadenzaOptions[0]);
 
-  // Debug: Log stato corrente
-  useEffect(() => {
-    console.log('SocioFilters - Current filters:', filters);
-    console.log('SocioFilters - Selected values:', {
-      famiglia: selectedFamiglia,
-      attivita: selectedAttivita,
-      anno: selectedAnno,
-      scadenza: selectedScadenza
-    });
-  }, [filters, selectedFamiglia, selectedAttivita, selectedAnno, selectedScadenza]);
 
   // Caricamento iniziale dei dati
   useEffect(() => {
@@ -253,17 +243,6 @@ const SocioFilters = ({
         {showError && (
           <Alert variant="warning" onClose={() => setShowError(false)} dismissible>
             {error}
-          </Alert>
-        )}
-        
-        {/* Debug info in development */}
-        {process.env.NODE_ENV === 'development' && (
-          <Alert variant="info" className="mb-3">
-            <small>
-              <strong>Debug:</strong><br/>
-              Filters: {JSON.stringify(filters, null, 2)}<br/>
-              Callbacks: onSearch={onSearch ? '✓' : '✗'}, onPrint={onPrint ? '✓' : '✗'}, onEmail={onEmail ? '✓' : '✗'}
-            </small>
           </Alert>
         )}
 

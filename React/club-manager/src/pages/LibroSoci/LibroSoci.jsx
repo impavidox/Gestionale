@@ -42,11 +42,11 @@ const LibroSoci = () => {
         setLoading(true);
         
         // Carica anno sportivo corrente
-        //const annoResponse = await parametriService.retrieveAnnoSportiva();
-        //const currentYear = annoResponse.data.data || annoResponse.data;
-        const currentYear='2024/2025'
+        // const annoResponse = await parametriService.retrieveAnnoSportiva();
+        // const currentYear = annoResponse.data.data || annoResponse.data;
+        
         // Crea array di anni (anno corrente e precedenti)
-        const currentYearNum = parseInt(currentYear.split('/')[0]);
+        const currentYearNum = 2025;
         const yearsArray = [];
         for (let i = 0; i < 5; i++) {
           const year = currentYearNum - i;
@@ -79,7 +79,8 @@ const LibroSoci = () => {
   // Gestione del cambio di tipo socio
   const handleTipoSocioChange = (name, selectedValue) => {
     setTipoSocio(selectedValue.value);
-    setTitolo(`Libro ${selectedValue.value.hd}`);
+    console.log(selectedValue)
+    setTitolo(`Libro ${selectedValue.label}`);
   };
   
   // Gestione del cambio di anno
@@ -105,6 +106,7 @@ const LibroSoci = () => {
         tipoSocio.value,
         annoValidita.id
       );
+      
       setSoci(response.data.data.items);
       
       setLoading(false);
@@ -144,6 +146,68 @@ const LibroSoci = () => {
       return `${socio.comuneNascita} (${socio.provinciaNascita})`;
     }
     return socio.comuneNascita || 'N/D';
+  };
+
+  // Configura colonne dinamiche in base al tipo di socio
+  const getTableColumns = () => {
+    // Colonne per tesserati (senza N. Socio e Data Adesione)
+    if (tipoSocio.value === 3) {
+      return [
+        { key: 'cognome', label: 'Cognome', width: '18%' },
+        { key: 'nome', label: 'Nome', width: '18%' },
+        { key: 'dataNascita', label: 'Data di Nascita', width: '12%' },
+        { key: 'luogoNascita', label: 'Luogo di Nascita', width: '20%' },
+        { key: 'codiceFiscale', label: 'Codice Fiscale', width: '16%' },
+        { key: 'codice', label: 'Codice', width: '8%' },
+        { key: 'attivitaNome', label: 'Attività', width: '15%' },
+        { key: 'email', label: 'Email', width: '13%' }
+      ];
+    }
+
+    // Colonne base per effettivi e volontari
+    const baseColumns = [
+      { key: 'numeroSocio', label: 'N. Socio', width: '8%' },
+      { key: 'dataAdesione', label: 'Data Adesione', width: '12%' },
+      { key: 'cognome', label: 'Cognome', width: '15%' },
+      { key: 'nome', label: 'Nome', width: '15%' },
+      { key: 'dataNascita', label: 'Data di Nascita', width: '12%' },
+      { key: 'luogoNascita', label: 'Luogo di Nascita', width: '18%' },
+      { key: 'codiceFiscale', label: 'Codice Fiscale', width: '15%' },
+      { key: 'email', label: 'Email', width: '15%' }
+    ];
+
+
+    return baseColumns;
+  };
+
+  // Renderizza il valore della cella in base alla colonna
+  const renderCellValue = (socio, column, index) => {
+    switch (column.key) {
+      case 'numeroSocio':
+        return <strong>{generateNumeroSocio(index)}</strong>;
+      case 'dataAdesione':
+        return formatDateDisplay(socio.dataAdesione || socio.dataIscrizione);
+      case 'cognome':
+        return <strong>{socio.cognome}</strong>;
+      case 'nome':
+        return socio.nome;
+      case 'dataNascita':
+        return formatDateDisplay(socio.dataNascita);
+      case 'luogoNascita':
+        return formatLuogoNascita(socio);
+      case 'codiceFiscale':
+        return <span className="font-monospace">{socio.codiceFiscale}</span>;
+      case 'email':
+        return socio.email || 'N/D';
+      case 'telefono':
+        return socio.telefono || 'N/D';
+      case 'codice':
+        return socio.codice || 'N/D';
+      case 'attivitaNome':
+        return socio.attivitaNome || 'N/D';
+      default:
+        return 'N/D';
+    }
   };
   
   return (
@@ -219,33 +283,64 @@ const LibroSoci = () => {
             <Table striped bordered hover responsive>
               <thead>
                 <tr>
-                  <th>N. Socio</th>
-                  <th>Data Adesione</th>
-                  <th>Cognome</th>
-                  <th>Nome</th>
-                  <th>Data di Nascita</th>
-                  <th>Luogo di Nascita</th>
-                  <th>Codice Fiscale</th>
-                  <th>Email</th>
+                  {getTableColumns().map((column) => (
+                    <th key={column.key} style={{ width: column.width }}>
+                      {column.label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {soci.map((socio, index) => (
                   <tr key={socio.id}>
-                    <td className="text-center">
-                      <strong>{generateNumeroSocio(index)}</strong>
-                    </td>
-                    <td>{formatDateDisplay(socio.dataAdesione || socio.dataIscrizione)}</td>
-                    <td><strong>{socio.cognome}</strong></td>
-                    <td>{socio.nome}</td>
-                    <td>{formatDateDisplay(socio.dataNascita)}</td>
-                    <td>{formatLuogoNascita(socio)}</td>
-                    <td className="font-monospace">{socio.codiceFiscale}</td>
-                    <td>{socio.email || 'N/D'}</td>
+                    {getTableColumns().map((column) => (
+                      <td 
+                        key={column.key} 
+                        className={
+                          column.key === 'numeroSocio' ? 'text-center' :
+                          column.key === 'codiceFiscale' ? 'font-monospace' :
+                          column.key === 'email' ? 'small' : ''
+                        }
+                      >
+                        {renderCellValue(socio, column, index)}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
             </Table>
+
+            {/* Riepilogo specifico per tipo */}
+            <div className="mt-4 p-3 bg-light rounded">
+              <Row>
+                <Col md={6}>
+                  <h6>Riepilogo {tipoSocio?.name}</h6>
+                  <p className="mb-1"><strong>Totale soci:</strong> {soci.length}</p>
+                  <p className="mb-1"><strong>Anno sportivo:</strong> {annoValidita?.name}</p>
+                </Col>
+                <Col md={6}>
+                  {tipoSocio && tipoSocio.code === 3 && (
+                    <div>
+                      <h6>Attività rappresentate</h6>
+                      <p className="mb-0">
+                        {Array.from(new Set(soci.map(s => s.attivitaNome).filter(Boolean))).length} attività diverse
+                      </p>
+                    </div>
+                  )}
+                  {tipoSocio && (tipoSocio.code === 1 || tipoSocio.code === 2) && (
+                    <div>
+                      <h6>Contatti</h6>
+                      <p className="mb-1">
+                        <strong>Con email:</strong> {soci.filter(s => s.email).length}
+                      </p>
+                      <p className="mb-0">
+                        <strong>Con telefono:</strong> {soci.filter(s => s.telefono).length}
+                      </p>
+                    </div>
+                  )}
+                </Col>
+              </Row>
+            </div>
           </Card.Body>
         </Card>
       )}

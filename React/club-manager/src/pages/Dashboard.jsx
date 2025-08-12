@@ -11,38 +11,6 @@ import primaNotaService from '../api/services/primaNotaService';
 const Dashboard = () => {
   const { annoSportiva } = useApp();
   
-  const [stats, setStats] = useState({
-    totSoci: 0,
-    sociAttivi: 0,
-    tasseDaPagare: 0,
-    certificatiScaduti: 0,
-    totaleIncassi: 0
-  });
-  
-  // Carica i dati statistici all'avvio
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        // Carica statistiche soci
-        const sociResponse = await socioService.getStats();
-        
-        // Carica statistiche prima nota
-        const primaNotaResponse = await primaNotaService.getStatistic();
-        
-        setStats({
-          totSoci: sociResponse.data.totSoci || 0,
-          sociAttivi: sociResponse.data.sociAttivi || 0,
-          tasseDaPagare: sociResponse.data.tasseDaPagare || 0,
-          certificatiScaduti: sociResponse.data.certificatiScaduti || 0,
-          totaleIncassi: primaNotaResponse.data.totale || 0
-        });
-      } catch (error) {
-        console.error('Errore nel caricamento delle statistiche:', error);
-      }
-    };
-    
-    fetchStats();
-  }, []);
 
   return (
     <Container className="mt-4">
@@ -107,44 +75,6 @@ const Dashboard = () => {
                   Libro Soci
                 </Button>
               </div>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-      
-      <Row className="mt-3">
-        <Col md={3} className="mb-4">
-          <Card className="text-center h-100">
-            <Card.Body>
-              <Card.Title>Totale Soci</Card.Title>
-              <h2>{stats.totSoci}</h2>
-            </Card.Body>
-          </Card>
-        </Col>
-        
-        <Col md={3} className="mb-4">
-          <Card className="text-center h-100">
-            <Card.Body>
-              <Card.Title>Soci Attivi</Card.Title>
-              <h2>{stats.sociAttivi}</h2>
-            </Card.Body>
-          </Card>
-        </Col>
-        
-        <Col md={3} className="mb-4">
-          <Card className="text-center h-100">
-            <Card.Body>
-              <Card.Title>Certificati Scaduti</Card.Title>
-              <h2>{stats.certificatiScaduti}</h2>
-            </Card.Body>
-          </Card>
-        </Col>
-        
-        <Col md={3} className="mb-4">
-          <Card className="text-center h-100">
-            <Card.Body>
-              <Card.Title>Totale Incassi</Card.Title>
-              <h2>€ {stats.totaleIncassi.toFixed(2)}</h2>
             </Card.Body>
           </Card>
         </Col>
