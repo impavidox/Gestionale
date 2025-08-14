@@ -12,7 +12,7 @@ const Header = () => {
   return (
     <Navbar bg="primary" variant="dark" expand="lg">
       <Container>
-        <Navbar.Brand as={Link} to="/">Club Manager</Navbar.Brand>
+        <Navbar.Brand as={Link} to="/"><img src='/logo.png' width={150}></img></Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
