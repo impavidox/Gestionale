@@ -151,11 +151,11 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       try {
         const loadExistingSocio = async () => {
           setLoading(true);
-          
+          console.log(existingSocio)
           // Estrai dati di nascita
           const dObj = {};
-          if (existingSocio.birhDate) {
-            const birthDate = new Date(existingSocio.birhDate);
+          if (existingSocio.dataNascita) {
+            const birthDate = new Date(existingSocio.dataNascita);
             dObj.jj = birthDate.getDate();
             dObj.mm = birthDate.getMonth();
             dObj.yyyy = birthDate.getFullYear();
@@ -201,13 +201,12 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
           }
           
           // Imposta i dati di nascita
-          setBirthcomune(existingSocio.birthCity);
-          setBirthCode(existingSocio.birthCityCode);
-          setBirthProv(existingSocio.birthProv);
+          setBirthcomune(existingSocio.comuneNascita);
+          setBirthProv(existingSocio.provinciaNascita);
           
           // Carica i comuni di nascita
-          if (existingSocio.birthProv) {
-            const communiResponse = await geographicService.retrievecomune(existingSocio.birthProv.trim());
+          if (existingSocio.provinciaNascita) {
+            const communiResponse = await geographicService.retrievecomune(existingSocio.provinciaNascita.trim());
             setListCommNascita(communiResponse.data);
             
             // Seleziona il comune di nascita
@@ -319,7 +318,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       setFormData(prev => ({
         ...prev,
         tipoSocio: {
-          ...prev.tipoSocio,
+         // ...prev.tipoSocio,
           [tipoKey]: numericValue
         }
       }));
@@ -333,6 +332,12 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
           setActivitiesList([]);
           setFormData(prev => ({ ...prev, activityId: null }));
         }
+      }
+      else {
+        setViewFede();
+        setSelectedActivity(null);
+        setActivitiesList([]);
+        setFormData(prev => ({ ...prev, activityId: null }));
       }
     } else if (typeof value === 'boolean') {
       // Convert the boolean to 1 (true) or 0 (false) for other checkboxes
