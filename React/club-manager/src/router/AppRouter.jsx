@@ -58,9 +58,16 @@ const AppRouter = () => {
         
         {/* Route con layout per stampa */}
         <Route path="/" element={<PrintLayout />}>
-          <Route path="stampa-libro-soci/:affiliazione/:begin/:end/:tipo" element={<StampaLibroSoci />} />
-          {/* Updated: Prima nota print route uses query parameters instead of path parameters */}
-          <Route path="stampa-prima-nota" element={<StampaPrimaNota />} />
+          {/* Updated route for StampaLibroSoci to match the new URL pattern */}
+          <Route path="stampa-libro-soci" element={<StampaLibroSoci />} />
+          
+          {/* Legacy route support - redirects to new format */}
+          <Route 
+            path="stampa-libro-soci/:affiliazione/:begin/:end/:tipo" 
+            element={<Navigate to="/stampa-libro-soci" replace />} 
+          />
+          
+          <Route path="stampa-prima-nota/:type" element={<StampaPrimaNota />} />
           <Route path="ricevute/stampa" element={<StampaRicevuta />} />
           <Route path="schede/stampa" element={<StampaRicevuta isScheda={true} />} />
           <Route path="ricerca" element={<RicercaStampa />} />

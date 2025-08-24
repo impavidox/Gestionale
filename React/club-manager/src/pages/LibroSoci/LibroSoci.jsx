@@ -59,9 +59,12 @@ const LibroSoci = () => {
         
         setAnni(yearsArray);
         setAnnoValidita(yearsArray[0]); // Imposta anno corrente come default
-        
+        console.log(elencoTipi  )
         // Imposta tipo di default
         setTipoSocio(elencoTipi[0]);
+        
+        // Set initial title
+        setTitolo(`Libro ${elencoTipi[0].hd}`);
         
         setLoading(false);
       } catch (err) {
@@ -80,7 +83,7 @@ const LibroSoci = () => {
   const handleTipoSocioChange = (name, selectedValue) => {
     setTipoSocio(selectedValue.value);
     console.log(selectedValue)
-    setTitolo(`Libro ${selectedValue.label}`);
+    setTitolo(`Libro ${elencoTipi[(selectedValue.value.value)-1].hd}`);
   };
   
   // Gestione del cambio di anno
@@ -107,7 +110,7 @@ const LibroSoci = () => {
         annoValidita.id
       );
       
-      setSoci(response.data.data.items);
+      setSoci(response.data.data.items || response.data.data || response.data || []);
       
       setLoading(false);
     } catch (err) {
@@ -128,11 +131,9 @@ const LibroSoci = () => {
       return;
     }
     
-    goNewTab('stampa-libro-soci', {
-      tipo: tipoSocio.code,
-      anno: annoValidita.id,
-      titolo: titolo
-    });
+    // Updated to match the new URL pattern expected by the router
+    const printUrl = `/stampa-libro-soci?tipo=${tipoSocio.value}&anno=${annoValidita.id}&titolo=${encodeURIComponent(titolo)}`;
+    window.open(printUrl, '_blank');
   };
 
   // Genera numero socio progressivo
@@ -151,7 +152,7 @@ const LibroSoci = () => {
   // Configura colonne dinamiche in base al tipo di socio
   const getTableColumns = () => {
     // Colonne per tesserati (senza N. Socio e Data Adesione)
-    if (tipoSocio.value === 3) {
+    if (tipoSocio && tipoSocio.code === 3) {
       return [
         { key: 'cognome', label: 'Cognome', width: '18%' },
         { key: 'nome', label: 'Nome', width: '18%' },
@@ -175,7 +176,6 @@ const LibroSoci = () => {
       { key: 'codiceFiscale', label: 'Codice Fiscale', width: '15%' },
       { key: 'email', label: 'Email', width: '15%' }
     ];
-
 
     return baseColumns;
   };
@@ -309,38 +309,6 @@ const LibroSoci = () => {
                 ))}
               </tbody>
             </Table>
-
-            {/* Riepilogo specifico per tipo */}
-            <div className="mt-4 p-3 bg-light rounded">
-              <Row>
-                <Col md={6}>
-                  <h6>Riepilogo {tipoSocio?.name}</h6>
-                  <p className="mb-1"><strong>Totale soci:</strong> {soci.length}</p>
-                  <p className="mb-1"><strong>Anno sportivo:</strong> {annoValidita?.name}</p>
-                </Col>
-                <Col md={6}>
-                  {tipoSocio && tipoSocio.code === 3 && (
-                    <div>
-                      <h6>Attività rappresentate</h6>
-                      <p className="mb-0">
-                        {Array.from(new Set(soci.map(s => s.attivitaNome).filter(Boolean))).length} attività diverse
-                      </p>
-                    </div>
-                  )}
-                  {tipoSocio && (tipoSocio.code === 1 || tipoSocio.code === 2) && (
-                    <div>
-                      <h6>Contatti</h6>
-                      <p className="mb-1">
-                        <strong>Con email:</strong> {soci.filter(s => s.email).length}
-                      </p>
-                      <p className="mb-0">
-                        <strong>Con telefono:</strong> {soci.filter(s => s.telefono).length}
-                      </p>
-                    </div>
-                  )}
-                </Col>
-              </Row>
-            </div>
           </Card.Body>
         </Card>
       )}
