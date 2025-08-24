@@ -67,12 +67,29 @@ export const formatDateForApi = (date) => {
  */
 export const formatDateDisplay = (date) => {
   if (!date) return '';
-  
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '';
-  
+
+  let d;
+
+  // Already a Date object
+  if (date instanceof Date) {
+    d = date;
+  }
+  // dd-mm-yyyy string
+  else if (typeof date === 'string' && /^\d{2}-\d{2}-\d{4}$/.test(date)) {
+    const [day, month, year] = date.split('-').map(Number);
+    d = new Date(year, month - 1, day);
+  }
+  // Anything else (ISO, timestamp, etc.)
+  else {
+    d = new Date(date);
+  }
+
+  // Check if valid date
+  if (isNaN(d)) return '';
+
   return d.toLocaleDateString('it-IT');
 };
+
 
 /**
  * Format date for input fields (YYYY-MM-DD)

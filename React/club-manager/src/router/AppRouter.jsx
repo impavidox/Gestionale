@@ -59,7 +59,8 @@ const AppRouter = () => {
         {/* Route con layout per stampa */}
         <Route path="/" element={<PrintLayout />}>
           <Route path="stampa-libro-soci/:affiliazione/:begin/:end/:tipo" element={<StampaLibroSoci />} />
-          <Route path="stampa-prima-nota/:type" element={<StampaPrimaNota />} />
+          {/* Updated: Prima nota print route uses query parameters instead of path parameters */}
+          <Route path="stampa-prima-nota" element={<StampaPrimaNota />} />
           <Route path="ricevute/stampa" element={<StampaRicevuta />} />
           <Route path="schede/stampa" element={<StampaRicevuta isScheda={true} />} />
           <Route path="ricerca" element={<RicercaStampa />} />
