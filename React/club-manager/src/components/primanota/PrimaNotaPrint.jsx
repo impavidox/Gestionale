@@ -205,6 +205,7 @@ const PrimaNotaPrint = ({ type, startDate, endDate }) => {
         <div className="print-page">
           {/* Intestazione documento */}
           <div className="document-header">
+            <img src='./headercso.jpg'></img>
             <h1 className="document-title">{getTitolo(type)}</h1>
             <h3 className="document-subtitle">{formatPeriodo()}</h3>
             <p className="print-date">Data stampa: {formatDateDisplay(new Date())}</p>

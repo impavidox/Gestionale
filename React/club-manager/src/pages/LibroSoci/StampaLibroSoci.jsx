@@ -152,10 +152,9 @@ const StampaLibroSoci = () => {
       <Card className="shadow-sm">
         <Card.Body>
           <div className="text-center mb-4">
+            <img src='./headercso.jpg'></img>
             <h2>{titoloParam || getTipoNome(tipo)}</h2>
             <p className="mb-1">Anno Sportivo: {anno}/{anno + 1}</p>
-            <p className="mb-1">Totale soci: {soci.length}</p>
-            <p>Data stampa: {formatDateDisplay(new Date())}</p>
           </div>
           
           {soci.length === 0 ? (
@@ -195,7 +194,7 @@ const StampaLibroSoci = () => {
             </>
           )}
           
-          <div className="row mt-5 pt-5">
+          {/* <div className="row mt-5 pt-5">
             <div className="col-6 text-center">
               <p><strong>Il Presidente</strong></p>
               <div className="mt-5">_______________________</div>
@@ -204,7 +203,7 @@ const StampaLibroSoci = () => {
               <p><strong>Il Segretario</strong></p>
               <div className="mt-5">_______________________</div>
             </div>
-          </div>
+          </div> */}
         </Card.Body>
       </Card>
     </Container>

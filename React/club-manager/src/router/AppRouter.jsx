@@ -67,7 +67,7 @@ const AppRouter = () => {
             element={<Navigate to="/stampa-libro-soci" replace />} 
           />
           
-          <Route path="stampa-prima-nota/:type" element={<StampaPrimaNota />} />
+          <Route path="stampa-prima-nota/" element={<StampaPrimaNota />} />
           <Route path="ricevute/stampa" element={<StampaRicevuta />} />
           <Route path="schede/stampa" element={<StampaRicevuta isScheda={true} />} />
           <Route path="ricerca" element={<RicercaStampa />} />

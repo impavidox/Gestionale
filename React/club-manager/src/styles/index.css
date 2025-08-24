@@ -181,3 +181,10 @@ body {
     display: none;
   }
 }
+.document-header img {
+  width: 100%;
+  height: auto;
+  display: block; /* removes extra bottom spacing */
+  object-fit: contain; /* keeps proportions without cropping */
+}
+  
