@@ -48,20 +48,20 @@ export const AppProvider = ({ children }) => {
   // Caricamento dell'anno sportivo attuale
   useEffect(() => {
     const fetchAnnoSportiva = async () => {
-      try {
-        const response = await api.get(endpoints.PARAMS.RETRIEVE_ANNO_SPORTIVA);
-        const annoData = response.data?.data || response.data;
-        setAnnoSportiva(annoData);
-        console.log('Anno sportiva:', annoData?.annoName);
-      } catch (error) {
-        console.error('Errore nel caricamento dell\'anno sportivo:', error);
+      // try {
+      //   const response = await api.get(endpoints.PARAMS.RETRIEVE_ANNO_SPORTIVA);
+      //   const annoData = response.data?.data || response.data;
+      //   setAnnoSportiva(annoData);
+      //   console.log('Anno sportiva:', annoData?.annoName);
+      // } catch (error) {
+      //   console.error('Errore nel caricamento dell\'anno sportivo:', error);
         // Set fallback year
         const currentYear = new Date().getFullYear();
         setAnnoSportiva({
           id: 1,
           annoName: `${currentYear}/${currentYear + 1}`
         });
-      }
+      
     };
 
     fetchAnnoSportiva();

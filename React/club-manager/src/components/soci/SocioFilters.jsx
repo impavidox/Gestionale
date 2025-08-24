@@ -35,7 +35,7 @@ const SocioFilters = ({
   const [showError, setShowError] = useState(false);
 
   // Stato per i dati delle select
-  const [famiglie, setFamiglie] = useState([]);
+  const [sezioni, setSezioni] = useState([]);
   const [attivita, setAttivita] = useState([]);
   const [anni, setAnni] = useState([]);
   
@@ -47,7 +47,7 @@ const SocioFilters = ({
   ]);
 
   // Stato per le selezioni
-  const [selectedFamiglia, setSelectedFamiglia] = useState(null);
+  const [selectedSezione, setSelectedSezione] = useState(null);
   const [selectedAttivita, setSelectedAttivita] = useState(null);
   const [selectedAnno, setSelectedAnno] = useState(null);
   const [selectedScadenza, setSelectedScadenza] = useState(scadenzaOptions[0]);
@@ -63,25 +63,23 @@ const SocioFilters = ({
       try {
         console.log('SocioFilters - Loading filter data...');
         
-        // Carica famiglie con fallback
-        let famiglieData = [];
+        // Carica sezioni con fallback
+        let sezioniData = [];
         try {
-          const famiglieResponse = await activityService.retrieveFamilies();
-          console.log('Famiglie response:', famiglieResponse);
-          famiglieData = famiglieResponse.data || [];
-          setFamiglie(famiglieData);
+          const sezioneResponse = await activityService.retrieveSezioni();
+          console.log('Sezioni response:', sezioneResponse);
+          sezioniData = sezioneResponse.data.data || [];
+          setSezioni(sezioniData);
         } catch (err) {
-          console.warn('Failed to load families, using fallback:', err);
-          // Fallback famiglie
-          famiglieData = [
-            { id: 1, name: 'Arti Marziali' },
-            { id: 2, name: 'Sport Acquatici' },
-            { id: 3, name: 'Sport di Squadra' },
-            { id: 4, name: 'Ginnastica e Fitness' },
-            { id: 5, name: 'Sport Individuali' },
-            { id: 6, name: 'Attività Ricreative' }
+          console.warn('Failed to load sezioni, using fallback:', err);
+          // Fallback sezioni
+          sezioniData = [
+            { id: 1, name: 'Sport' },
+            { id: 2, name: 'Giovani' },
+            { id: 3, name: 'Anziani' },
+            { id: 4, name: 'Ricreativa' },
           ];
-          setFamiglie(famiglieData);
+          setSezioni(sezioniData);
         }
         
         // Carica anni con fallback
@@ -110,7 +108,7 @@ const SocioFilters = ({
         }
         
         console.log('SocioFilters - Data loaded successfully');
-        console.log('Famiglie:', famiglieData);
+        console.log('sezioni:', sezioniData);
         console.log('Anni:', anniData);
         
       } catch (error) {
@@ -125,24 +123,19 @@ const SocioFilters = ({
     fetchFilterData();
   }, []);
 
-  // Gestione cambio famiglia
-  const handleFamigliaChange = async (name, selectedValue) => {
-    console.log('Famiglia selected:', selectedValue);
-    setSelectedFamiglia(selectedValue.value);
+  // Gestione cambio Sezione
+  const handleSezioneChange = async (name, selectedValue) => {
+    console.log('Sezione selected:', selectedValue);
+    let idSezione=sezioni.find(item=>item.nome===selectedValue.value.value).id
+    setSelectedSezione(selectedValue.value);
     setSelectedAttivita(null);
     setAttivita([]);
-    setFilters(prev => ({ 
-      ...prev, 
-      attivita: 0,
-      famiglia: selectedValue.value.id,
-      attivitaDescriptionSelected: null
-    }));
     
-    // Carica attività per la famiglia selezionata
+    // Carica attività per la Sezione selezionata
     try {
-      const response = await activityService.retrieveActivitiesByFamily(selectedValue.value.value);
-      console.log('Attivita loaded for family:', response);
-      setAttivita(response.data || []);
+      const response = await activityService.retrieveActivitiesBySezione(idSezione);
+      console.log('Attivita loaded for sezione:', response);
+      setAttivita(response.data.data || []);
     } catch (error) {
       console.error('Errore nel caricamento delle attività:', error);
       // Fallback attività
@@ -160,8 +153,7 @@ const SocioFilters = ({
     setSelectedAttivita(selectedValue.value);
     setFilters(prev => ({ 
       ...prev, 
-      attivita: selectedValue.value.id,
-      attivitaDescriptionSelected: selectedValue.value.description
+      attivita: attivita.find(item=>item.nome===selectedValue.value.value).id,
     }));
   };
 
@@ -270,12 +262,12 @@ const SocioFilters = ({
           <Row>
             <Col md={6}>
               <SelectField
-                label="Famiglia"
-                name="famiglia"
-                value={selectedFamiglia}
-                options={famiglie}
-                onChange={handleFamigliaChange}
-                placeholder="Seleziona famiglia di attività"
+                label="Sezione"
+                name="sezione"
+                value={selectedSezione}
+                options={sezioni.map(item=>item.nome)}
+                onChange={handleSezioneChange}
+                placeholder="Seleziona sezione dell' attività"
               />
             </Col>
             <Col md={6}>
@@ -283,10 +275,10 @@ const SocioFilters = ({
                 label="Attività"
                 name="attivita"
                 value={selectedAttivita}
-                options={attivita}
+                options={attivita.map(item=>item.nome)}
                 onChange={handleAttivitaChange}
-                isDisabled={!selectedFamiglia}
-                placeholder={!selectedFamiglia ? "Prima seleziona una famiglia" : "Seleziona attività"}
+                isDisabled={!selectedSezione}
+                placeholder={!selectedSezione ? "Prima seleziona una sezione" : "Seleziona attività"}
               />
             </Col>
           </Row>

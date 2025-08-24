@@ -74,11 +74,12 @@ app.run(function($rootScope,$filter, $resource,$state,$location,$stateParams, $t
 			$rootScope.conf = x;
 	});
 
-	var anni = rest('params/retrieveAnnoSportiva').get();
-	anni.$promise.then(function(x){
-		$rootScope.annoSportiva = x;
-		console.log('Anno sportiva :'  + $rootScope.annoSportiva.annoName);	
-	});
+	// var anni = rest('params/retrieveAnnoSportiva').get();
+	// anni.$promise.then(function(x){
+	// 	$rootScope.annoSportiva = x;
+	// 	console.log('Anno sportiva :'  + $rootScope.annoSportiva.annoName);	
+	// });
+	var anni = null
 	rest('activities/retrieveAllActivities').query()
 	   .$promise.then(function(x){
 			$rootScope.selActiv = x;

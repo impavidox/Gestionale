@@ -18,6 +18,7 @@ const parametriService = {
    * @returns {Promise} Promise con l'anno sportivo
    */
   retrieveAnnoSportiva: () => {
+    return null;
     return api.get(endpoints.PARAMS.RETRIEVE_ANNO_SPORTIVA);
   },
   

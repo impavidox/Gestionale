@@ -66,7 +66,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   const [activitiesList, setActivitiesList] = useState([]);
   
   // Stati per i selettori
-  const [selectedSesso, setSelectedSesso] = useState({ value: { id: 1, name: 'Maschio' } });
+  const [selectedSesso, setSelectedSesso] = useState(null);
   const [selectedProv, setSelectedProv] = useState(null);
   const [selectedComm, setSelectedComm] = useState(null);
   const [provRes, setProvRes] = useState(null);
@@ -190,6 +190,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
             cap: existingSocio.capResidenza || existingSocio.cap || '',
             tipoSocio: tipoSocioCheckboxes,
             certifica: existingSocio.scadenzaCertificato ? new Date(existingSocio.scadenzaCertificato) : null,
+            dataIscrizione: existingSocio.dataIscrizione,
             competition: existingSocio.isAgonistico ? 1 : 0,
             telefono: existingSocio.telefono || existingSocio.tel || '',
             email: existingSocio.email || '',
@@ -197,9 +198,9 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
           });
           
           // Imposta il sesso selector
-          const sessoValue = existingSocio.sesso === 'F' || existingSocio.sesso === 2 ? 
-            { id: 2, name: 'F' } : 
-            { id: 1, name: 'M' };
+          const sessoValue = existingSocio.sesso === 'F'? 
+            { value: 2, label: 'F' } : 
+            { value: 1, label: 'M' };
           setSelectedSesso({ value: sessoValue });
           
           // Imposta il mese di nascita selector
@@ -393,7 +394,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   // Gestione selezione sesso
   const handleSessoSelected = (name, selectedOption) => {
     setSelectedSesso(selectedOption.value);
-    setFormData(prev => ({ ...prev, sesso: selectedOption.value.id }));
+    setFormData(prev => ({ ...prev, sesso: selectedOption.value }));
   };
   
   
@@ -476,6 +477,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       
       let response;
       console.log(body)
+      console.log(formData)
       if (mode === 'C') {
         // Crea un nuovo socio
         response = await socioService.createSocio(body);
@@ -833,6 +835,18 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
                     label="Certificato per attività agonistica"
                     name="competition"
                     checked={formData.competition}
+                    onChange={handleChange}
+                  />
+                </Col>
+              </Row>
+
+              <h5 className="mt-4">Data Iscrizione</h5>
+              <Row>
+                <Col md={6}>
+                  <DateField
+                    label="Data Iscrizione"
+                    name="dataIscrizione"
+                    value={formData.dataIscrizione}
                     onChange={handleChange}
                   />
                 </Col>

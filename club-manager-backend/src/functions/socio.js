@@ -110,7 +110,7 @@ async function handleRetrieveSocio(context, params) {
         }
         
         if (attivita && attivita !== '0') {
-            query += ` AND EXISTS(SELECT 1 FROM tesserati t WHERE t.socioId = s.id AND t.attivitàId = @attivita)`;
+            query += ` AND EXISTS (SELECT 1 FROM ricevuteAttività r WHERE r.socioId = s.id AND r.attivitàId = @attivita)`;
             request.input('attivita', sql.Int, parseInt(attivita));
         }
         
@@ -263,7 +263,6 @@ async function handleCreateSocio(context, socioData) {
                 tesseratoRequest.input('socioId', sql.Int, newSocioId);
                 tesseratoRequest.input('codice', sql.VarChar(5), socioData.codice);
                 tesseratoRequest.input('annoValidità', sql.VarChar(4), currentYear);
-                tesseratoRequest.input('dataAdesione', sql.Date, value.dataIscrizione || new Date());
                 
                 // Get attivitàId from codice
                 const attivitaResult = await tesseratoRequest.query(`
@@ -274,13 +273,13 @@ async function handleCreateSocio(context, socioData) {
                     tesseratoRequest.input('attivitàId', sql.Int, attivitaResult.recordset[0].id);
                     
                     await tesseratoRequest.query(`
-                        INSERT INTO tesserati (socioId, codice, attivitàId, annoValidità, dataAdesione)
-                        VALUES (@socioId, @codice, @attivitàId, @annoValidità, @dataAdesione)
+                        INSERT INTO tesserati (socioId, codice, attivitàId, annoValidità)
+                        VALUES (@socioId, @codice, @attivitàId, @annoValidità)
                     `);
                 } else {
                     await tesseratoRequest.query(`
-                        INSERT INTO tesserati (socioId, codice, annoValidità, dataAdesione)
-                        VALUES (@socioId, @codice, @annoValidità, @dataAdesione)
+                        INSERT INTO tesserati (socioId, codice, annoValidità)
+                        VALUES (@socioId, @codice, @annoValidità)
                     `);
                 }
             }
@@ -289,11 +288,10 @@ async function handleCreateSocio(context, socioData) {
                 const effettivoRequest = new sql.Request(transaction);
                 effettivoRequest.input('socioId', sql.Int, newSocioId);
                 effettivoRequest.input('annoValidità', sql.VarChar(4), currentYear);
-                effettivoRequest.input('dataAdesione', sql.Date, value.dataIscrizione || new Date());
                 
                 await effettivoRequest.query(`
-                    INSERT INTO effettivi (socioId, annoValidità, dataAdesione)
-                    VALUES (@socioId, @annoValidità, @dataAdesione)
+                    INSERT INTO effettivi (socioId, annoValidità)
+                    VALUES (@socioId, @annoValidità)
                 `);
             }
             
@@ -301,11 +299,10 @@ async function handleCreateSocio(context, socioData) {
                 const volontarioRequest = new sql.Request(transaction);
                 volontarioRequest.input('socioId', sql.Int, newSocioId);
                 volontarioRequest.input('annoValidità', sql.VarChar(4), currentYear);
-                volontarioRequest.input('dataAdesione', sql.Date, value.dataIscrizione || new Date());
                 
                 await volontarioRequest.query(`
-                    INSERT INTO volontari (socioId, annoValidità, dataAdesione)
-                    VALUES (@socioId, @annoValidità, @dataAdesione)
+                    INSERT INTO volontari (socioId, annoValidità)
+                    VALUES (@socioId, @annoValidità)
                 `);
             }
             

@@ -27,7 +27,7 @@ const RicercaStampa = () => {
       const attivita = searchParams.get('attivita') || '0';
       const scadute = searchParams.get('scadute') || 'false';
       const anno = searchParams.get('anno') || '0';
-      const titoloParam = searchParams.get('titolo') || '';
+      const titoloParam = searchParams.get('titolo') || 'Elenco Soci';
       
       setTitolo(titoloParam.toUpperCase());
       
@@ -36,8 +36,13 @@ const RicercaStampa = () => {
       
       try {
         setLoading(true);
+        setError('');
         
-        // Carica i dati dei soci
+        console.log('Fetching soci for print with params:', {
+          cognome, scadenza, attivita, scadute, anno
+        });
+        
+        // Carica i dati dei soci usando la stessa logica di ElencoSoci
         const response = await socioService.retrieveSocio(
           null, // nome
           cognome.length > 0 ? cognome : null,
@@ -47,11 +52,30 @@ const RicercaStampa = () => {
           parseInt(anno)
         );
         
-        setData(response.data);
-        setLoading(false);
+        console.log('API Response for print:', response);
+        
+        // Handle different response structures (same logic as ElencoSoci)
+        let socioData = [];
+        if (response.data) {
+          if (response.data.data && response.data.data.items) {
+            socioData = response.data.data.items;
+          } else if (response.data.items) {
+            socioData = response.data.items;
+          } else if (Array.isArray(response.data)) {
+            socioData = response.data;
+          } else if (response.data.success && response.data.result) {
+            socioData = response.data.result;
+          }
+        }
+        
+        console.log('Processed soci data for print:', socioData);
+        
+        setData(socioData);
+        
       } catch (err) {
         console.error('Errore nel caricamento dei dati:', err);
         setError('Si è verificato un errore nel caricamento dei dati.');
+      } finally {
         setLoading(false);
       }
     };
