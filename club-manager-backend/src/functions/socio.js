@@ -75,7 +75,6 @@ app.http('socio', {
     }
 });
 
-// Handler functions
 async function handleRetrieveSocio(context, params) {
     try {
         const { param1: nome, param2: cognome, param3: scadenza, param4: attivita, param5: scadute, param6: anno } = params;
@@ -93,7 +92,39 @@ async function handleRetrieveSocio(context, params) {
                        WHEN s.isVolontario = 1 THEN 'Volontario'
                        ELSE 'N/D'
                    END as TipoSocio,
-                   ROW_NUMBER() OVER (ORDER BY s.id) as NSocio
+                   ROW_NUMBER() OVER (ORDER BY s.id) as NSocio,
+                   -- Check if socio has paid quota associativa (any receipt with quotaAss = 1)
+                   CASE WHEN EXISTS (
+                       SELECT 1 FROM ricevuteAttività ra 
+                       WHERE ra.socioId = s.id AND ra.quotaAss = 1
+                   ) THEN 1 ELSE 0 END as hasQuotaAssociativa,
+                   -- Get payment expiry for specific activity (if attivita filter is applied)
+                   ${attivita && attivita !== '0' ? `
+                   (SELECT TOP 1 ra.scadenzaPagamento 
+                    FROM ricevuteAttività ra 
+                    WHERE ra.socioId = s.id 
+                    AND ra.attivitàId = @attivita 
+                    ORDER BY ra.dataRicevuta DESC) as scadenzaPagamentoAttivita,
+                   (SELECT TOP 1 ra.importoIncassato 
+                    FROM ricevuteAttività ra 
+                    WHERE ra.socioId = s.id 
+                    AND ra.attivitàId = @attivita 
+                    ORDER BY ra.dataRicevuta DESC) as importoIncassatoAttivita,
+                   (SELECT TOP 1 ra.dataRicevuta 
+                    FROM ricevuteAttività ra 
+                    WHERE ra.socioId = s.id 
+                    AND ra.attivitàId = @attivita 
+                    ORDER BY ra.dataRicevuta DESC) as dataUltimaRicevutaAttivita
+                   ` : `
+                   NULL as scadenzaPagamentoAttivita,
+                   NULL as importoIncassatoAttivita,
+                   NULL as dataUltimaRicevutaAttivita
+                   `},
+                   -- Get latest receipt info for general display
+                   (SELECT TOP 1 ra.scadenzaPagamento 
+                    FROM ricevuteAttività ra 
+                    WHERE ra.socioId = s.id 
+                    ORDER BY ra.dataRicevuta DESC) as ultimaScadenzaPagamento
             FROM soci s
             WHERE 1=1
         `;
@@ -130,7 +161,29 @@ async function handleRetrieveSocio(context, params) {
         const result = await request.query(query);
         
         // Normalize response for frontend compatibility
-        const normalizedItems = result.recordset.map(item => normalizeSocioResponse(item));
+        const normalizedItems = result.recordset.map(item => {
+            const normalized = normalizeSocioResponse(item);
+            
+            // Add the new fields for quota associativa and payment expiry
+            return {
+                ...normalized,
+                hasQuotaAssociativa: item.hasQuotaAssociativa === 1,
+                quotaAssociativaPagata: item.hasQuotaAssociativa === 1, // Alternative naming for frontend
+                // Only include activity-specific fields if activity filter is applied
+                ...(attivita && attivita !== '0' && {
+                    scadenzaPagamentoAttivita: item.scadenzaPagamentoAttivita,
+                    importoIncassatoAttivita: item.importoIncassatoAttivita,
+                    dataUltimaRicevutaAttivita: item.dataUltimaRicevutaAttivita,
+                    // For activity-specific display
+                    abbonamento: {
+                        scadenza: item.scadenzaPagamentoAttivita,
+                        incassato: item.importoIncassatoAttivita > 0,
+                        dataRicevuta: item.dataUltimaRicevutaAttivita
+                    }
+                }),
+                ultimaScadenzaPagamento: item.ultimaScadenzaPagamento
+            };
+        });
         
         context.log(`${result.recordset.length} soci trovati`);
         return createSuccessResponse({ items: normalizedItems });

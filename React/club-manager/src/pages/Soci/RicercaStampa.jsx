@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Table, Button } from 'react-bootstrap';
+import { Container, Card, Table, Button, Badge } from 'react-bootstrap';
 import { useSearchParams } from 'react-router-dom';
 import socioService from '../../api/services/socioService';
 import { formatDateDisplay } from '../../utils/dateUtils';
@@ -16,7 +16,8 @@ const RicercaStampa = () => {
   const [titolo, setTitolo] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [incassato, setIncassato] = useState(false);
+  const [hasActivityFilter, setHasActivityFilter] = useState(false);
+  const [showQuotaAssociativa, setShowQuotaAssociativa] = useState(false);
   
   // Carica i dati all'avvio
   useEffect(() => {
@@ -31,8 +32,9 @@ const RicercaStampa = () => {
       
       setTitolo(titoloParam.toUpperCase());
       
-      // Imposta incassato se c'è un'attività selezionata
-      setIncassato(parseInt(attivita) > 0);
+      // Imposta flag per mostrare colonne specifiche
+      setHasActivityFilter(parseInt(attivita) > 0);
+      setShowQuotaAssociativa(true); // Always show quota associativa status
       
       try {
         setLoading(true);
@@ -90,10 +92,42 @@ const RicercaStampa = () => {
   
   // Determina lo stato del certificato medico
   const getCertificatoStatus = (socio) => {
-    if (!socio.dateCertificat) return { status: 'missing', label: 'Mancante', variant: 'danger' };
+    if (!socio.dateCertificat && !socio.scadenzaCertificato) return { status: 'missing', label: 'Mancante', variant: 'danger' };
     
     const today = new Date();
-    const expiryDate = new Date(socio.dateCertificat);
+    const expiryDate = new Date(socio.dateCertificat || socio.scadenzaCertificato);
+    
+    if (expiryDate < today) {
+      return { status: 'expired', label: 'Scaduto', variant: 'danger' };
+    }
+    
+    // Calcola se scade nel prossimo mese
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    
+    if (expiryDate < nextMonth) {
+      return { status: 'expiring', label: 'In scadenza', variant: 'warning' };
+    }
+    
+    return { status: 'valid', label: 'Valido', variant: 'success' };
+  };
+  
+  // Determina lo stato del pagamento dell'attività
+  const getPagamentoStatus = (socio) => {
+    if (!socio.abbonamento) return { status: 'missing', label: 'Non pagato', variant: 'danger' };
+    
+    const { scadenza, incassato } = socio.abbonamento;
+    
+    if (!incassato) {
+      return { status: 'unpaid', label: 'Non incassato', variant: 'warning' };
+    }
+    
+    if (!scadenza) {
+      return { status: 'paid', label: 'Pagato', variant: 'success' };
+    }
+    
+    const today = new Date();
+    const expiryDate = new Date(scadenza);
     
     if (expiryDate < today) {
       return { status: 'expired', label: 'Scaduto', variant: 'danger' };
@@ -129,6 +163,7 @@ const RicercaStampa = () => {
       
       <Card className="mb-4">
         <Card.Header className="text-center">
+          <img src='./headercso.jpg'></img>
           <h2 className="mb-0">{titolo}</h2>
           <p className="mb-0">Data: {formatDateDisplay(new Date())}</p>
         </Card.Header>
@@ -142,48 +177,64 @@ const RicercaStampa = () => {
                 <th>Telefono</th>
                 <th>Email</th>
                 <th>Certificato</th>
-                {incassato && <th>Abbonamento</th>}
-                {incassato && <th>Incassato</th>}
+                {showQuotaAssociativa && <th>Quota Ass.</th>}
+                {hasActivityFilter && <th>Scadenza Attività</th>}
+                {hasActivityFilter && <th>Stato Pagamento</th>}
               </tr>
             </thead>
             <tbody>
               {data.length === 0 ? (
                 <tr>
-                  <td colSpan={incassato ? 8 : 6} className="text-center">
+                  <td colSpan={6 + (showQuotaAssociativa ? 1 : 0) + (hasActivityFilter ? 2 : 0)} className="text-center">
                     Nessun socio trovato
                   </td>
                 </tr>
               ) : (
                 data.map((socio) => {
                   const certificatoStatus = getCertificatoStatus(socio);
+                  const pagamentoStatus = hasActivityFilter ? getPagamentoStatus(socio) : null;
                   
                   return (
                     <tr key={socio.id}>
-                      <td>{socio.tesseraNumber || '---'}</td>
+                      <td>{socio.tesseraNumber || socio.NSocio || '---'}</td>
                       <td>{socio.cognome}</td>
                       <td>{socio.nome}</td>
-                      <td>{socio.tel || '---'}</td>
+                      <td>{socio.tel || socio.telefono || '---'}</td>
                       <td>{socio.email || '---'}</td>
                       <td className={`table-${certificatoStatus.variant}`}>
-                        {socio.dateCertificat 
-                          ? `${formatDateDisplay(socio.dateCertificat)} (${certificatoStatus.label})`
+                        {socio.dateCertificat || socio.scadenzaCertificato
+                          ? `${formatDateDisplay(socio.dateCertificat || socio.scadenzaCertificato)} (${certificatoStatus.label})`
                           : 'Mancante'
                         }
                       </td>
-                      {incassato && (
+                      {showQuotaAssociativa && (
                         <td>
-                          {socio.abbonamento 
+                          <Badge 
+                            bg={socio.hasQuotaAssociativa || socio.quotaAssociativaPagata ? 'success' : 'danger'}
+                            className="w-100"
+                          >
+                            {socio.hasQuotaAssociativa || socio.quotaAssociativaPagata ? 'Pagata' : 'Non Pagata'}
+                          </Badge>
+                        </td>
+                      )}
+                      {hasActivityFilter && (
+                        <td>
+                          {socio.abbonamento?.scadenza 
                             ? formatDateDisplay(socio.abbonamento.scadenza)
+                            : socio.scadenzaPagamentoAttivita
+                            ? formatDateDisplay(socio.scadenzaPagamentoAttivita)
                             : '---'
                           }
                         </td>
                       )}
-                      {incassato && (
-                        <td>
-                          {socio.abbonamento && socio.abbonamento.incassato 
-                            ? 'Sì'
-                            : 'No'
-                          }
+                      {hasActivityFilter && (
+                        <td className={pagamentoStatus ? `table-${pagamentoStatus.variant}` : ''}>
+                          <Badge 
+                            bg={pagamentoStatus ? pagamentoStatus.variant : 'secondary'}
+                            className="w-100"
+                          >
+                            {pagamentoStatus ? pagamentoStatus.label : 'N/D'}
+                          </Badge>
                         </td>
                       )}
                     </tr>
@@ -192,12 +243,6 @@ const RicercaStampa = () => {
               )}
             </tbody>
           </Table>
-          
-          <div className="mt-4">
-            <p className="text-end">
-              <strong>Totale soci:</strong> {data.length}
-            </p>
-          </div>
         </Card.Body>
       </Card>
     </Container>

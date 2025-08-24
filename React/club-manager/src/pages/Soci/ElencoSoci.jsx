@@ -197,6 +197,7 @@ const ElencoSoci = () => {
                     soci={soci}
                     onSelect={handleSelectSocio}
                     onRefresh={handleRefreshSoci}
+                    filters={filtri}
                   />
                 )}
               </Col>
