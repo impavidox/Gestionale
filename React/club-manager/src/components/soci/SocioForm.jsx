@@ -59,7 +59,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   // Stati per dati di selezione
   const [listProvNascita, setListProvNascita] = useState([]);
   const [listProv, setListProv] = useState([]);
-  const [listCodes,setListProvCodes]=useState([]);
+  const [listCodes, setListProvCodes] = useState([]);
   const [listCommNascita, setListCommNascita] = useState([]);
   const [listCommRes, setListCommRes] = useState([]);
   const [listTipiSocio, setListTipiSocio] = useState([]);
@@ -121,17 +121,17 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         // Carica province
         const provinceNascitaResponse = await geographicService.retrieveProvince();
         const province = provinceNascitaResponse.data.data.map(item => item.nome);
-        const provinceCodes= provinceNascitaResponse.data.data;
+        const provinceCodes = provinceNascitaResponse.data.data;
         setListProvCodes(provinceCodes);
         setListProvNascita(province);
         setListProv(province);
         
         // Carica tipi socio (now just for reference, not used in selector)
-        const tipiSocioResponse = ['Effettivo','Tesserato','Volontario'];
+        const tipiSocioResponse = ['Effettivo', 'Tesserato', 'Volontario'];
         setListTipiSocio(tipiSocioResponse);
         
         // Carica federazioni
-        const activityResponse = await activityService.retrieveActivitiesCodes(); 
+        const activityResponse = await activityService.retrieveActivitiesCodes();
         setActivitiesList(activityResponse.data.data);
         
         setLoading(false);
@@ -145,163 +145,151 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     fetchInitialData();
   }, [mode]);
   
-  // Carica i dati del socio esistente
+  // Carica i dati del socio esistente - FIXED VERSION
   useEffect(() => {
-    if (mode === 'U' && existingSocio) {
-      const loadExistingSocio = async () => {
-        try {
-          setLoading(true);
-          console.log('Loading existing socio:', existingSocio);
-          
-          // Estrai dati di nascita
-          let birthDay = '';
-          let birthMonth = null;
-          let birthYear = '';
-          
-          if (existingSocio.dataNascita) {
-            const birthDate = new Date(existingSocio.dataNascita);
-            birthDay = birthDate.getDate().toString().padStart(2, '0');
-            birthMonth = (birthDate.getMonth() + 1).toString().padStart(2, '0'); // Months are 0-indexed
-            birthYear = birthDate.getFullYear().toString();
-          }
-          
-          // Convert existing tipo socio to the new checkbox format with numeric values
-          const tipoSocioCheckboxes = {
-            effettivo: existingSocio.isEffettivo ? 1 : 0,
-            tesserato: existingSocio.isTesserato ? 1 : 0,
-            volontario: existingSocio.isVolontario ? 1 : 0
-          };
-          
-          // Show federation dropdown if tesserato is selected
-          if (existingSocio.isTesserato) {
-            setViewFede(true);
-          }
-          
-          // Imposta i dati del form
-          setFormData({
-            nome: existingSocio.nome || '',
-            cognome: existingSocio.cognome || '',
-            sesso: existingSocio.sesso || 1,
-            privacy: existingSocio.privacy ? 1 : 0,
-            birthJJ: birthDay,
-            birthMM: birthMonth,
-            anno: birthYear,
-            address: existingSocio.viaResidenza || existingSocio.indirizzo || '',
-            cap: existingSocio.capResidenza || existingSocio.cap || '',
-            tipoSocio: tipoSocioCheckboxes,
-            certifica: existingSocio.scadenzaCertificato ? new Date(existingSocio.scadenzaCertificato) : null,
-            dataIscrizione: existingSocio.dataIscrizione,
-            competition: existingSocio.isAgonistico ? 1 : 0,
-            telefono: existingSocio.telefono || existingSocio.tel || '',
-            email: existingSocio.email || '',
-            codice: existingSocio.codice || null
-          });
-          
-          // Imposta il sesso selector
-          const sessoValue = existingSocio.sesso === 'F'? 
-            { value: 2, label: 'F' } : 
-            { value: 1, label: 'M' };
-          setSelectedSesso({ value: sessoValue });
-          
-          // Imposta il mese di nascita selector
-          if (birthMonth) {
-            const monthOption = mmvalue.find(m => m.id === birthMonth);
-            if (monthOption) {
-              setSelectedMM({ value: monthOption });
-            }
-          }
-          
-          // Handle provincia di nascita
-          if (existingSocio.provinciaNascita) {
-            // Wait for provinces to be loaded
-            if (listProvNascita.length > 0) {
-              // Find the provincia name from the code
-              const provNascitaCode = existingSocio.provinciaNascita;
-              const provNascitaObj = listCodes.find(p => p.provCode === provNascitaCode);
-              
-              if (provNascitaObj) {
-                const provNascitaNome = provNascitaObj.nome;
-                setBirthProv(provNascitaNome);
-                setSelectedProv({ value: { value: provNascitaNome } });
-                
-                // Load comuni for the provincia
-                try {
-                  const communiResponse = await geographicService.retrievecomune(provNascitaNome);
-                  const comuni = communiResponse.data.data.map(item => item.nome);
-                  setListCommNascita(comuni);
-                  
-                  // Set comune di nascita
-                  if (existingSocio.comuneNascita) {
-                    const comuneNascita = existingSocio.comuneNascita;
-                    setBirthcomune(comuneNascita);
-                    setSelectedComm({ value: { value: comuneNascita } });
-                  }
-                } catch (error) {
-                  console.error('Errore nel caricamento dei comuni di nascita:', error);
-                }
-              }
-            }
-          }
-          
-          // Handle provincia di residenza
-          if (existingSocio.provinciaResidenza) {
-            // Wait for provinces to be loaded
-            if (listProv.length > 0) {
-              // Find the provincia name from the code
-              const provResCode = existingSocio.provinciaResidenza;
-              const provResObj = listCodes.find(p => p.provCode === provResCode);
-              
-              if (provResObj) {
-                const provResNome = provResObj.nome;
-                setResProv(provResNome);
-                setProvRes({ value: { value: provResNome } });
-                
-                // Load comuni for the provincia
-                try {
-                  const communiResResponse = await geographicService.retrievecomune(provResNome);
-                  const comuni = communiResResponse.data.data.map(item => item.nome);
-                  setListCommRes(comuni);
-                  
-                  // Set comune di residenza
-                  if (existingSocio.comuneResidenza) {
-                    const comuneRes = existingSocio.comuneResidenza;
-                    setRescomune(comuneRes);
-                    setCommRes({ value: { value: comuneRes } });
-                  }
-                } catch (error) {
-                  console.error('Errore nel caricamento dei comuni di residenza:', error);
-                }
-              }
-            }
-          }
-          
-          // Handle activity selection if tesserato
-          if (tipoSocioCheckboxes.tesserato && existingSocio.codice) {
-            // Find the activity by codice
-            if (activitiesList.length > 0) {
-              const foundActivity = activitiesList.find(activity => 
-                activity.codice === existingSocio.codice
-              );
-              
-              if (foundActivity) {
-                setSelectedActivity({ value: { value: foundActivity.nome } });
-                setFormData(prev => ({ ...prev, codice: foundActivity.codice }));
-              }
-            }
-          }
-          
-          setLoading(false);
-        } catch (error) {
-          console.error('Errore nel caricamento dei dati del socio esistente:', error);
-          setError('Si è verificato un errore nel caricamento dei dati del socio.');
-          setLoading(false);
-        }
-      };
+    const loadExistingSocio = async () => {
+      if (mode !== 'U' || !existingSocio) return;
       
-      // Only load if we have the necessary lists loaded
-      if (listCodes.length > 0 && listProvNascita.length > 0 && listProv.length > 0) {
-        loadExistingSocio();
+      try {
+        setLoading(true);
+        console.log('Loading existing socio:', existingSocio);
+        
+        // Estrai dati di nascita
+        let birthDay = '';
+        let birthMonth = null;
+        let birthYear = '';
+        
+        if (existingSocio.dataNascita) {
+          const birthDate = new Date(existingSocio.dataNascita);
+          birthDay = birthDate.getDate().toString().padStart(2, '0');
+          birthMonth = (birthDate.getMonth() + 1).toString().padStart(2, '0');
+          birthYear = birthDate.getFullYear().toString();
+        }
+        
+        // Convert existing tipo socio to the new checkbox format with numeric values
+        const tipoSocioCheckboxes = {
+          effettivo: existingSocio.isEffettivo ? 1 : 0,
+          tesserato: existingSocio.isTesserato ? 1 : 0,
+          volontario: existingSocio.isVolontario ? 1 : 0
+        };
+        
+        // Show federation dropdown if tesserato is selected
+        if (existingSocio.isTesserato) {
+          setViewFede(true);
+        }
+        
+        // Imposta i dati del form
+        setFormData({
+          nome: existingSocio.nome || '',
+          cognome: existingSocio.cognome || '',
+          sesso: existingSocio.sesso || 1,
+          privacy: existingSocio.privacy ? 1 : 0,
+          birthJJ: birthDay,
+          birthMM: birthMonth,
+          anno: birthYear,
+          address: existingSocio.viaResidenza || existingSocio.indirizzo || '',
+          cap: existingSocio.capResidenza || existingSocio.cap || '',
+          tipoSocio: tipoSocioCheckboxes,
+          certifica: existingSocio.scadenzaCertificato ? new Date(existingSocio.scadenzaCertificato) : null,
+          dataIscrizione: existingSocio.dataIscrizione,
+          competition: existingSocio.isAgonistico ? 1 : 0,
+          telefono: existingSocio.telefono || existingSocio.tel || '',
+          email: existingSocio.email || '',
+          codice: existingSocio.codice || null
+        });
+        
+        // FIX: Set sesso selector with correct format
+        const sessoValue = existingSocio.sesso === 'F' ? 
+          { id: 2, label: 'F' } : 
+          { id: 1, label: 'M' };
+        setSelectedSesso(sessoValue);
+        
+        // FIX: Set month selector with correct format
+        if (birthMonth) {
+          const monthOption = mmvalue.find(m => m.id === birthMonth);
+          if (monthOption) {
+            setSelectedMM(monthOption);
+          }
+        }
+        
+        // FIX: Handle provincia di nascita with proper async loading
+        if (existingSocio.provinciaNascita && listCodes.length > 0) {
+          const provNascitaCode = existingSocio.provinciaNascita;
+          const provNascitaObj = listCodes.find(p => p.provCode === provNascitaCode);
+          
+          if (provNascitaObj) {
+            const provNascitaNome = provNascitaObj.nome;
+            setBirthProv(provNascitaNome);
+            setSelectedProv({label:provNascitaNome});
+            
+            // Load comuni for the provincia
+            try {
+              const communiResponse = await geographicService.retrievecomune(provNascitaNome);
+              const comuni = communiResponse.data.data.map(item => item.nome);
+              setListCommNascita(comuni);
+              
+              // Set comune di nascita after comuni are loaded
+              if (existingSocio.comuneNascita) {
+                const comuneNascita = existingSocio.comuneNascita;
+                setBirthcomune(comuneNascita);
+                setSelectedComm({label:comuneNascita});
+              }
+            } catch (error) {
+              console.error('Errore nel caricamento dei comuni di nascita:', error);
+            }
+          }
+        }
+        
+        // FIX: Handle provincia di residenza with proper async loading
+        if (existingSocio.provinciaResidenza && listCodes.length > 0) {
+          const provResCode = existingSocio.provinciaResidenza;
+          const provResObj = listCodes.find(p => p.provCode === provResCode);
+          if (provResObj) {
+            const provResNome = provResObj.nome;
+            setResProv(provResNome);
+            setProvRes({label:provResNome});
+            
+            // Load comuni for the provincia
+            try {
+              const communiResResponse = await geographicService.retrievecomune(provResNome);
+              const comuni = communiResResponse.data.data.map(item => item.nome);
+              setListCommRes(comuni);
+              
+              // Set comune di residenza after comuni are loaded
+              if (existingSocio.comuneResidenza) {
+                const comuneRes = existingSocio.comuneResidenza;
+                setRescomune(comuneRes);
+                setCommRes({label:comuneRes});
+              }
+            } catch (error) {
+              console.error('Errore nel caricamento dei comuni di residenza:', error);
+            }
+          }
+        }
+        
+        // FIX: Handle activity selection if tesserato
+        if (tipoSocioCheckboxes.tesserato && existingSocio.codice && activitiesList.length > 0) {
+          const foundActivity = activitiesList.find(activity => 
+            activity.codice === existingSocio.codice
+          );
+          
+          if (foundActivity) {
+            setSelectedActivity(foundActivity.nome);
+            setFormData(prev => ({ ...prev, codice: foundActivity.codice }));
+          }
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Errore nel caricamento dei dati del socio esistente:', error);
+        setError('Si è verificato un errore nel caricamento dei dati del socio.');
+        setLoading(false);
       }
+    };
+    
+    // Only run when all required data is loaded
+    if (listCodes.length > 0 && listProvNascita.length > 0 && listProv.length > 0 && activitiesList.length > 0) {
+      loadExistingSocio();
     }
   }, [existingSocio, mode, listCodes, listProvNascita, listProv, activitiesList]);
   
@@ -451,19 +439,18 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     
     try {
       setLoading(true);
-      
       const body = {
         nome: formData.nome.toUpperCase(),
         cognome: formData.cognome.toUpperCase(),
         sesso: selectedSesso.label,
-        dataNascita: `${formData.birthJJ}-${selectedMM?.value}-${formData.anno}`,
+        dataNascita: `${formData.birthJJ}-${selectedMM?.id}-${formData.anno}`,
         provinciaNascita: listCodes.find(p => p.nome === birthProv).provCode,
         comuneNascita: birthcomune,
         provinciaResidenza: listCodes.find(p => p.nome === resProv).provCode,
         comuneResidenza: rescomune,
         viaResidenza: formData.address,
         capResidenza: formData.cap,
-        // Send individual boolean flags for each tipo socio
+        dataIscrizione: formData.dataIscrizione,
         isTesserato: formData.tipoSocio.tesserato ? 1 : 0,
         isEffettivo: formData.tipoSocio.effettivo ? 1 : 0,
         isVolontario: formData.tipoSocio.volontario ? 1 : 0,
@@ -476,8 +463,8 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       };
       
       let response;
-      console.log(body)
-      console.log(formData)
+      console.log(body);
+      console.log(formData);
       if (mode === 'C') {
         // Crea un nuovo socio
         response = await socioService.createSocio(body);
@@ -812,7 +799,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
                       label="Attività"
                       name="activity"
                       value={selectedActivity}
-                      options={activitiesList.map(item=>item.nome)}
+                      options={activitiesList.map(item => item.nome)}
                       onChange={handleActivitySelected}
                       required={viewFede}
                     />
