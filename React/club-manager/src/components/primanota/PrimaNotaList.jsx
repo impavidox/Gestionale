@@ -19,6 +19,10 @@ const PrimaNotaList = () => {
   const [endDate, setEndDate] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
   
+  // Stati per la selezione delle date
+  const [dateSelectionType, setDateSelectionType] = useState('range'); // 'range' o 'single'
+  const [singleDate, setSingleDate] = useState(null);
+  
   // Stati per i dati
   const [primaNotaData, setPrimaNotaData] = useState(null);
   const [totale, setTotale] = useState(0);
@@ -57,30 +61,45 @@ const PrimaNotaList = () => {
     const currentYear = new Date().getFullYear();
     const startOfYear = new Date(currentYear, 0, 1);
     const endOfYear = new Date(currentYear, 11, 31);
+    const today = new Date();
     
     setBeginDate(startOfYear);
     setEndDate(endOfYear);
+    setSingleDate(today);
   }, []);
   
   // Carica i dati della prima nota all'avvio
   useEffect(() => {
-    if (selectedType && beginDate && endDate) {
-      fetchPrimaNotaData();
+    if (selectedType) {
+      if (dateSelectionType === 'range' && beginDate && endDate) {
+        fetchPrimaNotaData();
+      } else if (dateSelectionType === 'single' && singleDate) {
+        fetchPrimaNotaData();
+      }
     }
-  }, [selectedType, beginDate, endDate]);
+  }, [selectedType, beginDate, endDate, singleDate, dateSelectionType]);
   
   // Fetch dei dati della prima nota usando le ricevute
   const fetchPrimaNotaData = async () => {
-    if (!selectedType || !beginDate || !endDate) return;
+    if (!selectedType) return;
+    
+    let formattedBeginDate, formattedEndDate;
+    
+    if (dateSelectionType === 'range') {
+      if (!beginDate || !endDate) return;
+      formattedBeginDate = formatDateForApi(beginDate);
+      formattedEndDate = formatDateForApi(endDate);
+    } else {
+      if (!singleDate) return;
+      formattedBeginDate = formatDateForApi(singleDate);
+      formattedEndDate = formatDateForApi(singleDate);
+    }
     
     setLoading(true);
     setError('');
     setShowError(false);
     
     try {
-      const formattedBeginDate = formatDateForApi(beginDate);
-      const formattedEndDate = formatDateForApi(endDate);
-      
       // Chiama l'API delle ricevute invece di prima nota
       const response = await ricevutaService.retrieveAllByDateRange(
         formattedBeginDate,
@@ -157,6 +176,14 @@ const PrimaNotaList = () => {
     setSelectedType(selectedValue.value);
   };
   
+  // Gestione del cambio di tipo di selezione data
+  const handleDateSelectionTypeChange = (type) => {
+    setDateSelectionType(type);
+    // Reset degli errori quando cambia il tipo
+    setError('');
+    setShowError(false);
+  };
+  
   // Gestione dell'esecuzione della ricerca
   const handleSearch = async () => {
     fetchPrimaNotaData();
@@ -164,10 +191,19 @@ const PrimaNotaList = () => {
   
   // Gestione della stampa
   const handlePrint = () => {
-    if (!selectedType || !beginDate || !endDate) return;
+    if (!selectedType) return;
     
-    const formattedBeginDate = formatDateForApi(beginDate);
-    const formattedEndDate = formatDateForApi(endDate);
+    let formattedBeginDate, formattedEndDate;
+    
+    if (dateSelectionType === 'range') {
+      if (!beginDate || !endDate) return;
+      formattedBeginDate = formatDateForApi(beginDate);
+      formattedEndDate = formatDateForApi(endDate);
+    } else {
+      if (!singleDate) return;
+      formattedBeginDate = formatDateForApi(singleDate);
+      formattedEndDate = formatDateForApi(singleDate);
+    }
     
     goNewTab('stampa-prima-nota', {
       type: selectedType.code,
@@ -285,23 +321,66 @@ const PrimaNotaList = () => {
                       onChange={handleTypeChange}
                     />
                   </Col>
-                  <Col md={4}>
-                    <DateField
-                      label="Data Inizio"
-                      name="beginDate"
-                      value={beginDate}
-                      onChange={(name, value) => setBeginDate(value)}
-                    />
-                  </Col>
-                  <Col md={4}>
-                    <DateField
-                      label="Data Fine"
-                      name="endDate"
-                      value={endDate}
-                      onChange={(name, value) => setEndDate(value)}
-                    />
+                  
+                  {/* Selezione tipo di data */}
+                  <Col md={8}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Selezione Data</Form.Label>
+                      <div className="d-flex gap-4 align-items-center">
+                        <Form.Check
+                          type="radio"
+                          id="date-range"
+                          name="dateSelectionType"
+                          label="Intervallo di date"
+                          checked={dateSelectionType === 'range'}
+                          onChange={() => handleDateSelectionTypeChange('range')}
+                        />
+                        <Form.Check
+                          type="radio"
+                          id="date-single"
+                          name="dateSelectionType"
+                          label="Data specifica"
+                          checked={dateSelectionType === 'single'}
+                          onChange={() => handleDateSelectionTypeChange('single')}
+                        />
+                      </div>
+                    </Form.Group>
                   </Col>
                 </Row>
+                
+                {/* Campi data condizionali */}
+                <Row>
+                  {dateSelectionType === 'range' ? (
+                    <>
+                      <Col md={6}>
+                        <DateField
+                          label="Data Inizio"
+                          name="beginDate"
+                          value={beginDate}
+                          onChange={(name, value) => setBeginDate(value)}
+                        />
+                      </Col>
+                      <Col md={6}>
+                        <DateField
+                          label="Data Fine"
+                          name="endDate"
+                          value={endDate}
+                          onChange={(name, value) => setEndDate(value)}
+                        />
+                      </Col>
+                    </>
+                  ) : (
+                    <Col md={6}>
+                      <DateField
+                        label="Data"
+                        name="singleDate"
+                        value={singleDate}
+                        onChange={(name, value) => setSingleDate(value)}
+                      />
+                    </Col>
+                  )}
+                </Row>
+                
                 <div className="d-flex justify-content-end mt-3">
                   <Button variant="primary" type="submit" className="me-2">
                     Cerca

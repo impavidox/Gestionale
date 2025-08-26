@@ -122,8 +122,14 @@ const PrimaNotaPrint = ({ type, startDate, endDate }) => {
   // Formattazione della data periodo
   const formatPeriodo = () => {
     if (startDate && endDate) {
-      let correctstart=formatDateDisplay(startDate);
-      let correctend=formatDateDisplay(endDate);
+      let correctstart = formatDateDisplay(startDate);
+      let correctend = formatDateDisplay(endDate);
+      
+      // Se le date sono uguali, mostra solo una data
+      if (startDate === endDate) {
+        return `Data: ${correctstart}`;
+      }
+      
       return `Dal ${correctstart} al ${correctend}`;
     }
     return 'Periodo completo';
