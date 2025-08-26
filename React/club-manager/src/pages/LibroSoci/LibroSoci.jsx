@@ -151,8 +151,9 @@ const LibroSoci = () => {
 
   // Configura colonne dinamiche in base al tipo di socio
   const getTableColumns = () => {
+    console.log(tipoSocio)
     // Colonne per tesserati (senza N. Socio e Data Adesione)
-    if (tipoSocio && tipoSocio.code === 3) {
+    if (tipoSocio && tipoSocio.value === 3) {
       return [
         { key: 'cognome', label: 'Cognome', width: '18%' },
         { key: 'nome', label: 'Nome', width: '18%' },
