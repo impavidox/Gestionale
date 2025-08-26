@@ -42,7 +42,7 @@ const socioSchema = Joi.object({
   capResidenza: Joi.string().length(5).pattern(/^[0-9]{5}$/).optional(),
   telefono: Joi.string().max(20).allow('').optional(),
   email: Joi.string().email().allow('').optional(),
-  scadenzaCertificato: Joi.date().optional(),
+  scadenzaCertificato: Joi.date().allow(null).optional(),
   isAgonistico: Joi.number().integer().valid(0, 1).default(0),
   privacy: Joi.number().integer().valid(0, 1).default(0),
   dataPrivacy: Joi.date().optional(),

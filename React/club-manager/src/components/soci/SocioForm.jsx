@@ -336,6 +336,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   
   // Gestione selezione mese di nascita
   const handleBirthMMS = (name, selectedOption) => {
+    console.log(selectedOption.value)
     setSelectedMM(selectedOption.value);
   };
   
@@ -443,7 +444,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         nome: formData.nome.toUpperCase(),
         cognome: formData.cognome.toUpperCase(),
         sesso: selectedSesso.label,
-        dataNascita: `${formData.birthJJ}-${selectedMM?.id}-${formData.anno}`,
+        dataNascita: `${formData.birthJJ}-${selectedMM?.value}-${formData.anno}`,
         provinciaNascita: listCodes.find(p => p.nome === birthProv).provCode,
         comuneNascita: birthcomune,
         provinciaResidenza: listCodes.find(p => p.nome === resProv).provCode,
