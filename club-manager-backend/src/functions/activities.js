@@ -350,7 +350,7 @@ async function handleUpdateActivity(context, activityData) {
             context.log('Dati attività non validi:', error.details);
             return createErrorResponse(400, 'Dati non validi', error.details);
         }
-        
+        context.log('Aggiornamento/creazione attività:', value);
         const pool = await getPool();
         const transaction = new sql.Transaction(pool);
         await transaction.begin();

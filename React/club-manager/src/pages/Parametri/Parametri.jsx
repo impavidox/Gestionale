@@ -484,7 +484,7 @@ const AttivitaFormSezione = ({ activity, sezione, federazioni, updateMode = fals
         body.id = activity.id;
       }
       
-      console.log('Dati da inviare:', body);
+      console.log('Dati da inviare:', body,updateMode);
       
       const response = await activityService.updateActivity(body);
       

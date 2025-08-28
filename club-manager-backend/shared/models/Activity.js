@@ -24,6 +24,11 @@ const attivitaSchema = Joi.object({
             'number.base': 'La sezione deve essere un numero',
             'number.min': 'La sezione è obbligatoria'
         }),
+    id: Joi.number().integer().min(1).optional()
+        .messages({
+            'number.base': 'L id deve essere un numero',
+            'number.min': 'L id  è obbligatorio'
+        }),
     
 });
 
