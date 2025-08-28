@@ -1,3 +1,4 @@
+// React/club-manager/src/components/soci/SocioForm.jsx
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Row, Col, Button, Alert, Nav, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
@@ -9,17 +10,14 @@ import CheckboxField from '../forms/CheckboxField';
 import socioService from '../../api/services/socioService';
 import geographicService from '../../api/services/geographicService';
 import activityService from '../../api/services/activityService';
+import ricevutaService from '../../api/services/ricevutaService';
 import AbbonamentoForm from '../abbonamenti/AbbonamentoForm';
-import { formatDateForApi } from '../../utils/dateUtils';
+import { formatDateForApi, calculateAge } from '../../utils/dateUtils';
 import { isValidCodiceFiscale, isValidCAP, isValidPhone, isValidEmail } from '../../utils/validationUtils';
 
 /**
  * Componente per la creazione e modifica di un socio
- * 
- * @param {Object} props - Props del componente
- * @param {Object} props.existingSocio - Dati del socio esistente (solo in modalità modifica)
- * @param {string} props.mode - Modalità del form: 'C' per creazione, 'U' per update
- * @param {Function} props.onSave - Callback da chiamare dopo il salvataggio con successo
+ * Enhanced with automatic receipt creation and domanda associativa flow
  */
 const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   const navigate = useNavigate();
@@ -36,7 +34,6 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     anno: '',
     address: '',
     cap: '',
-    // Changed: tipoSocio is now an object with multiple selections
     tipoSocio: {
       effettivo: false,
       tesserato: false,
@@ -64,6 +61,8 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   const [listCommRes, setListCommRes] = useState([]);
   const [listTipiSocio, setListTipiSocio] = useState([]);
   const [activitiesList, setActivitiesList] = useState([]);
+  const [sezioni, setSezioni] = useState([]);
+  const [attivita, setAttivita] = useState([]);
   
   // Stati per i selettori
   const [selectedSesso, setSelectedSesso] = useState(null);
@@ -75,6 +74,11 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   const [selectedFederazione, setSelectedFederazione] = useState(null);
   const [selectedActivity, setSelectedActivity] = useState(null);
   
+  // Stati per la ricevuta automatica
+  const [selectedSezioneForReceipt, setSelectedSezioneForReceipt] = useState(null);
+  const [selectedAttivitaForReceipt, setSelectedAttivitaForReceipt] = useState(null);
+  const [importoQuotaAssociativa, setImportoQuotaAssociativa] = useState(50); // Default amount
+  
   // Stati per la UI
   const [viewFede, setViewFede] = useState(false);
   const [viewAlert, setViewAlert] = useState(false);
@@ -82,6 +86,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   const [viewAbo, setViewAbo] = useState(false);
   const [viewContinue, setViewContinue] = useState(false);
   const [viewError, setViewError] = useState(false);
+  const [showReceiptCreationModal, setShowReceiptCreationModal] = useState(false);
   
   // Stati per notifiche ed errori
   const [loading, setLoading] = useState(false);
@@ -111,6 +116,13 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     { label: "Novembre", id: "11" },
     { label: "Dicembre", id: "12" }
   ];
+
+  // Tipologie di pagamento
+  const tipologiePagamento = [
+    { nome: 'POS', id: 1 },
+    { nome: 'Contanti', id: 2 },
+    { nome: 'Bonifico', id: 3 }
+  ];
   
   // Carica i dati iniziali
   useEffect(() => {
@@ -126,9 +138,9 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         setListProvNascita(province);
         setListProv(province);
         
-        // Carica tipi socio (now just for reference, not used in selector)
-        const tipiSocioResponse = ['Effettivo', 'Tesserato', 'Volontario'];
-        setListTipiSocio(tipiSocioResponse);
+        // Carica sezioni per la ricevuta
+        const sezioniResponse = await activityService.retrieveSezioni();
+        setSezioni(sezioniResponse.data.data || []);
         
         // Carica federazioni
         const activityResponse = await activityService.retrieveActivitiesCodes();
@@ -144,8 +156,8 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     
     fetchInitialData();
   }, [mode]);
-  
-  // Carica i dati del socio esistente - FIXED VERSION
+
+  // Load existing socio data (keeping existing implementation)
   useEffect(() => {
     const loadExistingSocio = async () => {
       if (mode !== 'U' || !existingSocio) return;
@@ -198,13 +210,13 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
           codice: existingSocio.codice || null
         });
         
-        // FIX: Set sesso selector with correct format
+        // Set sesso selector with correct format
         const sessoValue = existingSocio.sesso === 'F' ? 
           { id: 2, label: 'F' } : 
           { id: 1, label: 'M' };
         setSelectedSesso(sessoValue);
         
-        // FIX: Set month selector with correct format
+        // Set month selector with correct format
         if (birthMonth) {
           const monthOption = mmvalue.find(m => m.id === birthMonth);
           if (monthOption) {
@@ -212,7 +224,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
           }
         }
         
-        // FIX: Handle provincia di nascita with proper async loading
+        // Handle provincia di nascita with proper async loading
         if (existingSocio.provinciaNascita && listCodes.length > 0) {
           const provNascitaCode = existingSocio.provinciaNascita;
           const provNascitaObj = listCodes.find(p => p.provCode === provNascitaCode);
@@ -220,7 +232,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
           if (provNascitaObj) {
             const provNascitaNome = provNascitaObj.nome;
             setBirthProv(provNascitaNome);
-            setSelectedProv({label:provNascitaNome});
+            setSelectedProv({label: provNascitaNome});
             
             // Load comuni for the provincia
             try {
@@ -232,7 +244,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
               if (existingSocio.comuneNascita) {
                 const comuneNascita = existingSocio.comuneNascita;
                 setBirthcomune(comuneNascita);
-                setSelectedComm({label:comuneNascita});
+                setSelectedComm({label: comuneNascita});
               }
             } catch (error) {
               console.error('Errore nel caricamento dei comuni di nascita:', error);
@@ -240,14 +252,14 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
           }
         }
         
-        // FIX: Handle provincia di residenza with proper async loading
+        // Handle provincia di residenza with proper async loading
         if (existingSocio.provinciaResidenza && listCodes.length > 0) {
           const provResCode = existingSocio.provinciaResidenza;
           const provResObj = listCodes.find(p => p.provCode === provResCode);
           if (provResObj) {
             const provResNome = provResObj.nome;
             setResProv(provResNome);
-            setProvRes({label:provResNome});
+            setProvRes({label: provResNome});
             
             // Load comuni for the provincia
             try {
@@ -259,7 +271,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
               if (existingSocio.comuneResidenza) {
                 const comuneRes = existingSocio.comuneResidenza;
                 setRescomune(comuneRes);
-                setCommRes({label:comuneRes});
+                setCommRes({label: comuneRes});
               }
             } catch (error) {
               console.error('Errore nel caricamento dei comuni di residenza:', error);
@@ -267,7 +279,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
           }
         }
         
-        // FIX: Handle activity selection if tesserato
+        // Handle activity selection if tesserato
         if (tipoSocioCheckboxes.tesserato && existingSocio.codice && activitiesList.length > 0) {
           const foundActivity = activitiesList.find(activity => 
             activity.codice === existingSocio.codice
@@ -292,108 +304,114 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       loadExistingSocio();
     }
   }, [existingSocio, mode, listCodes, listProvNascita, listProv, activitiesList]);
-  
-  // Gestione cambiamento dei campi
+
+  // All existing handlers remain the same...
   const handleChange = (name, value) => {
-    // Check if it's a tipoSocio checkbox
     if (name.startsWith('tipoSocio.')) {
-      const tipoKey = name.split('.')[1]; // Get 'effettivo', 'tesserato', or 'volontario'
+      const tipoKey = name.split('.')[1];
       const numericValue = value ? 1 : 0;
       
       setFormData(prev => ({
         ...prev,
         tipoSocio: {
-         // ...prev.tipoSocio,
           [tipoKey]: numericValue
         }
       }));
       
-      // Show/hide federation dropdown based on tesserato checkbox
       if (tipoKey === 'tesserato') {
         setViewFede(value);
         if (!value) {
-          // Clear federation if tesserato is unchecked
           setSelectedActivity(null);
           setActivitiesList([]);
           setFormData(prev => ({ ...prev, activityId: null }));
         }
-      }
-      else {
-        setViewFede();
+      } else {
+        setViewFede(false);
         setSelectedActivity(null);
         setActivitiesList([]);
         setFormData(prev => ({ ...prev, activityId: null }));
       }
     } else if (typeof value === 'boolean') {
-      // Convert the boolean to 1 (true) or 0 (false) for other checkboxes
       const numericValue = value ? 1 : 0;
       setFormData(prev => ({ ...prev, [name]: numericValue }));
     } else {
-      // For all other inputs, use the value as is
       setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
-  
-  // Gestione selezione mese di nascita
+
+  // Keep all existing handlers (handleBirthMMS, handleProvNascitaSelected, etc.)
   const handleBirthMMS = (name, selectedOption) => {
-    console.log(selectedOption.value)
     setSelectedMM(selectedOption.value);
   };
   
-  // Gestione selezione provincia di nascita
   const handleProvNascitaSelected = async (name, selectedOption) => {
     setSelectedProv(selectedOption.value);
     setBirthProv(selectedOption.value.value);
     
     try {
       const response = await geographicService.retrievecomune(selectedOption.value.value);
-      const comuni =  response.data.data.map(item => item.nome);
+      const comuni = response.data.data.map(item => item.nome);
       setListCommNascita(comuni);
     } catch (error) {
       console.error('Errore nel caricamento dei comuni:', error);
     }
   };
   
-  // Gestione selezione provincia di residenza
   const handleProvResSelected = async (name, selectedOption) => {
     setProvRes(selectedOption.value);
     setResProv(selectedOption.value.value);
     
     try {
       const response = await geographicService.retrievecomune(selectedOption.value.value);
-      const comuni =  response.data.data.map(item => item.nome);
+      const comuni = response.data.data.map(item => item.nome);
       setListCommRes(comuni);
     } catch (error) {
       console.error('Errore nel caricamento dei comuni:', error);
     }
   };
   
-  // Gestione selezione comune di nascita
   const handlecomuneNascitaSelected = (name, selectedOption) => {
     setSelectedComm(selectedOption.value);
     setBirthcomune(selectedOption.value.value);
   };
   
-  // Gestione selezione comune di residenza
   const handlecomuneResSelected = (name, selectedOption) => {
     setCommRes(selectedOption.value);
     setRescomune(selectedOption.value.value);
   };
   
-  // Gestione selezione sesso
   const handleSessoSelected = (name, selectedOption) => {
     setSelectedSesso(selectedOption.value);
     setFormData(prev => ({ ...prev, sesso: selectedOption.value }));
   };
   
-  
-  // Gestione selezione attività
   const handleActivitySelected = (name, selectedOption) => {
     setSelectedActivity(selectedOption.value);
     setFormData(prev => ({ ...prev, codice: activitiesList.find(p => p.nome === selectedOption.value.value).codice }));
   };
-  
-  // Validazione dei parametri
+
+  // NEW: Handlers for receipt creation
+  const handleSezioneForReceiptChange = async (name, selectedValue) => {
+    const sezioneSelezionata = sezioni.find(s => s.nome === selectedValue.value.value);
+    setSelectedSezioneForReceipt(selectedValue.value);
+    setSelectedAttivitaForReceipt(null);
+    
+    try {
+      setLoading(true);
+      const response = await activityService.retrieveActivitiesBySezione(sezioneSelezionata.id);
+      setAttivita(response.data.data || []);
+      setLoading(false);
+    } catch (error) {
+      console.error('Errore nel caricamento delle attività:', error);
+      setError('Si è verificato un errore nel caricamento delle attività.');
+      setLoading(false);
+    }
+  };
+
+  const handleAttivitaForReceiptChange = (name, selectedValue) => {
+    setSelectedAttivitaForReceipt(selectedValue.value);
+  };
+
   const controlParameters = () => {
     if (!formData.nome) return false;
     if (!formData.cognome) return false;
@@ -407,14 +425,12 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     if (!formData.address) return false;
     if (!formData.cap) return false;
     
-    // Check if at least one tipo socio is selected
     const hasSelectedTipo = Object.values(formData.tipoSocio).some(value => value);
     if (!hasSelectedTipo) return false;
     
     return true;
   };
-  
-  // Controllo prima della creazione
+
   const cnntrlCreate = () => {
     if (formData.tipoSocio.tesserato) {
       if (!formData.codice) {
@@ -427,8 +443,8 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       setViewAlert(true);
     }
   };
-  
-  // Creazione o aggiornamento del socio
+
+  // Enhanced create function with automatic receipt creation
   const handleCreate = async () => {
     setViewAlert(false);
     setViewAlert1(false);
@@ -464,13 +480,9 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       };
       
       let response;
-      console.log(body);
-      console.log(formData);
       if (mode === 'C') {
-        // Crea un nuovo socio
         response = await socioService.createSocio(body);
       } else {
-        // Aggiorna un socio esistente
         body.id = existingSocio.id;
         response = await socioService.updateSocio(body);
       }
@@ -479,16 +491,20 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         throw new Error(response.data.message);
       }
       
-      setSocioCreated(response.data.socio);
-      setViewAbo(true);
+      const createdSocio = response.data.socio;
+      setSocioCreated(createdSocio);
       
-      // Se c'è una callback di successo, chiamala
       if (onSave) {
-        onSave(response.data.socio);
+        onSave(createdSocio);
       }
-      
-      // Passa alla tab abbonamento
-      setActiveTab('abbonamento');
+
+      // NEW: For new socio creation, show receipt creation modal
+      if (mode === 'C') {
+        setShowReceiptCreationModal(true);
+      } else {
+        setViewAbo(true);
+        setActiveTab('abbonamento');
+      }
       
     } catch (error) {
       console.error('Errore nella creazione/aggiornamento del socio:', error);
@@ -497,8 +513,82 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       setLoading(false);
     }
   };
-  
-  // Gestisce la creazione di una ricevuta
+
+  // Enhanced create function with complete first receipt creation
+  const handleCreateReceipt = async () => {
+    if (!selectedSezioneForReceipt || !selectedAttivitaForReceipt) {
+      setError('Selezionare sezione e attività per la ricevuta.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Get selected activity and sezione details
+      const selectedActivityData = attivita.find(item => item.nome === selectedAttivitaForReceipt.value);
+      const selectedSezioneData = sezioni.find(item => item.nome === selectedSezioneForReceipt.value);
+
+      // Prepare complete first receipt using the enhanced service
+      const activityData = {
+        id: selectedActivityData.id,
+        nome: selectedActivityData.nome,
+        sezioneId: selectedSezioneData.id,
+        importo: selectedActivityData.importo || selectedActivityData.costo || 30
+      };
+
+      const paymentData = {
+        quotaAssociativa: parseFloat(importoQuotaAssociativa),
+        tipologiaPagamento: 2, // Default to cash
+        sezioneId: selectedSezioneData.id
+      };
+
+      // Use the enhanced service method for first receipt
+      const response = await ricevutaService.createFirstReceipt(
+        socioCreated, 
+        activityData, 
+        paymentData
+      );
+      
+      if (response.data.testPrint || response.data.success) {
+        // Open enhanced receipt in new tab
+        goNewTab('ricevute/stampa', {
+          idsocio: socioCreated.id,
+          reprint: 1,
+          ricevuta: response.data.idRicevuta || response.data.id
+        });
+
+        // Calculate age for domanda associativa eligibility
+        const birthDate = new Date(`${formData.anno}-${selectedMM?.value}-${formData.birthJJ}`);
+        const age = calculateAge(birthDate);
+        const isEffettivoOrVolontario = formData.tipoSocio.effettivo || formData.tipoSocio.volontario;
+
+        // Open domanda associativa if eligible
+        if (age >= 18 && isEffettivoOrVolontario) {
+          setTimeout(() => {
+            goNewTab('domanda-associativa', {
+              socioId: socioCreated.id,
+              attivitaId: selectedActivityData.id,
+              ricevutaId: response.data.idRicevuta || response.data.id
+            });
+          }, 1000);
+        }
+
+        setShowReceiptCreationModal(false);
+        setViewContinue(true);
+        setActiveTab('abbonamento');
+      } else {
+        throw new Error(response.data.messageError || 'Errore nella creazione della ricevuta completa');
+      }
+      
+    } catch (error) {
+      console.error('Errore nella creazione della ricevuta completa:', error);
+      setError(error.message || 'Errore nella creazione della ricevuta completa');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Keep existing handlers
   const handleRicevuta = () => {
     const socioId = socioCreated?.id || existingSocio?.id;
     if (socioId) {
@@ -508,8 +598,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       });
     }
   };
-  
-  // Gestisce la stampa della scheda
+
   const handleScheda = () => {
     const socioId = socioCreated?.id || existingSocio?.id;
     if (socioId) {
@@ -518,10 +607,10 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       });
     }
   };
-  
+
   return (
     <div>
-      {/* Avvisi e messaggi */}
+      {/* Existing alerts and modals */}
       {error && (
         <Alert variant="danger" className="mb-3">
           {error}
@@ -544,7 +633,83 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
           </Modal.Footer>
         </Modal>
       )}
+
+      {/* NEW: Receipt Creation Modal */}
+      <Modal show={showReceiptCreationModal} onHide={() => setShowReceiptCreationModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Crea Prima Ricevuta con Quota Associativa</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="mb-3">
+            <strong>Socio creato:</strong> {formData.cognome} {formData.nome}
+          </p>
+          
+          <Form>
+            <Row>
+              <Col md={6}>
+                <SelectField
+                  label="Sezione"
+                  name="sezione"
+                  value={selectedSezioneForReceipt}
+                  options={sezioni.map(item => item.nome)}
+                  onChange={handleSezioneForReceiptChange}
+                  placeholder="Seleziona una sezione"
+                  required
+                />
+              </Col>
+              <Col md={6}>
+                <SelectField
+                  label="Attività"
+                  name="attivita"
+                  value={selectedAttivitaForReceipt}
+                  options={attivita.map(item => item.nome)}
+                  onChange={handleAttivitaForReceiptChange}
+                  placeholder={!selectedSezioneForReceipt ? "Prima seleziona una sezione" : "Seleziona un'attività"}
+                  isDisabled={!selectedSezioneForReceipt}
+                  required
+                />
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col md={6}>
+                <TextField
+                  label="Importo Quota Associativa (€)"
+                  name="importoQuota"
+                  value={importoQuotaAssociativa}
+                  onChange={(name, value) => setImportoQuotaAssociativa(value)}
+                  type="number"
+                  step="1"
+                  min="0"
+                  required
+                />
+              </Col>
+              <Col md={6}>
+                <div className="mt-4 pt-2">
+                  <small className="text-muted">
+                    <i className="bi bi-info-circle me-1"></i>
+                    La ricevuta includerà automaticamente la quota associativa
+                  </small>
+                </div>
+              </Col>
+            </Row>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowReceiptCreationModal(false)}>
+            Salta per ora
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleCreateReceipt}
+            disabled={loading || !selectedSezioneForReceipt || !selectedAttivitaForReceipt}
+          >
+            {loading ? 'Creazione...' : 'Crea Ricevuta'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
       
+      {/* Keep all existing modals and form content */}
       {viewAlert1 && (
         <Modal show={viewAlert1} onHide={() => setViewAlert1(false)}>
           <Modal.Header closeButton>
@@ -864,9 +1029,9 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
               {viewContinue && (
                 <div className="mt-4">
                   <Alert variant="success">
-                    <Alert.Heading>Abbonamento creato con successo</Alert.Heading>
+                    <Alert.Heading>Operazione completata con successo</Alert.Heading>
                     <p>
-                      Puoi ora creare una ricevuta o stampare la scheda del socio.
+                      Il socio è stato creato e la prima ricevuta con quota associativa è stata generata.
                     </p>
                     <div className="d-flex">
                       <Button 
@@ -874,7 +1039,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
                         onClick={handleRicevuta}
                         className="me-2"
                       >
-                        Crea Ricevuta
+                        Crea Altra Ricevuta
                       </Button>
                       <Button 
                         variant="outline-success" 
