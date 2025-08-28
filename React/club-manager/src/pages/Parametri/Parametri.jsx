@@ -28,6 +28,7 @@ const Parametri = () => {
   // Stati per i dati
   const [parameters, setParameters] = useState([]);
   const [sezioni, setSezioni] = useState([]);
+  const [federazioni, setFederazioni] = useState([]);
   const [selectedSezione, setSelectedSezione] = useState(null);
   const [activities, setActivities] = useState([]);
   const [selectedActivity, setSelectedActivity] = useState(null);
@@ -61,9 +62,14 @@ const Parametri = () => {
       try {
         setLoading(true);
         
-        // Carica sezioni
-        const sezioniResponse = await activityService.retrieveSezioni();
-        setSezioni(sezioniResponse.data.data);
+        // Carica sezioni e federazioni in parallelo
+        const [sezioniResponse, federazioniResponse] = await Promise.all([
+          activityService.retrieveSezioni(),
+          activityService.retrieveFamilies()
+        ]);
+        
+        setSezioni(sezioniResponse.data.data || []);
+        setFederazioni(federazioniResponse.data.data || []);
         
         setLoading(false);
       } catch (err) {
@@ -105,16 +111,30 @@ const Parametri = () => {
     }
   };
   
+  // Funzione per arricchire le attività con i nomi delle federazioni
+  const enrichActivitiesWithFederationNames = (activities) => {
+    return activities.map(activity => {
+      const federazione = federazioni.find(f => f.id === activity.federazioneId);
+      return {
+        ...activity,
+        federazioneNome: federazione ? federazione.nome : 'Non assegnata'
+      };
+    });
+  };
+  
   // Gestione selezione sezione
   const handleSezioneChange = async (name, selectedValue) => {
+    const sezioneSelezionata = sezioni.find(s => s.nome === selectedValue.value.value);
     setSelectedSezione(selectedValue.value);
     setSelectedActivity(null);
     
     try {
       setLoading(true);
-      const response = await activityService.retrieveActivitiesBySezione(sezioni.find(item=>item.nome===selectedValue.value.value).id);
-      setActivities(response.data.data);
-      console.log(response.data.data)
+      const response = await activityService.retrieveActivitiesBySezione(sezioneSelezionata.id);
+      
+      // Arricchisci le attività con i nomi delle federazioni
+      const enrichedActivities = enrichActivitiesWithFederationNames(response.data.data || []);
+      setActivities(enrichedActivities);
       
       setLoading(false);
     } catch (err) {
@@ -139,11 +159,12 @@ const Parametri = () => {
     setShowAttivitaForm(false);
     setShowAttivitaList(true);
     
-    // Ricarica le attività
+    // Ricarica le attività se c'è una sezione selezionata
     if (selectedSezione) {
       try {
         const response = await activityService.retrieveActivitiesBySezione(selectedSezione.id);
-        setActivities(response.data);
+        const enrichedActivities = enrichActivitiesWithFederationNames(response.data.data || []);
+        setActivities(enrichedActivities);
       } catch (err) {
         console.error('Errore nel ricaricamento delle attività:', err);
       }
@@ -156,6 +177,40 @@ const Parametri = () => {
     setUpdateMode(true);
     setShowAttivitaList(false);
     setShowAttivitaForm(true);
+  };
+  
+  // Gestione eliminazione attività
+  const handleDeleteActivity = async (activity) => {
+    if (!window.confirm(`Sei sicuro di voler eliminare l'attività "${activity.nome}"?`)) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      const response = await activityService.removeActivity({ attId: activity.id });
+      
+      if (response.data.rc) {
+        setSuccess('Attività eliminata con successo.');
+        setAlertVariant('success');
+        setShowAlert(true);
+        
+        // Ricarica le attività
+        const activitiesResponse = await activityService.retrieveActivitiesBySezione(selectedSezione.id);
+        const enrichedActivities = enrichActivitiesWithFederationNames(activitiesResponse.data.data || []);
+        setActivities(enrichedActivities);
+      } else {
+        throw new Error(response.data.message || 'Errore durante l\'eliminazione');
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Errore nell\'eliminazione dell\'attività:', err);
+      setError(err.message || 'Si è verificato un errore durante l\'eliminazione dell\'attività.');
+      setAlertVariant('danger');
+      setShowAlert(true);
+      setLoading(false);
+    }
   };
   
   return (
@@ -197,7 +252,7 @@ const Parametri = () => {
                   <SelectField
                     label="Sezione"
                     name="sezione"
-                    value={selectedSezione}
+                    value={selectedSezione ? selectedSezione.nome : ''}
                     options={sezioni.map(sezione => sezione.nome)}
                     onChange={handleSezioneChange}
                     placeholder="Seleziona una sezione"
@@ -205,22 +260,15 @@ const Parametri = () => {
                   />
                 </Form>
                 
-                {selectedSezione && (
-                  <div className="mt-3">
-                    <h6>Sezione selezionata: <strong>{selectedSezione.nome}</strong></h6>
-                    <p className="text-muted">
-                      {activities.length} attività trovate
-                    </p>
-                  </div>
-                )}
                 
                 {selectedSezione && activities.length > 0 && (
                   <div className="mt-4">
                     <Table striped bordered hover responsive>
-                      <thead>
+                      <thead className="table-dark">
                         <tr>
                           <th>ID</th>
                           <th>Nome</th>
+                          <th>Federazione</th>
                           <th>Codice</th>
                           <th>Email Referente</th>
                           <th>Azioni</th>
@@ -230,7 +278,14 @@ const Parametri = () => {
                         {activities.map((activity) => (
                           <tr key={activity.id}>
                             <td>{activity.id}</td>
-                            <td>{activity.nome}</td>
+                            <td><strong>{activity.nome}</strong></td>
+                            <td>
+                              {activity.federazioneNome ? (
+                                <span className="badge bg-primary">{activity.federazioneNome}</span>
+                              ) : (
+                                <span className="text-muted">Non assegnata</span>
+                              )}
+                            </td>
                             <td>
                               {activity.codice ? (
                                 <span className="badge bg-secondary">{activity.codice}</span>
@@ -286,6 +341,7 @@ const Parametri = () => {
             <AttivitaFormSezione 
               activity={selectedActivity}
               sezione={selectedSezione}
+              federazioni={federazioni}
               updateMode={updateMode}
               onClose={handleCloseAttivitaForm}
               onSuccess={(message) => {
@@ -304,71 +360,22 @@ const Parametri = () => {
       </Tabs>
     </Container>
   );
-  
-  // Gestione eliminazione attività
-  const handleDeleteActivity = async (activity) => {
-    if (!window.confirm(`Sei sicuro di voler eliminare l'attività "${activity.nome}"?`)) {
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      
-      const response = await activityService.removeActivity({ attId: activity.id });
-      
-      if (response.data.rc) {
-        setSuccess('Attività eliminata con successo.');
-        setAlertVariant('success');
-        setShowAlert(true);
-        
-        // Ricarica le attività
-        const activitiesResponse = await activityService.retrieveActivitiesBySezione(selectedSezione.id);
-        setActivities(activitiesResponse.data);
-      } else {
-        throw new Error(response.data.message || 'Errore durante l\'eliminazione');
-      }
-      
-      setLoading(false);
-    } catch (err) {
-      console.error('Errore nell\'eliminazione dell\'attività:', err);
-      setError(err.message || 'Si è verificato un errore durante l\'eliminazione dell\'attività.');
-      setAlertVariant('danger');
-      setShowAlert(true);
-      setLoading(false);
-    }
-  };
 };
 
 /**
  * Componente per il form di creazione/modifica attività per sezione
  */
-const AttivitaFormSezione = ({ activity, sezione, updateMode = false, onClose, onSuccess, onError }) => {
+const AttivitaFormSezione = ({ activity, sezione, federazioni, updateMode = false, onClose, onSuccess, onError }) => {
   const [formData, setFormData] = useState({
     nome: '',
     codice: '',
     emailReferente: ''
   });
   
-  const [federazioni, setFederazioni] = useState([]);
   const [selectedFederazione, setSelectedFederazione] = useState(null);
   const [loading, setLoading] = useState(false);
   
-  // Carica federazioni
-  useEffect(() => {
-    const fetchFederazioni = async () => {
-      try {
-        const response = await activityService.retrieveFamilies();
-        setFederazioni(response.data.data);
-      } catch (error) {
-        console.error('Errore nel caricamento delle federazioni:', error);
-        onError('Errore nel caricamento delle federazioni.');
-      }
-    };
-    
-    fetchFederazioni();
-  }, []);
-  
-  // Imposta i dati iniziali
+  // Imposta i dati iniziali quando il componente viene montato o l'attività cambia
   useEffect(() => {
     if (activity && updateMode) {
       setFormData({
@@ -380,8 +387,16 @@ const AttivitaFormSezione = ({ activity, sezione, updateMode = false, onClose, o
       // Trova la federazione corrispondente
       if (activity.federazioneId && federazioni.length > 0) {
         const federazione = federazioni.find(f => f.id === activity.federazioneId);
-        setSelectedFederazione(federazione);
+        setSelectedFederazione(federazione || null);
       }
+    } else {
+      // Reset per nuova creazione
+      setFormData({
+        nome: '',
+        codice: '',
+        emailReferente: ''
+      });
+      setSelectedFederazione(null);
     }
   }, [activity, updateMode, federazioni]);
   
@@ -390,13 +405,13 @@ const AttivitaFormSezione = ({ activity, sezione, updateMode = false, onClose, o
   };
   
   const handleFederazioneChange = (name, selectedValue) => {
-    setSelectedFederazione(selectedValue.value);
+    setSelectedFederazione(selectedValue);
   };
   
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.nome) {
+    if (!formData.nome.trim()) {
       onError('Il nome dell\'attività è obbligatorio.');
       return;
     }
@@ -410,16 +425,18 @@ const AttivitaFormSezione = ({ activity, sezione, updateMode = false, onClose, o
       setLoading(true);
       
       const body = {
-        nome: formData.nome,
+        nome: formData.nome.trim(),
         federazioneId: selectedFederazione.id,
         sezioneId: sezione.id,
-        codice: formData.codice || null,
-        emailReferente: formData.emailReferente || null
+        codice: formData.codice.trim() || null,
+        emailReferente: formData.emailReferente.trim() || null
       };
       
       if (updateMode && activity) {
         body.id = activity.id;
       }
+      
+      console.log('Dati da inviare:', body);
       
       const response = await activityService.updateActivity(body);
       
@@ -435,6 +452,11 @@ const AttivitaFormSezione = ({ activity, sezione, updateMode = false, onClose, o
           });
           setSelectedFederazione(null);
         }
+        
+        // Chiudi il form dopo un piccolo delay per permettere all'utente di vedere il messaggio
+        setTimeout(() => {
+          onClose();
+        }, 1500);
       } else {
         throw new Error(response.data.message || 'Errore durante il salvataggio');
       }
@@ -456,8 +478,8 @@ const AttivitaFormSezione = ({ activity, sezione, updateMode = false, onClose, o
         </Button>
       </Card.Header>
       <Card.Body>
-        <div className="mb-3">
-          <strong>Sezione:</strong> {sezione.nome}
+        <div className="mb-3 p-3 bg-light rounded">
+          <strong>Sezione:</strong> {sezione?.nome || 'Non selezionata'}
         </div>
         
         <Form onSubmit={handleSubmit}>
@@ -466,11 +488,8 @@ const AttivitaFormSezione = ({ activity, sezione, updateMode = false, onClose, o
               <SelectField
                 label="Federazione"
                 name="federazione"
-                value={selectedFederazione ? { value: selectedFederazione } : null}
-                options={federazioni.map(fed => ({
-                  value: fed,
-                  label: fed.nome
-                }))}
+                value={selectedFederazione ? selectedFederazione.nome : ''}
+                options={federazioni.map(fed => fed.nome)}
                 onChange={handleFederazioneChange}
                 placeholder="Seleziona una federazione"
                 required
@@ -518,7 +537,14 @@ const AttivitaFormSezione = ({ activity, sezione, updateMode = false, onClose, o
               type="submit"
               disabled={loading}
             >
-              {loading ? 'Salvataggio...' : (updateMode ? 'Aggiorna' : 'Crea')}
+              {loading ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                  Salvataggio...
+                </>
+              ) : (
+                updateMode ? 'Aggiorna' : 'Crea'
+              )}
             </Button>
           </div>
         </Form>
