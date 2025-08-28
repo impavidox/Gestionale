@@ -162,8 +162,8 @@ const Parametri = () => {
     // Ricarica le attività se c'è una sezione selezionata
     if (selectedSezione) {
       try {
-        const response = await activityService.retrieveActivitiesBySezione(selectedSezione.id);
-        const enrichedActivities = enrichActivitiesWithFederationNames(response.data.data || []);
+        const response = await activityService.retrieveActivitiesBySezione(sezioni.find(s=>s.nome===selectedSezione.value).id);
+        const enrichedActivities = enrichActivitiesWithFederationNames(response.data.data);
         setActivities(enrichedActivities);
       } catch (err) {
         console.error('Errore nel ricaricamento delle attività:', err);
@@ -184,20 +184,19 @@ const Parametri = () => {
     if (!window.confirm(`Sei sicuro di voler eliminare l'attività "${activity.nome}"?`)) {
       return;
     }
-    
     try {
       setLoading(true);
       
       const response = await activityService.removeActivity({ attId: activity.id });
       
-      if (response.data.rc) {
+      if (response.data.data) {
         setSuccess('Attività eliminata con successo.');
         setAlertVariant('success');
         setShowAlert(true);
         
         // Ricarica le attività
-        const activitiesResponse = await activityService.retrieveActivitiesBySezione(selectedSezione.id);
-        const enrichedActivities = enrichActivitiesWithFederationNames(activitiesResponse.data.data || []);
+        const response = await activityService.retrieveActivitiesBySezione(sezioni.find(s=>s.nome===selectedSezione.value).id);
+        const enrichedActivities = enrichActivitiesWithFederationNames(response.data.data);
         setActivities(enrichedActivities);
       } else {
         throw new Error(response.data.message || 'Errore durante l\'eliminazione');
@@ -373,10 +372,29 @@ const AttivitaFormSezione = ({ activity, sezione, federazioni, updateMode = fals
   });
   
   const [selectedFederazione, setSelectedFederazione] = useState(null);
+  const [selectedSezione, setSelectedSezione] = useState(null);
+  const [sezioni, setSezioni] = useState([]);
   const [loading, setLoading] = useState(false);
+  
+  // Carica sezioni all'avvio
+  useEffect(() => {
+    const fetchSezioni = async () => {
+      try {
+        const response = await activityService.retrieveSezioni();
+        setSezioni(response.data.data || []);
+      } catch (error) {
+        console.error('Errore nel caricamento delle sezioni:', error);
+        onError('Errore nel caricamento delle sezioni.');
+      }
+    };
+    
+    fetchSezioni();
+  }, []);
   
   // Imposta i dati iniziali quando il componente viene montato o l'attività cambia
   useEffect(() => {
+    // Imposta sempre la sezione corrente come default
+    setSelectedSezione(sezione);
     if (activity && updateMode) {
       setFormData({
         nome: activity.nome || '',
@@ -387,7 +405,25 @@ const AttivitaFormSezione = ({ activity, sezione, federazioni, updateMode = fals
       // Trova la federazione corrispondente
       if (activity.federazioneId && federazioni.length > 0) {
         const federazione = federazioni.find(f => f.id === activity.federazioneId);
-        setSelectedFederazione(federazione || null);
+        if (federazione){
+          const formattedFederazione = {
+            id: federazione.id,
+            label: federazione.nome
+          };
+          setSelectedFederazione(formattedFederazione);
+        }
+      }
+      
+      // Trova la sezione corrispondente (se diversa da quella corrente)
+      if (activity.sezioneId && sezioni.length > 0) {
+        const sezioneAttuale = sezioni.find(s => s.id === activity.sezioneId);
+        if (sezioneAttuale) {
+          const formattedSezione = {
+            id: sezioneAttuale.id,
+            label: sezioneAttuale.nome
+          };
+          setSelectedSezione(formattedSezione);
+        }
       }
     } else {
       // Reset per nuova creazione
@@ -397,15 +433,21 @@ const AttivitaFormSezione = ({ activity, sezione, federazioni, updateMode = fals
         emailReferente: ''
       });
       setSelectedFederazione(null);
+      setSelectedSezione(sezione);
     }
-  }, [activity, updateMode, federazioni]);
+  }, [activity, updateMode, federazioni, sezioni, sezione]);
   
   const handleChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
   
   const handleFederazioneChange = (name, selectedValue) => {
-    setSelectedFederazione(selectedValue);
+    setSelectedFederazione(selectedValue.value);
+  };
+  
+  const handleSezioneChange = (name, selectedValue) => {
+    setSelectedSezione(selectedValue.value);
+    
   };
   
   const handleSubmit = async (e) => {
@@ -415,19 +457,25 @@ const AttivitaFormSezione = ({ activity, sezione, federazioni, updateMode = fals
       onError('Il nome dell\'attività è obbligatorio.');
       return;
     }
+
     
     if (!selectedFederazione) {
       onError('Selezionare una federazione per l\'attività.');
       return;
     }
     
+    if (!selectedSezione) {
+      onError('Selezionare una sezione per l\'attività.');
+      return;
+    }
+    
     try {
       setLoading(true);
-      
+      console.log(selectedFederazione,selectedSezione)
       const body = {
         nome: formData.nome.trim(),
-        federazioneId: selectedFederazione.id,
-        sezioneId: sezione.id,
+        federazioneId: federazioni.find(f=>f.nome===selectedFederazione.label).id,
+        sezioneId: sezioni.find(s=>s.nome===selectedSezione.label).id,
         codice: formData.codice.trim() || null,
         emailReferente: formData.emailReferente.trim() || null
       };
@@ -440,7 +488,7 @@ const AttivitaFormSezione = ({ activity, sezione, federazioni, updateMode = fals
       
       const response = await activityService.updateActivity(body);
       
-      if (response.data.rc) {
+      if (response.data.data) {
         onSuccess(updateMode ? 'Attività aggiornata con successo.' : 'Attività creata con successo.');
         
         if (!updateMode) {
@@ -478,17 +526,26 @@ const AttivitaFormSezione = ({ activity, sezione, federazioni, updateMode = fals
         </Button>
       </Card.Header>
       <Card.Body>
-        <div className="mb-3 p-3 bg-light rounded">
-          <strong>Sezione:</strong> {sezione?.nome || 'Non selezionata'}
-        </div>
         
         <Form onSubmit={handleSubmit}>
+          
           <Row className="mb-3">
-            <Col>
+            <Col md={6}>
+              <SelectField
+                label="Sezione"
+                name="sezione"
+                value={selectedSezione}
+                options={sezioni.map(sez => sez.nome)}
+                onChange={handleSezioneChange}
+                placeholder="Seleziona una sezione"
+                required
+              />
+            </Col>
+            <Col md={6}>
               <SelectField
                 label="Federazione"
                 name="federazione"
-                value={selectedFederazione ? selectedFederazione.nome : ''}
+                value={selectedFederazione}
                 options={federazioni.map(fed => fed.nome)}
                 onChange={handleFederazioneChange}
                 placeholder="Seleziona una federazione"

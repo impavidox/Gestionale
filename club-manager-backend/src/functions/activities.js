@@ -28,6 +28,19 @@ app.http('activities', {
 
             context.log(`Action: ${action}, Param1: ${param1}`);
 
+            let requestBody = null;
+            // Only attempt to read body for POST/PUT requests
+            if (request.method === 'POST' || request.method === 'PUT') {
+                try {
+                    // This reads the entire stream ONCE and parses it as JSON
+                    requestBody = await request.json();
+                    context.log('Request body (parsed JSON):', requestBody);
+                } catch (jsonError) {
+                    context.log('Error parsing JSON body:', jsonError.message);
+                    return createErrorResponse(400, 'Invalid JSON body provided', jsonError.message);
+                }
+            }
+
             switch (action) {
                 case 'retrieveAllActivities':
                     return await handleRetrieveAllActivities(context);
@@ -51,22 +64,22 @@ app.http('activities', {
                     return await handleRetrieveSezioni(context);
                 
                 case 'updateActivity':
-                    return await handleUpdateActivity(context, request.body);
+                    return await handleUpdateActivity(context, requestBody);
                 
                 case 'removeActivity':
-                    return await handleRemoveActivity(context, request.body);
+                    return await handleRemoveActivity(context, requestBody);
                 
                 case 'createFederazione':
-                    return await handleCreateFederazione(context, request.body);
+                    return await handleCreateFederazione(context, requestBody);
                 
                 case 'createSezione':
-                    return await handleCreateSezione(context, request.body);
+                    return await handleCreateSezione(context, requestBody);
                 
                 default:
                     return createErrorResponse(404, `Endpoint '${action}' non trovato`);
             }
         } catch (error) {
-            context.log.error('Errore nella function activities:', error);
+            context.log('Errore nella function activities:', error);
             return createErrorResponse(500, 'Errore interno del server', error.message);
         }
     }
@@ -103,7 +116,7 @@ async function handleRetrieveAllActivities(context) {
         return createSuccessResponse(normalizedActivities);
         
     } catch (error) {
-        context.log.error('Errore nel recupero attività:', error);
+        context.log('Errore nel recupero attività:', error);
         return createErrorResponse(500, 'Errore nel recupero attività', error.message);
     }
 }
@@ -131,7 +144,7 @@ async function handleRetrieveCodes(context) {
         return createSuccessResponse(normalizedActivities);
         
     } catch (error) {
-        context.log.error('Errore nel recupero attività:', error);
+        context.log('Errore nel recupero attività:', error);
         return createErrorResponse(500, 'Errore nel recupero attività', error.message);
     }
 }
@@ -171,7 +184,7 @@ async function handleRetrieveActivitiesByFederazione(context, federazioneId) {
         return createSuccessResponse(normalizedActivities);
         
     } catch (error) {
-        context.log.error('Errore nel recupero attività per federazione:', error);
+        context.log('Errore nel recupero attività per federazione:', error);
         return createErrorResponse(500, 'Errore nel recupero attività per federazione', error.message);
     }
 }
@@ -209,7 +222,7 @@ async function handleRetrieveActivitiesBySezione(context, sezioneId) {
         return createSuccessResponse(normalizedActivities);
         
     } catch (error) {
-        context.log.error('Errore nel recupero attività per sezione:', error);
+        context.log('Errore nel recupero attività per sezione:', error);
         return createErrorResponse(500, 'Errore nel recupero attività per sezione', error.message);
     }
 }
@@ -262,7 +275,7 @@ async function handleRetrieveFullActivitiesByFederazione(context, federazioneId)
         return createSuccessResponse(normalizedActivities);
         
     } catch (error) {
-        context.log.error('Errore nel recupero attività complete per federazione:', error);
+        context.log('Errore nel recupero attività complete per federazione:', error);
         return createErrorResponse(500, 'Errore nel recupero attività complete per federazione', error.message);
     }
 }
@@ -292,7 +305,7 @@ async function handleRetrieveFederazioni(context) {
         return createSuccessResponse(federazioni);
         
     } catch (error) {
-        context.log.error('Errore nel recupero federazioni:', error);
+        context.log('Errore nel recupero federazioni:', error);
         return createErrorResponse(500, 'Errore nel recupero federazioni', error.message);
     }
 }
@@ -322,7 +335,7 @@ async function handleRetrieveSezioni(context) {
         return createSuccessResponse(sezioni);
         
     } catch (error) {
-        context.log.error('Errore nel recupero sezioni:', error);
+        context.log('Errore nel recupero sezioni:', error);
         return createErrorResponse(500, 'Errore nel recupero sezioni', error.message);
     }
 }
@@ -334,7 +347,7 @@ async function handleUpdateActivity(context, activityData) {
         // Validate input data
         const { error, value } = validateAttivita(activityData);
         if (error) {
-            context.log.warn('Dati attività non validi:', error.details);
+            context.log('Dati attività non validi:', error.details);
             return createErrorResponse(400, 'Dati non validi', error.details);
         }
         
@@ -397,18 +410,18 @@ async function handleUpdateActivity(context, activityData) {
         }
         
     } catch (error) {
-        context.log.error('Errore nell\'aggiornamento attività:', error);
+        context.log('Errore nell\'aggiornamento attività:', error);
         return createErrorResponse(500, 'Errore nell\'aggiornamento attività', error.message);
     }
 }
 
 async function handleRemoveActivity(context, activityData) {
     try {
-        if (!activityData.id && !activityData.attId) {
+        if (!activityData.attId) {
             return createErrorResponse(400, 'ID attività richiesto per la cancellazione');
         }
         
-        const activityId = activityData.id || activityData.attId;
+        const activityId = activityData.attId;
         context.log(`Rimozione attività: ${activityId}`);
         
         const pool = await getPool();
@@ -422,7 +435,6 @@ async function handleRemoveActivity(context, activityData) {
             // Check if activity is in use
             const checkResult = await request.query(`
                 SELECT 
-                    (SELECT COUNT(*) FROM tesserati WHERE attivitàId = @id) as tesserati,
                     (SELECT COUNT(*) FROM ricevuteAttività WHERE attivitàId = @id) as ricevute
             `);
             
@@ -453,7 +465,7 @@ async function handleRemoveActivity(context, activityData) {
         }
         
     } catch (error) {
-        context.log.error('Errore nella rimozione attività:', error);
+        context.log('Errore nella rimozione attività:', error);
         return createErrorResponse(500, 'Errore nella rimozione attività', error.message);
     }
 }
@@ -497,7 +509,7 @@ async function handleCreateFederazione(context, federazioneData) {
         });
         
     } catch (error) {
-        context.log.error('Errore nella creazione federazione:', error);
+        context.log('Errore nella creazione federazione:', error);
         return createErrorResponse(500, 'Errore nella creazione federazione', error.message);
     }
 }
@@ -541,7 +553,7 @@ async function handleCreateSezione(context, sezioneData) {
         });
         
     } catch (error) {
-        context.log.error('Errore nella creazione sezione:', error);
+        context.log('Errore nella creazione sezione:', error);
         return createErrorResponse(500, 'Errore nella creazione sezione', error.message);
     }
 }

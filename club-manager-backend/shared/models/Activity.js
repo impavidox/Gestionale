@@ -14,8 +14,8 @@ const attivitaSchema = Joi.object({
             'number.base': 'La federazione deve essere un numero',
             'number.min': 'La federazione è obbligatoria'
         }),
-    codice: Joi.string().trim().max(255).optional(),
-    emailReferente: Joi.string().email().max(255).optional()
+    codice: Joi.string().allow(null).trim().max(255).optional(),
+    emailReferente: Joi.string().allow(null).email().max(255).optional()
         .messages({
             'string.email': 'L\'email del referente non è valida'
         }),
