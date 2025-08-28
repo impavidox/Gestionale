@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Tabs, Tab, Card, Button, Row, Col, Form, Alert, Table } from 'react-bootstrap';
+import { Container, Tabs, Tab, Card, Button, Row, Col, Form, Alert, Table, Modal } from 'react-bootstrap';
 import activityService from '../../api/services/activityService';
 import parametriService from '../../api/services/parametriService';
 import geographicService from '../../api/services/geographicService';
@@ -11,6 +11,59 @@ import Loader from '../../components/common/Loader';
 import AttivitaList from '../../components/attivita/AttivitaList';
 import AttivitaForm from '../../components/attivita/AttivitaForm';
 import { formatDateDisplay } from '../../utils/dateUtils';
+
+/**
+ * Componente modale per conferma eliminazione
+ */
+const DeleteConfirmModal = ({ show, onHide, onConfirm, activityName, loading }) => {
+  return (
+    <Modal show={show} onHide={onHide} centered>
+      <Modal.Header closeButton className="bg-danger text-white">
+        <Modal.Title>
+          <i className="bi bi-exclamation-triangle-fill me-2"></i>
+          Conferma Eliminazione
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <div className="text-center">
+          <div className="mb-3">
+            <i className="bi bi-trash3 text-danger" style={{ fontSize: '3rem' }}></i>
+          </div>
+          <h5 className="mb-3">Sei sicuro di voler eliminare questa attività?</h5>
+          <div className="alert alert-warning">
+            <strong>Attività: </strong>
+            <span className="fw-bold text-danger">{activityName}</span>
+          </div>
+          <p className="text-muted mb-0">
+            <small>
+              <i className="bi bi-info-circle me-1"></i>
+              Questa azione non può essere annullata.
+            </small>
+          </p>
+        </div>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button variant="secondary" onClick={onHide} disabled={loading}>
+          <i className="bi bi-x-lg me-1"></i>
+          Annulla
+        </Button>
+        <Button variant="danger" onClick={onConfirm} disabled={loading}>
+          {loading ? (
+            <>
+              <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+              Eliminazione...
+            </>
+          ) : (
+            <>
+              <i className="bi bi-trash3 me-1"></i>
+              Elimina
+            </>
+          )}
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  );
+};
 
 /**
  * Pagina per la gestione dei parametri dell'applicazione
@@ -48,6 +101,11 @@ const Parametri = () => {
     updEmpty: true
   });
   const [showUpdateTessera, setShowUpdateTessera] = useState(false);
+  
+  // Stati per il modale di eliminazione
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [activityToDelete, setActivityToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   
   // Stati per errori e loading
   const [loading, setLoading] = useState(false);
@@ -179,15 +237,27 @@ const Parametri = () => {
     setShowAttivitaForm(true);
   };
   
-  // Gestione eliminazione attività
-  const handleDeleteActivity = async (activity) => {
-    if (!window.confirm(`Sei sicuro di voler eliminare l'attività "${activity.nome}"?`)) {
-      return;
-    }
+  // Gestione apertura modale eliminazione
+  const handleShowDeleteModal = (activity) => {
+    setActivityToDelete(activity);
+    setShowDeleteModal(true);
+  };
+  
+  // Gestione chiusura modale eliminazione
+  const handleCloseDeleteModal = () => {
+    setShowDeleteModal(false);
+    setActivityToDelete(null);
+    setDeleteLoading(false);
+  };
+  
+  // Gestione eliminazione attività confermata
+  const handleConfirmDelete = async () => {
+    if (!activityToDelete) return;
+    
     try {
-      setLoading(true);
+      setDeleteLoading(true);
       
-      const response = await activityService.removeActivity({ attId: activity.id });
+      const response = await activityService.removeActivity({ attId: activityToDelete.id });
       
       if (response.data.data) {
         setSuccess('Attività eliminata con successo.');
@@ -195,20 +265,22 @@ const Parametri = () => {
         setShowAlert(true);
         
         // Ricarica le attività
-        const response = await activityService.retrieveActivitiesBySezione(sezioni.find(s=>s.nome===selectedSezione.value).id);
-        const enrichedActivities = enrichActivitiesWithFederationNames(response.data.data);
+        const activitiesResponse = await activityService.retrieveActivitiesBySezione(sezioni.find(s=>s.nome===selectedSezione.value).id);
+        const enrichedActivities = enrichActivitiesWithFederationNames(activitiesResponse.data.data);
         setActivities(enrichedActivities);
+        
+        // Chiudi il modale
+        handleCloseDeleteModal();
       } else {
         throw new Error(response.data.message || 'Errore durante l\'eliminazione');
       }
       
-      setLoading(false);
     } catch (err) {
       console.error('Errore nell\'eliminazione dell\'attività:', err);
       setError(err.message || 'Si è verificato un errore durante l\'eliminazione dell\'attività.');
       setAlertVariant('danger');
       setShowAlert(true);
-      setLoading(false);
+      setDeleteLoading(false);
     }
   };
   
@@ -227,6 +299,15 @@ const Parametri = () => {
       )}
       
       {loading && <Loader />}
+      
+      {/* Modale di conferma eliminazione */}
+      <DeleteConfirmModal
+        show={showDeleteModal}
+        onHide={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        activityName={activityToDelete?.nome || ''}
+        loading={deleteLoading}
+      />
       
       <Tabs
         activeKey={activeTab}
@@ -313,7 +394,7 @@ const Parametri = () => {
                                 <Button 
                                   variant="outline-danger" 
                                   size="sm"
-                                  onClick={() => handleDeleteActivity(activity)}
+                                  onClick={() => handleShowDeleteModal(activity)}
                                 >
                                   Elimina
                                 </Button>
