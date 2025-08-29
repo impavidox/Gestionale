@@ -323,11 +323,10 @@ async function handleCreateSocio(context, socioData) {
                 `);
                 
                 if (attivitaResult.recordset.length > 0) {
-                    tesseratoRequest.input('attivitàId', sql.Int, attivitaResult.recordset[0].id);
                     
                     await tesseratoRequest.query(`
-                        INSERT INTO tesserati (socioId, codice, attivitàId, annoValidità)
-                        VALUES (@socioId, @codice, @attivitàId, @annoValidità)
+                        INSERT INTO tesserati (socioId, codice, annoValidità)
+                        VALUES (@socioId, @codice, @annoValidità)
                     `);
                 } else {
                     await tesseratoRequest.query(`
