@@ -18,6 +18,7 @@ import RicevuteElenco from '../pages/Ricevute/RicevuteElenco';
 import Parametri from '../pages/Parametri/Parametri';
 import EmailManager from '../pages/Email/EmailManager';
 import RicercaStampa from '../pages/Soci/RicercaStampa';
+import DomandaAssociativaPrint from '../components/domanda/DomandaAssociativaPrint';
 
 /**
  * Componente per la gestione del routing dell'applicazione
@@ -70,6 +71,7 @@ const AppRouter = () => {
           <Route path="stampa-prima-nota/" element={<StampaPrimaNota />} />
           <Route path="ricevute/stampa" element={<StampaRicevuta />} />
           <Route path="schede/stampa" element={<StampaRicevuta isScheda={true} />} />
+          <Route path="domanda-associativa/stampa" element={<DomandaAssociativaPrint />} />
           <Route path="ricerca" element={<RicercaStampa />} />
           <Route path="email" element={<EmailManager />} />
         </Route>

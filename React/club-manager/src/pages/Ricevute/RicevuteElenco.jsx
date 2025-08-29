@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Table, Button, Modal, Alert, Badge } from 'react-bootstrap';
+import { Container, Card, Table, Button, Modal, Alert, Badge, Row, Col, Form } from 'react-bootstrap';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import ricevutaService from '../../api/services/ricevutaService';
 import activityService from '../../api/services/activityService';
-import { formatDateDisplay } from '../../utils/dateUtils';
+import { formatDateDisplay, formatDateForApi } from '../../utils/dateUtils';
 import Loader from '../../components/common/Loader';
+import TextField from '../../components/forms/TextField';
+import DateField from '../../components/forms/DateField';
+import SelectField from '../../components/forms/SelectField';
+import CheckboxField from '../../components/forms/CheckboxField';
 
 /**
  * Pagina per visualizzare l'elenco delle ricevute di un socio
@@ -19,15 +23,36 @@ const RicevuteElenco = () => {
   const socioId = parseInt(searchParams.get('socioId') || '0');
   const cognome = searchParams.get('cognome') || '';
   const nome = searchParams.get('nome') || '';
+  const isNewSocio = searchParams.get('isNewSocio') === 'true';
   
   // Stati per i dati
   const [attivita, setAttivita] = useState([]);
+  const [sezioni, setSezioni] = useState([]);
   const [ricevute, setRicevute] = useState([]);
   const [selectedRicevuta, setSelectedRicevuta] = useState(null);
+  const [tipologiePagamento] = useState([
+    {nome:'POS', id:1}, 
+    {nome:'Contanti', id:2}, 
+    {nome:'Bonifico', id:3}
+  ]);
   
   // Stati per i modali
   const [showActionModal, setShowActionModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showNewRicevutaModal, setShowNewRicevutaModal] = useState(false);
+  
+  // Stati per il form della ricevuta (copiato da SocioList)
+  const [ricevutaData, setRicevutaData] = useState({
+    dataRicevuta: new Date(),
+    tipologiaPagamento: 0,
+    somma: 0,
+    sommaIncassata: 0,
+    scadenzaQuota: new Date(),
+    scadenzaAbbonamento: new Date(),
+    sezione: null,
+    attivita: null,
+    quotaAssociativa: false
+  });
   
   // Stati per UI
   const [loading, setLoading] = useState(false);
@@ -35,29 +60,42 @@ const RicevuteElenco = () => {
   const [success, setSuccess] = useState('');
   const [showAlert, setShowAlert] = useState(false);
   const [alertVariant, setAlertVariant] = useState('danger');
+  const [isFirstRicevuta, setIsFirstRicevuta] = useState(false);
   
-  // Carica le ricevute all'avvio
+  // Carica i dati necessari all'avvio
   useEffect(() => {
     if (socioId) {
-      getAttivitaMapping();
+      loadInitialData();
       fetchRicevute();
     }
   }, [socioId]);
 
+  // Mostra automaticamente il modal per i nuovi soci
+  useEffect(() => {
+    if (isNewSocio && ricevute.length === 0) {
+      // Mostra automaticamente il modal per creare la prima ricevuta
+      handleShowNewRicevutaModal();
+    }
+  }, [isNewSocio, ricevute.length]);
 
-  const getAttivitaMapping = async ()=>{
+  const loadInitialData = async () => {
     try {
       setLoading(true);
       setError('');
       setShowAlert(false);
-      const response = await activityService.retrieveAllActivities();
-      // Handle different response structures
-      let attivitaData = response.data.data;
-      setAttivita(attivitaData);
+      
+      // Carica sezioni e attività
+      const [sezioniResponse, attivitaResponse] = await Promise.all([
+        activityService.retrieveSezioni(),
+        activityService.retrieveAllActivities()
+      ]);
+      
+      setSezioni(sezioniResponse.data.data || []);
+      setAttivita(attivitaResponse.data.data || []);
       
     } catch (error) {
-      console.error('Errore nel caricamento delle attività:', error);
-      setError('Si è verificato un errore nel caricamento delle attività.');
+      console.error('Errore nel caricamento dei dati iniziali:', error);
+      setError('Si è verificato un errore nel caricamento dei dati iniziali.');
       setAlertVariant('danger');
       setShowAlert(true);
     } finally {
@@ -73,9 +111,16 @@ const RicevuteElenco = () => {
       setShowAlert(false);
       const response = await ricevutaService.retrieveRicevutaForUser(socioId);
       // Handle different response structures
-      let ricevuteData = response.data.data.items;
+      let ricevuteData = [];
+      if (response.data?.data?.items) {
+        ricevuteData = response.data.data.items;
+      } else if (response.data?.items) {
+        ricevuteData = response.data.items;
+      } else if (Array.isArray(response.data)) {
+        ricevuteData = response.data;
+      }
+      
       setRicevute(ricevuteData);
-      console.log(ricevute)
       
     } catch (error) {
       console.error('Errore nel caricamento delle ricevute:', error);
@@ -85,6 +130,29 @@ const RicevuteElenco = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Gestisce l'apertura del modal per nuova ricevuta
+  const handleShowNewRicevutaModal = () => {
+    setIsFirstRicevuta(ricevute.length === 0);
+    setShowNewRicevutaModal(true);
+
+    // Calcola la prossima scadenza (31 agosto)
+    const today = new Date();
+    const year = today.getFullYear();
+    const august31stThisYear = new Date(year, 7, 31); // August is month 7 (0-indexed)
+
+    const scadenzaQuota = (today > august31stThisYear)
+      ? new Date(year + 1, 7, 31)
+      : august31stThisYear;
+
+    // Inizializza i valori di default
+    setRicevutaData(prev => ({
+      ...prev,
+      dataRicevuta: today,
+      scadenzaQuota: scadenzaQuota,
+      scadenzaAbbonamento: new Date(new Date().getFullYear(), new Date().getMonth()+6, new Date().getDate())
+    }));
   };
   
   // Gestisce il click su una riga della tabella
@@ -97,7 +165,154 @@ const RicevuteElenco = () => {
   const handleCloseModals = () => {
     setShowActionModal(false);
     setShowDeleteModal(false);
+    setShowNewRicevutaModal(false);
     setSelectedRicevuta(null);
+    resetRicevutaForm();
+  };
+
+  // Reset del form ricevuta
+  const resetRicevutaForm = () => {
+    setRicevutaData({
+      dataRicevuta: new Date(),
+      tipologiaPagamento: 0,
+      somma: 0,
+      sommaIncassata: 0,
+      scadenzaQuota: new Date(),
+      scadenzaAbbonamento: new Date(),
+      sezione: null,
+      attivita: null,
+      quotaAssociativa: false
+    });
+  };
+
+  // Gestione cambio sezione nel form ricevuta
+  const handleSezioneChange = async (name, selectedValue) => {
+    setRicevutaData(prev => ({ 
+      ...prev, 
+      sezione: selectedValue.value,
+      attivita: null // Reset attività quando cambia sezione
+    }));
+    
+    // Carica attività per la sezione selezionata
+    try {
+      setLoading(true);
+      const sezioneId = sezioni.find(item => item.nome === selectedValue.value.value).id;
+      const response = await activityService.retrieveActivitiesBySezione(sezioneId);
+      // Filtra solo le attività di questa sezione
+      const attivitaSezione = response.data.data || [];
+      // Aggiorna lo stato delle attività mantenendo quelle esistenti e aggiungendo quelle nuove
+      setAttivita(prev => {
+        const existingIds = prev.map(att => att.id);
+        const newAttivita = attivitaSezione.filter(att => !existingIds.includes(att.id));
+        return [...prev, ...newAttivita];
+      });
+    } catch (error) {
+      console.error('Errore nel caricamento delle attività:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Gestione cambio altri campi del form
+  const handleAttivitaChange = (name, selectedValue) => {
+    setRicevutaData(prev => ({ 
+      ...prev, 
+      attivita: selectedValue.value 
+    }));
+  };
+
+  const handlePagamentoChange = (name, selectedValue) => {  
+    setRicevutaData(prev => ({ 
+      ...prev, 
+      tipologiaPagamento: selectedValue.value 
+    }));
+  };
+
+  const handleRicevutaInputChange = (name, value) => {
+    setRicevutaData(prev => ({ 
+      ...prev, 
+      [name]: value 
+    }));
+  };
+
+  // Gestione salvataggio ricevuta
+  const handleSalvaRicevuta = async () => {
+    // Validazione
+    if (!ricevutaData.sezione) {
+      setError('Selezionare una sezione');
+      setAlertVariant('danger');
+      setShowAlert(true);
+      return;
+    }
+    
+    if (!ricevutaData.attivita) {
+      setError('Selezionare un\'attività');
+      setAlertVariant('danger');
+      setShowAlert(true);
+      return;
+    }
+    
+    if (!ricevutaData.somma || ricevutaData.somma <= 0) {
+      setError('Inserire un importo valido');
+      setAlertVariant('danger');
+      setShowAlert(true);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      setShowAlert(false);
+
+      const ricevutaPayload = {
+        dataRicevuta: formatDateForApi(ricevutaData.dataRicevuta),
+        socioId: socioId,
+        scadenzaQuota: formatDateForApi(ricevutaData.scadenzaQuota),
+        scadenzaPagamento: formatDateForApi(ricevutaData.scadenzaAbbonamento),
+        importoRicevuta: parseFloat(ricevutaData.somma),
+        importoIncassato: parseFloat(ricevutaData.sommaIncassata) || 0,
+        tipologiaPagamento: tipologiePagamento.find(item => item.nome === ricevutaData.tipologiaPagamento.value).id,
+        quotaAss: Number(ricevutaData.quotaAssociativa),
+        attivitàId: attivita.find(item => item.nome === ricevutaData.attivita.value).id,
+        sezione: sezioni.find(item => item.nome === ricevutaData.sezione.value).id,
+      };
+      
+      const response = await ricevutaService.createNewRicevuta(ricevutaPayload);
+      
+      if (response.data.testPrint || response.data.success) {
+        setSuccess('Ricevuta creata con successo');
+        setAlertVariant('success');
+        setShowAlert(true);
+        
+        // Chiudi il modal
+        handleCloseModals();
+        
+        // Ricarica le ricevute
+        await fetchRicevute();
+        
+        // Se è la prima ricevuta (per un nuovo socio), apri la stampa della domanda associativa
+        if (isFirstRicevuta || isNewSocio) {
+          setTimeout(() => {
+            // Apri la stampa della domanda associativa e privacy
+            goNewTab('domanda-associativa/stampa', {
+              socioId: socioId,
+              ricevutaId: response.data.idRicevuta || response.data.id
+            });
+          }, 1000);
+        }
+        
+      } else {
+        throw new Error(response.data.messageError || 'Errore nella creazione della ricevuta');
+      }
+      
+    } catch (error) {
+      console.error('Errore nella creazione della ricevuta:', error);
+      setError(error.message || 'Errore nella creazione della ricevuta');
+      setAlertVariant('danger');
+      setShowAlert(true);
+    } finally {
+      setLoading(false);
+    }
   };
   
   // Gestisce la visualizzazione di una ricevuta
@@ -206,6 +421,7 @@ const RicevuteElenco = () => {
           <h2>Elenco Ricevute</h2>
           <p className="text-muted mb-0">
             Socio: <strong>{cognome} {nome}</strong>
+            {isNewSocio && <Badge bg="success" className="ms-2">Nuovo Socio</Badge>}
           </p>
         </div>
         <Button variant="secondary" onClick={handleGoBack}>
@@ -232,20 +448,25 @@ const RicevuteElenco = () => {
           <h5 className="mb-0">Ricevute ({ricevute.length})</h5>
           <Button 
             variant="success" 
-            onClick={() => goNewTab('ricevute/stampa', { idsocio: socioId, reprint: 0 })}
+            onClick={handleShowNewRicevutaModal}
           >
             <i className="bi bi-plus-circle me-1"></i>
-            Nuova Ricevuta
+            {ricevute.length === 0 ? 'Crea Prima Ricevuta' : 'Nuova Ricevuta'}
           </Button>
         </Card.Header>
         <Card.Body>
           {ricevute.length === 0 ? (
             <div className="text-center py-5">
               <i className="bi bi-receipt fs-1 text-muted mb-3"></i>
-              <p className="text-muted">Nessuna ricevuta trovata per questo socio.</p>
+              <p className="text-muted">
+                {isNewSocio 
+                  ? 'Benvenuto! Crea la prima ricevuta per questo socio.'
+                  : 'Nessuna ricevuta trovata per questo socio.'
+                }
+              </p>
               <Button 
                 variant="primary" 
-                onClick={() => goNewTab('ricevute/stampa', { idsocio: socioId, reprint: 0 })}
+                onClick={handleShowNewRicevutaModal}
               >
                 Crea Prima Ricevuta
               </Button>
@@ -276,7 +497,7 @@ const RicevuteElenco = () => {
                         <strong>{ricevuta.numero || ricevuta.numeroRicevuta || `#${ricevuta.idRicevuta || ricevuta.id}`}</strong>
                       </td>
                       <td>{formatDateDisplay(ricevuta.dataRicevuta || ricevuta.data)}</td>
-                      <td>{attivita.find(item=> item.id===ricevuta.attivitàId).nome}</td>
+                      <td>{attivita.find(item=> item.id===ricevuta.attivitàId)?.nome || 'N/D'}</td>
                       <td className="text-end">
                         <strong>{formatImporto(ricevuta.importoRicevuta)}</strong>
                       </td>
@@ -291,6 +512,149 @@ const RicevuteElenco = () => {
           )}
         </Card.Body>
       </Card>
+      
+      {/* Modal per creazione nuova ricevuta */}
+      <Modal show={showNewRicevutaModal} onHide={handleCloseModals} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {ricevute.length === 0 ? 'Crea Prima Ricevuta' : 'Crea Nuova Ricevuta'} - {cognome} {nome}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Row>
+              <Col md={6}>
+                <DateField
+                  label="Data Ricevuta"
+                  name="dataRicevuta"
+                  value={ricevutaData.dataRicevuta}
+                  onChange={handleRicevutaInputChange}
+                  required
+                />
+              </Col>
+              <Col md={6}>
+                <SelectField
+                  label="Tipologia Pagamento"
+                  name="tipologiaPagamento"
+                  value={ricevutaData.tipologiaPagamento}
+                  options={tipologiePagamento.map(item => item.nome)}
+                  onChange={handlePagamentoChange}
+                  placeholder="Seleziona metodo pagamento"
+                  required
+                />
+              </Col>
+            </Row>
+
+            <Row>
+              <Col md={6}>
+                <TextField
+                  label="Somma (€)"
+                  name="somma"
+                  value={ricevutaData.somma}
+                  onChange={handleRicevutaInputChange}
+                  type="number"
+                  step="1"
+                  min="0"
+                  required
+                />
+              </Col>
+              <Col md={6}>
+                <TextField
+                  label="Somma Incassata (€)"
+                  name="sommaIncassata"
+                  value={ricevutaData.sommaIncassata}
+                  onChange={handleRicevutaInputChange}
+                  type="number"
+                  step="1"
+                  min="0"
+                  required
+                />
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col md={6}>
+                <DateField
+                  label="Scadenza Quota"
+                  name="scadenzaQuota"
+                  value={ricevutaData.scadenzaQuota}
+                  onChange={handleRicevutaInputChange}
+                  required
+                />
+              </Col>
+              <Col md={6}>
+                <DateField
+                  label="Scadenza Abbonamento"
+                  name="scadenzaAbbonamento"
+                  value={ricevutaData.scadenzaAbbonamento}
+                  onChange={handleRicevutaInputChange}
+                  required
+                />
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col md={6}>
+                <SelectField
+                  label="Sezione"
+                  name="sezione"
+                  value={ricevutaData.sezione}
+                  options={sezioni.map(item => item.nome)}
+                  onChange={handleSezioneChange}
+                  placeholder="Seleziona una sezione"
+                  required
+                />
+              </Col>
+              <Col md={6}>
+                <SelectField
+                  label="Attività"
+                  name="attivita"
+                  value={ricevutaData.attivita}
+                  options={attivita.filter(att => 
+                    ricevutaData.sezione ? 
+                    att.sezioneId === sezioni.find(s => s.nome === ricevutaData.sezione.value)?.id :
+                    true
+                  ).map(item => item.nome)}
+                  onChange={handleAttivitaChange}
+                  placeholder={!ricevutaData.sezione ? "Prima seleziona una sezione" : "Seleziona un'attività"}
+                  isDisabled={!ricevutaData.sezione}
+                  required
+                />
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col md={12}>
+                <CheckboxField
+                  label="Quota Associativa"
+                  name="quotaAssociativa"
+                  checked={ricevutaData.quotaAssociativa}
+                  onChange={handleRicevutaInputChange}
+                />
+              </Col>
+            </Row>
+
+            {ricevute.length === 0 && (
+              <Alert variant="info" className="mt-3">
+                <i className="bi bi-info-circle me-2"></i>
+                <strong>Prima ricevuta:</strong> Dopo la creazione verrà automaticamente aperta la stampa della domanda associativa e del modulo privacy.
+              </Alert>
+            )}
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseModals} disabled={loading}>
+            Annulla
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleSalvaRicevuta}
+            disabled={loading}
+          >
+            {loading ? 'Creazione...' : 'Crea Ricevuta'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
       
       {/* Modal per azioni sulla ricevuta */}
       <Modal show={showActionModal} onHide={handleCloseModals} centered>

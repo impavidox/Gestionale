@@ -503,7 +503,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     }
   };
   
-  // Modified: Creazione o aggiornamento del socio with Estero handling
+  // Modified: Creazione o aggiornamento del socio with navigation to ricevute page
   const handleCreate = async () => {
     setViewAlert(false);
     setViewAlert1(false);
@@ -558,17 +558,24 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       if (!response.data.returnCode) {
         throw new Error(response.data.message);
       }
-      
-      setSocioCreated(response.data.socio);
-      setViewAbo(true);
+      console.log(response.data.data.socio)
+      setSocioCreated(response.data.data.socio);
       
       // Se c'è una callback di successo, chiamala
       if (onSave) {
-        onSave(response.data.socio);
+        onSave(response.data.data.socio);
       }
       
-      // Passa alla tab abbonamento
-      setActiveTab('abbonamento');
+      // NEW: Navigate to ricevute elenco page for new socio creation
+      if (mode === 'C') {
+        const createdSocio = response.data.data.socio;
+        // Navigate to RicevuteElenco with socio data
+        navigate(`/ricevute/elenco?socioId=${createdSocio.id}&cognome=${encodeURIComponent(createdSocio.cognome)}&nome=${encodeURIComponent(createdSocio.nome)}&isNewSocio=true`);
+      } else {
+        // For update mode, keep the existing behavior
+        setViewAbo(true);
+        setActiveTab('abbonamento');
+      }
       
     } catch (error) {
       console.error('Errore nella creazione/aggiornamento del socio:', error);
