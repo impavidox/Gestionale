@@ -1,7 +1,6 @@
 /**
  * Utility functions for date formatting and parsing
  * Handles compatibility between frontend and backend date formats
- * Enhanced with age calculation for domanda associativa workflow
  */
 
 /**
@@ -91,6 +90,7 @@ export const formatDateDisplay = (date) => {
   return d.toLocaleDateString('it-IT');
 };
 
+
 /**
  * Format date for input fields (YYYY-MM-DD)
  * @param {Date|string} date - Date to format
@@ -138,35 +138,13 @@ export const getCurrentDateForInput = () => {
 
 /**
  * Calculate age from birth date
- * Enhanced for domanda associativa workflow
  * @param {Date|string} birthDate - Birth date
  * @returns {number} Age in years
  */
 export const calculateAge = (birthDate) => {
   if (!birthDate) return 0;
   
-  let birth;
-  
-  // Handle different date formats
-  if (typeof birthDate === 'string') {
-    // Handle DD-MM-YYYY format
-    if (birthDate.includes('-') && birthDate.split('-').length === 3) {
-      const parts = birthDate.split('-');
-      if (parts[0].length === 2) {
-        // DD-MM-YYYY format
-        const [day, month, year] = parts.map(Number);
-        birth = new Date(year, month - 1, day);
-      } else {
-        // YYYY-MM-DD format or other
-        birth = new Date(birthDate);
-      }
-    } else {
-      birth = new Date(birthDate);
-    }
-  } else {
-    birth = new Date(birthDate);
-  }
-  
+  const birth = new Date(birthDate);
   if (isNaN(birth.getTime())) return 0;
   
   const today = new Date();
@@ -178,16 +156,6 @@ export const calculateAge = (birthDate) => {
   }
   
   return age;
-};
-
-/**
- * Check if a person is of legal age (18+)
- * Used for domanda associativa eligibility
- * @param {Date|string} birthDate - Birth date
- * @returns {boolean} True if person is 18 or older
- */
-export const isOfLegalAge = (birthDate) => {
-  return calculateAge(birthDate) >= 18;
 };
 
 /**
@@ -262,34 +230,4 @@ export const getCurrentSportsYear = () => {
     end: new Date(endYear, 7, 31), // August 31
     name: `${startYear}/${endYear}`
   };
-};
-
-/**
- * Calculate the default expiry date for quota associativa (August 31st)
- * @param {Date} [fromDate=new Date()] - Reference date
- * @returns {Date} Expiry date (August 31st of current or next year)
- */
-export const getQuotaAssociativaExpiryDate = (fromDate = new Date()) => {
-  const year = fromDate.getFullYear();
-  const august31stThisYear = new Date(year, 7, 31); // August is month 7 (0-indexed)
-  
-  // If we're past August 31st, return next year's August 31st
-  return fromDate > august31stThisYear ? 
-    new Date(year + 1, 7, 31) : 
-    august31stThisYear;
-};
-
-/**
- * Get age category for sports classification
- * @param {Date|string} birthDate - Birth date
- * @returns {string} Age category (Bambini, Ragazzi, Juniores, Seniores, Veterani)
- */
-export const getAgeCategory = (birthDate) => {
-  const age = calculateAge(birthDate);
-  
-  if (age < 12) return 'Bambini';
-  if (age < 16) return 'Ragazzi';
-  if (age < 20) return 'Juniores';
-  if (age < 35) return 'Seniores';
-  return 'Veterani';
 };

@@ -1,4 +1,3 @@
-// React/club-manager/src/router/AppRouter.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
@@ -19,11 +18,9 @@ import RicevuteElenco from '../pages/Ricevute/RicevuteElenco';
 import Parametri from '../pages/Parametri/Parametri';
 import EmailManager from '../pages/Email/EmailManager';
 import RicercaStampa from '../pages/Soci/RicercaStampa';
-import DomandaAssociativa from '../pages/DomandaAssociativa/DomandaAssociativa';
 
 /**
  * Componente per la gestione del routing dell'applicazione
- * Updated with Domanda Associativa route
  */
 const AppRouter = () => {
   return (
@@ -61,7 +58,7 @@ const AppRouter = () => {
         
         {/* Route con layout per stampa */}
         <Route path="/" element={<PrintLayout />}>
-          {/* Stampa Libro Soci */}
+          {/* Updated route for StampaLibroSoci to match the new URL pattern */}
           <Route path="stampa-libro-soci" element={<StampaLibroSoci />} />
           
           {/* Legacy route support - redirects to new format */}
@@ -70,17 +67,9 @@ const AppRouter = () => {
             element={<Navigate to="/stampa-libro-soci" replace />} 
           />
           
-          {/* Stampa Prima Nota */}
           <Route path="stampa-prima-nota/" element={<StampaPrimaNota />} />
-          
-          {/* Ricevute e Schede */}
           <Route path="ricevute/stampa" element={<StampaRicevuta />} />
           <Route path="schede/stampa" element={<StampaRicevuta isScheda={true} />} />
-          
-          {/* NEW: Domanda Associativa */}
-          <Route path="domanda-associativa" element={<DomandaAssociativa />} />
-          
-          {/* Ricerca e Email */}
           <Route path="ricerca" element={<RicercaStampa />} />
           <Route path="email" element={<EmailManager />} />
         </Route>

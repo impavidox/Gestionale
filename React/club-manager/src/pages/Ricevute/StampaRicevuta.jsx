@@ -1,19 +1,17 @@
-// React/club-manager/src/pages/Ricevute/StampaRicevuta.jsx
 import React, { useState, useEffect } from 'react';
 import { Container, Card } from 'react-bootstrap';
 import { useParams, useSearchParams } from 'react-router-dom';
 import RicevutaForm from '../../components/ricevute/RicevutaForm';
-import EnhancedRicevutaPrint from '../../components/ricevute/EnhancedRicevutaPrint';
+import RicevutaPrint from '../../components/ricevute/RicevutaPrint';
 
 /**
  * Pagina per la stampa o modifica di una ricevuta
- * Enhanced with automatic actions modal and email functionality
  * 
  * Può essere usata in diverse modalità:
  * - Creazione nuova ricevuta (reprint=0)
- * - Ristampa ricevuta esistente (reprint=1) - now with enhanced functionality
+ * - Ristampa ricevuta esistente (reprint=1)
  * - Modifica ricevuta esistente (reprint=2)
- * - Stampa scheda socio (isScheda=true) - now with enhanced functionality
+ * - Stampa scheda socio (isScheda=true)
  */
 const StampaRicevuta = ({ isScheda = false }) => {
   // Prende i parametri dall'URL
@@ -36,7 +34,7 @@ const StampaRicevuta = ({ isScheda = false }) => {
   
   return (
     <Container className="mt-4 mb-5">
-      <h2 className="mb-4 no-print">
+      <h2 className="mb-4">
         {isScheda 
           ? 'Scheda Socio' 
           : reprint === 0 
@@ -48,7 +46,7 @@ const StampaRicevuta = ({ isScheda = false }) => {
       </h2>
       
       {showPrint ? (
-        <EnhancedRicevutaPrint 
+        <RicevutaPrint 
           idSocio={idSocio}
           reprint={reprint}
           idAbbo={idAbbo}
