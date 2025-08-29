@@ -14,6 +14,44 @@ import { formatDateForApi } from '../../utils/dateUtils';
 import { isValidCodiceFiscale, isValidCAP, isValidPhone, isValidEmail } from '../../utils/validationUtils';
 
 /**
+ * Lista delle nazioni ONU in italiano
+ */
+const onuNations = [
+  'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua e Barbuda',
+  'Arabia Saudita', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaigian',
+  'Bahamas', 'Bahrein', 'Bangladesh', 'Barbados', 'Belgio', 'Belize', 'Benin',
+  'Bhutan', 'Bielorussia', 'Bolivia', 'Bosnia ed Erzegovina', 'Botswana', 'Brasile',
+  'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cambogia', 'Camerun', 'Canada',
+  'Capo Verde', 'Ciad', 'Cile', 'Cina', 'Cipro', 'Colombia', 'Comore', 'Congo',
+  'Corea del Nord', 'Corea del Sud', 'Costa Rica', "Costa d'Avorio", 'Croazia',
+  'Cuba', 'Danimarca', 'Dominica', 'Ecuador', 'Egitto', 'El Salvador',
+  'Emirati Arabi Uniti', 'Eritrea', 'Estonia', 'Eswatini', 'Etiopia', 'Figi',
+  'Filippine', 'Finlandia', 'Francia', 'Gabon', 'Gambia', 'Georgia', 'Germania',
+  'Ghana', 'Giamaica', 'Giappone', 'Gibuti', 'Giordania', 'Grecia', 'Grenada',
+  'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guinea Equatoriale', 'Guyana', 'Haiti',
+  'Honduras', 'India', 'Indonesia', 'Iran', 'Iraq', 'Irlanda', 'Islanda', 'Israele',
+  'Kazakistan', 'Kenya', 'Kirghizistan', 'Kiribati', 'Kuwait', 'Laos', 'Lesotho',
+  'Lettonia', 'Libano', 'Liberia', 'Libia', 'Liechtenstein', 'Lituania',
+  'Lussemburgo', 'Macedonia del Nord', 'Madagascar', 'Malawi', 'Maldive', 'Mali',
+  'Malta', 'Marocco', 'Isole Marshall', 'Mauritania', 'Mauritius', 'Messico',
+  'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Mozambico',
+  'Myanmar', 'Namibia', 'Nauru', 'Nepal', 'Nicaragua', 'Niger', 'Nigeria',
+  'Norvegia', 'Nuova Zelanda', 'Oman', 'Paesi Bassi', 'Pakistan', 'Palau',
+  'Panama', 'Papua Nuova Guinea', 'Paraguay', 'Perù', 'Polonia', 'Portogallo',
+  'Qatar', 'Regno Unito', 'Repubblica Ceca', 'Repubblica Centrafricana',
+  'Repubblica Democratica del Congo', 'Repubblica Dominicana', 'Romania', 'Ruanda',
+  'Russia', 'Saint Kitts e Nevis', 'Saint Lucia', 'Saint Vincent e Grenadine',
+  'Samoa', 'San Marino', 'São Tomé e Príncipe', 'Senegal', 'Serbia', 'Seychelles',
+  'Sierra Leone', 'Singapore', 'Siria', 'Slovacchia', 'Slovenia', 'Isole Salomone',
+  'Somalia', 'Spagna', 'Sri Lanka', 'Stati Uniti', 'Sudafrica', 'Sudan',
+  'Sudan del Sud', 'Suriname', 'Svezia', 'Svizzera', 'Tagikistan', 'Tanzania',
+  'Tailandia', 'Timor Est', 'Togo', 'Tonga', 'Trinidad e Tobago', 'Tunisia',
+  'Turchia', 'Turkmenistan', 'Tuvalu', 'Ucraina', 'Uganda', 'Ungheria', 'Uruguay',
+  'Uzbekistan', 'Vanuatu', 'Vaticano', 'Venezuela', 'Vietnam', 'Yemen', 'Zambia',
+  'Zimbabwe'
+];
+
+/**
  * Componente per la creazione e modifica di un socio
  * 
  * @param {Object} props - Props del componente
@@ -55,6 +93,9 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
   const [birthCode, setBirthCode] = useState(null);
   const [resProv, setResProv] = useState(null);
   const [rescomune, setRescomune] = useState(null);
+  
+  // New states for handling "Estero" option
+  const [isEsteroSelected, setIsEsteroSelected] = useState(false);
   
   // Stati per dati di selezione
   const [listProvNascita, setListProvNascita] = useState([]);
@@ -122,9 +163,14 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         const provinceNascitaResponse = await geographicService.retrieveProvince();
         const province = provinceNascitaResponse.data.data.map(item => item.nome);
         const provinceCodes = provinceNascitaResponse.data.data;
-        setListProvCodes(provinceCodes);
-        setListProvNascita(province);
-        setListProv(province);
+        
+        // Add "Estero" option to provinces and codes
+        const provinceWithEstero = [...province, 'Estero'];
+        const provinceCodesWithEstero = [...provinceCodes, { nome: 'Estero', provCode: 'EE' }];
+        
+        setListProvCodes(provinceCodesWithEstero);
+        setListProvNascita(provinceWithEstero);
+        setListProv(provinceWithEstero);
         
         // Carica tipi socio (now just for reference, not used in selector)
         const tipiSocioResponse = ['Effettivo', 'Tesserato', 'Volontario'];
@@ -215,27 +261,43 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         // FIX: Handle provincia di nascita with proper async loading
         if (existingSocio.provinciaNascita && listCodes.length > 0) {
           const provNascitaCode = existingSocio.provinciaNascita;
-          const provNascitaObj = listCodes.find(p => p.provCode === provNascitaCode);
           
-          if (provNascitaObj) {
-            const provNascitaNome = provNascitaObj.nome;
-            setBirthProv(provNascitaNome);
-            setSelectedProv({label:provNascitaNome});
+          // Check if it's "Estero"
+          if (provNascitaCode === 'EE') {
+            setIsEsteroSelected(true);
+            setBirthProv('Estero');
+            setSelectedProv({label: 'Estero'});
+            setListCommNascita(onuNations);
             
-            // Load comuni for the provincia
-            try {
-              const communiResponse = await geographicService.retrievecomune(provNascitaNome);
-              const comuni = communiResponse.data.data.map(item => item.nome);
-              setListCommNascita(comuni);
+            // Set the nation if available
+            if (existingSocio.comuneNascita) {
+              const nazione = existingSocio.comuneNascita;
+              setBirthcomune(nazione);
+              setSelectedComm({label: nazione});
+            }
+          } else {
+            const provNascitaObj = listCodes.find(p => p.provCode === provNascitaCode);
+            
+            if (provNascitaObj) {
+              const provNascitaNome = provNascitaObj.nome;
+              setBirthProv(provNascitaNome);
+              setSelectedProv({label:provNascitaNome});
               
-              // Set comune di nascita after comuni are loaded
-              if (existingSocio.comuneNascita) {
-                const comuneNascita = existingSocio.comuneNascita;
-                setBirthcomune(comuneNascita);
-                setSelectedComm({label:comuneNascita});
+              // Load comuni for the provincia
+              try {
+                const communiResponse = await geographicService.retrievecomune(provNascitaNome);
+                const comuni = communiResponse.data.data.map(item => item.nome);
+                setListCommNascita(comuni);
+                
+                // Set comune di nascita after comuni are loaded
+                if (existingSocio.comuneNascita) {
+                  const comuneNascita = existingSocio.comuneNascita;
+                  setBirthcomune(comuneNascita);
+                  setSelectedComm({label:comuneNascita});
+                }
+              } catch (error) {
+                console.error('Errore nel caricamento dei comuni di nascita:', error);
               }
-            } catch (error) {
-              console.error('Errore nel caricamento dei comuni di nascita:', error);
             }
           }
         }
@@ -340,17 +402,30 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     setSelectedMM(selectedOption.value);
   };
   
-  // Gestione selezione provincia di nascita
+  // Modified: Gestione selezione provincia di nascita with Estero handling
   const handleProvNascitaSelected = async (name, selectedOption) => {
     setSelectedProv(selectedOption.value);
     setBirthProv(selectedOption.value.value);
     
-    try {
-      const response = await geographicService.retrievecomune(selectedOption.value.value);
-      const comuni =  response.data.data.map(item => item.nome);
-      setListCommNascita(comuni);
-    } catch (error) {
-      console.error('Errore nel caricamento dei comuni:', error);
+    // Check if "Estero" is selected
+    if (selectedOption.value.value === 'Estero') {
+      setIsEsteroSelected(true);
+      setListCommNascita(onuNations);
+      // Clear previous comune selection
+      setSelectedComm(null);
+      setBirthcomune(null);
+    } else {
+      setIsEsteroSelected(false);
+      try {
+        const response = await geographicService.retrievecomune(selectedOption.value.value);
+        const comuni = response.data.data.map(item => item.nome);
+        setListCommNascita(comuni);
+        // Clear previous comune selection
+        setSelectedComm(null);
+        setBirthcomune(null);
+      } catch (error) {
+        console.error('Errore nel caricamento dei comuni:', error);
+      }
     }
   };
   
@@ -368,7 +443,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     }
   };
   
-  // Gestione selezione comune di nascita
+  // Gestione selezione comune di nascita (now handles both comuni and nations)
   const handlecomuneNascitaSelected = (name, selectedOption) => {
     setSelectedComm(selectedOption.value);
     setBirthcomune(selectedOption.value.value);
@@ -428,7 +503,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     }
   };
   
-  // Creazione o aggiornamento del socio
+  // Modified: Creazione o aggiornamento del socio with Estero handling
   const handleCreate = async () => {
     setViewAlert(false);
     setViewAlert1(false);
@@ -440,13 +515,18 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     
     try {
       setLoading(true);
+      
+      // Handle provincia nascita code - use 'EE' for Estero
+      const provinciaCode = isEsteroSelected ? 'EE' : 
+        listCodes.find(p => p.nome === birthProv)?.provCode;
+      
       const body = {
         nome: formData.nome.toUpperCase(),
         cognome: formData.cognome.toUpperCase(),
         sesso: selectedSesso.label,
         dataNascita: `${formData.birthJJ}-${selectedMM?.value}-${formData.anno}`,
-        provinciaNascita: listCodes.find(p => p.nome === birthProv).provCode,
-        comuneNascita: birthcomune,
+        provinciaNascita: provinciaCode,
+        comuneNascita: birthcomune, // This will be a nation name if Estero is selected
         provinciaResidenza: listCodes.find(p => p.nome === resProv).provCode,
         comuneResidenza: rescomune,
         viaResidenza: formData.address,
@@ -688,7 +768,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
                 </Col>
                 <Col md={6}>
                   <SelectField
-                    label="Comune di nascita"
+                    label={isEsteroSelected ? "Nazione di nascita" : "Comune di nascita"}
                     name="birthComm"
                     value={selectedComm}
                     options={listCommNascita}
