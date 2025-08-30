@@ -50,8 +50,8 @@ const RicevutaPrint = ({
             // Carica i dati della ricevuta esistente
             response = await ricevutaService.buildRicevuta(idSocio, idAbbo, idRicevuta);
           }
-          
-          setRicevutaData(response.data);
+          console.log(response)
+          setRicevutaData(response.data.data);
         }
       } catch (err) {
         console.error('Errore nel caricamento dei dati per la stampa:', err);
@@ -122,13 +122,13 @@ const RicevutaContent = ({ data }) => {
       <Row className="mb-4">
         <Col md={6}>
           <p><strong>Data:</strong> {formatDateDisplay(data.dataRicevuta)}</p>
-          <p><strong>Socio:</strong> {data.cognome} {data.nome}</p>
-          <p><strong>Codice Fiscale:</strong> {data.codeFiscale}</p>
+          <p><strong>Socio:</strong> {data.socioCognome} {data.socioNome}</p>
+          <p><strong>Codice Fiscale:</strong> {data.codiceFiscale}</p>
         </Col>
         <Col md={6}>
-          <p><strong>Periodo:</strong> {data.dataPeriodo}</p>
-          <p><strong>Data Quota:</strong> {formatDateDisplay(data.dataQuota)}</p>
-          <p><strong>Attività:</strong> {data.attivitaDesc}</p>
+          <p><strong>Periodo:</strong> {data.scadenzaPagamento}</p>
+          <p><strong>Data Quota:</strong> {formatDateDisplay(data.dataRicevuta)}</p>
+          <p><strong>Attività:</strong> {data.attivitaNome}</p>
         </Col>
       </Row>
       
@@ -136,11 +136,11 @@ const RicevutaContent = ({ data }) => {
         <Row>
           <Col md={6}>
             <h5>Importo Pagato</h5>
-            <h3 className="mt-3">{data.pagato} €</h3>
+            <h3 className="mt-3">{data.importoRicevuta} €</h3>
           </Col>
           <Col md={6}>
             <h5>Importo Incassato</h5>
-            <h3 className="mt-3">{data.incassato || 0} €</h3>
+            <h3 className="mt-3">{data.importoIncassato || 0} €</h3>
           </Col>
         </Row>
       </div>
