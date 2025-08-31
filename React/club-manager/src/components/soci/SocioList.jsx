@@ -210,7 +210,10 @@ const SocioList = ({ soci = [], onSelect, onRefresh, filters = {} }) => {
 
   // Gestione stampa domanda associativa
   const handleStampaDomandaAssociativa = () => {
-    goNewTab('schede/stampa', { idsocio: selectedSocio.id });
+                goNewTab('domanda-associativa/stampa', {
+              socioId: selectedSocio.id,
+              //ricevutaId: response.data.idRicevuta
+            });
     handleCloseModals();
   };
 

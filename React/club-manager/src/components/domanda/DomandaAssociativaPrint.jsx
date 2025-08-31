@@ -23,6 +23,18 @@ const DomandaAssociativaPrint = () => {
   const [attivita, setAttivita] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+const calculateAge = (birthdate) => {
+    if (!birthdate) return null;
+    const today = new Date();
+    const dob = new Date(birthdate);
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+    }
+    return age;
+};
   
   // Carica i dati all'avvio
   useEffect(() => {
@@ -34,6 +46,7 @@ const DomandaAssociativaPrint = () => {
         // Carica dati del socio
         const socioResponse = await socioService.retrieveSocioById(socioId);
         setSocio(socioResponse.data.data);
+ 
         
         // Se c'è una ricevuta, caricala
         if (ricevutaId) {
@@ -147,28 +160,11 @@ const DomandaAssociativaPrint = () => {
           {/* Richiesta di associazione */}
           <div className="association-request">
             <p>
-              Fa domanda di associazione per l'anno sportivo <strong>2024/25</strong> al ASD-APS Centro Sportivo Orbassano in qualità di
+              Fa domanda di associazione per l'anno sportivo <strong>2024/25</strong> al ASD-APS Centro Sportivo Orbassano in qualità di <strong>Socio Effettivo</strong>
             </p>
             
-            <div className="socio-type-checkboxes">
-              <label className="checkbox-label">
-                <span className={`checkbox ${getTipoSocioCheckboxes().effettivo ? 'checked' : ''}`}></span>
-                Socio Effettivo,
-              </label>
-              <label className="checkbox-label">
-                <span className={`checkbox ${getTipoSocioCheckboxes().tesserato ? 'checked' : ''}`}></span>
-                Tesserato,
-              </label>
-              <label className="checkbox-label">
-                <span className="checkbox"></span>
-                Direttivo.
-              </label>
-            </div>
-            
             <p className="statute-text">
-              Presa visione dello STATUTO e del regolamento del ASD-APS Centro Sportivo Orbassano e dello STATUTO e del 
-              regolamento della federazione/ente di promozione <span >______________________</span><br/>
-              (a cui l'Associazione è regolarmente affiliata) si impegna ad accettarlo e rispettarlo in tutti i suoi punti.
+              Presa visione dello STATUTO e del regolamento del ASD-APS Centro Sportivo Orbassano.
             </p>
           </div>
           
@@ -184,24 +180,6 @@ const DomandaAssociativaPrint = () => {
             </div>
           </div>
           
-          {/* Sezione Attività Scelta */}
-          <div className="activity-section">
-            <h3>ATTIVITÀ SCELTA:</h3>
-            <table className="activity-table">
-              <thead>
-                <tr>
-                  <th>ATTIVITÀ</th>
-                  <th>SCADENZA QUOTA ASSOCIATIVA</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Tecnico</td>
-                  <td>31/08/2025</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
           
           {/* Consenso informativa GDPR */}
           <div className="gdpr-consent">
@@ -216,36 +194,34 @@ const DomandaAssociativaPrint = () => {
               <span>Firma: ______________________</span>
             </div>
           </div>
-        </div>
-        
-        {/* PAGINA 2: CONSENSO AL TRATTAMENTO DEI DATI PERSONALI + FOTO/VIDEO */}
-        <div className="print-page">
-          {/* Header pagina 2 */}
-          <div className="page2-header">
-            <img src='/headercso.jpg' width='100%'></img>
-          </div>
           
           <h2 className="page2-title">CONSENSO AL TRATTAMENTO DEI DATI PERSONALI</h2>
           
-          {/* Identificazione del soggetto */}
-          <div className="subject-identification">
-            <p>Io sottoscritto/a <em>(cognome-nome)</em> <strong>{socio.cognome} {socio.nome}</strong></p>
-            
+            {/* Identificazione del soggetto */}
+            <div className="subject-identification">
+            <p>
+                Io sottoscritto/a <em>(cognome-nome)</em>{" "}
+                {calculateAge(socio.dataNascita) >= 18 && <strong>{socio.cognome} {socio.nome}</strong>}
+            </p>
+
             <div className="subject-checkboxes">
-              <label className="checkbox-label">
-                <span className="checkbox checked"></span>
+                <label className="checkbox-label">
+                <span className={`checkbox ${calculateAge(socio.dataNascita) >= 18 ? "checked" : ""}`}></span>
                 per me stesso
-              </label>
-              <label className="checkbox-label">
-                <span className="checkbox"></span>
-                titolare della potestà genitoriale/ tutore legale del minore <em>(cognome- nome)</em>
-              </label>
+                </label>
+                <label className="checkbox-label">
+                <span className={`checkbox ${calculateAge(socio.dataNascita) < 18 ? "checked" : ""}`}></span>
+                titolare della potestà genitoriale/ tutore legale del minore <em>(cognome-nome)</em>
+                </label>
             </div>
-            
+
             <div className="minor-name-line">
-              __________________________________________________________________________________
+                {calculateAge(socio.dataNascita) < 18 
+                ? "__________________________________________________________________________________" 
+                : ""}
             </div>
-          </div>
+            </div>
+
           
           {/* Dichiarazione principale */}
           <div className="main-declaration">
