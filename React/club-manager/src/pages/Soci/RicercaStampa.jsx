@@ -93,16 +93,40 @@ const RicercaStampa = () => {
   
   // Determina lo stato del certificato medico
   const getCertificatoStatus = (socio) => {
-    if (!socio.dateCertificat && !socio.scadenzaCertificato) return { status: 'missing', label: 'Mancante', variant: 'danger' };
-    
+    // Calculate age from dataNascita
     const today = new Date();
+    const birthDate = new Date(socio.dataNascita);
+    const ageInYears = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    const dayDiff = today.getDate() - birthDate.getDate();
+    
+    // Adjust age if birthday hasn't occurred this year yet
+    const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) 
+      ? ageInYears - 1 
+      : ageInYears;
+    
+    // For children under 6 years old
+    if (actualAge < 6) {
+      const isMissing = !socio.dateCertificat && !socio.scadenzaCertificato;
+      return { 
+        status: 'valid', 
+        label: isMissing ? 'Valido*' : 'Valido', 
+        variant: 'success' 
+      };
+    }
+    
+    // Original logic for 6+ years old
+    if (!socio.dateCertificat && !socio.scadenzaCertificato) {
+      return { status: 'missing', label: 'Mancante', variant: 'danger' };
+    }
+    
     const expiryDate = new Date(socio.dateCertificat || socio.scadenzaCertificato);
     
     if (expiryDate < today) {
       return { status: 'expired', label: 'Scaduto', variant: 'danger' };
     }
     
-    // Calcola se scade nel prossimo mese
+    // Calculate if expires in the next month
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     
