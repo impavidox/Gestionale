@@ -26,8 +26,9 @@ const RicercaStampa = () => {
       const cognome = searchParams.get('cognome') || '';
       const scadenza = searchParams.get('scadenza') || '0';
       const attivita = searchParams.get('attivita') || '0';
-      const scadute = searchParams.get('scadute') || 'false';
+      const scadute = searchParams.get('scadute') || '0';
       const anno = searchParams.get('anno') || '0';
+      const sezione=searchParams.get('sezione') || '0';
       const titoloParam = searchParams.get('titolo') || 'Elenco Soci';
       
       setTitolo(titoloParam.toUpperCase());
@@ -46,12 +47,12 @@ const RicercaStampa = () => {
         
         // Carica i dati dei soci usando la stessa logica di ElencoSoci
         const response = await socioService.retrieveSocio(
-          null, // nome
           cognome.length > 0 ? cognome : null,
           parseInt(scadenza),
           parseInt(attivita),
-          scadute === 'true',
-          parseInt(anno)
+          parseInt(scadute),
+          parseInt(anno),
+          parseInt(sezione)
         );
         
         console.log('API Response for print:', response);

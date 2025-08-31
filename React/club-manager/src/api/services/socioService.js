@@ -8,16 +8,16 @@ import endpoints from '../endpoints';
 const socioService = {
   /**
    * Recupera l'elenco dei soci in base ai filtri
-   * @param {string|null} nome - Nome del socio
    * @param {string|null} cognome - Cognome del socio 
-   * @param {number} scadenza - Filtro scadenza
-   * @param {number} attivita - ID attività
-   * @param {boolean} scadute - Flag per includere scadute
+   * @param {boolean} scadenza - Flag per mostrare solo soci con certificato scaduto
+   * @param {number} attivita - ID attività (0 per tutte, specifico ID per attività singola)
+   * @param {boolean} scadute - Flag per mostrare solo soci con abbonamento scaduto (solo se attivita è specificata)
    * @param {number} anno - Anno di riferimento
+   * @param {number} sezione - ID sezione (utilizzato quando attivita = 0)
    * @returns {Promise} Promise con i dati dei soci
    */
-  retrieveSocio: (nome = null, cognome = null, scadenza = 0, attivita = 0, scadute = false, anno = 0) => {
-    const url = `${endpoints.SOCIO.RETRIEVE}/${nome || 'null'}/${cognome || 'null'}/${scadenza}/${attivita}/${scadute}/${anno}`;
+  retrieveSocio: (cognome = null, scadenza = 0, attivita = 0, scadute = 0, anno = 0, sezione = 0) => {
+    const url = `${endpoints.SOCIO.RETRIEVE}/${cognome || 'null'}/${scadenza}/${attivita}/${scadute}/${anno}/${sezione || 0}`;
     return api.get(url);
   },
   

@@ -21,8 +21,9 @@ const ElencoSoci = () => {
     cognome: '',
     scadenza: 0,
     attivita: 0,
-    scadute: false,
-    anno: 0
+    scadute: 0,
+    anno: 0,
+    sezione: 0,
   });
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showDetailSocio, setShowDetailSocio] = useState(false);
@@ -41,12 +42,12 @@ const ElencoSoci = () => {
       console.log('Fetching soci with filters:', filters);
       
       const response = await socioService.retrieveSocio(
-        null, // nome
         filters.cognome || null,
-        filters.scadenza,
+        filters.scadenza? 1 : 0,
         filters.attivita,
-        filters.scadute,
-        filters.anno
+        filters.scadute? 1 : 0,
+        filters.anno,
+        filters.sezione
       );
       
       console.log('API Response:', response);
@@ -93,10 +94,11 @@ const ElencoSoci = () => {
     
     goNewTab('ricerca', {
       cognome: filters.cognome || '',
-      scadenza: filters.scadenza,
+      scadenza: filters.scadenza ? 1 : 0,
       attivita: filters.attivita,
-      scadute: filters.scadute,
+      scadute: filters.scadute ? 1 : 0,
       anno: filters.anno,
+      sezione: filters.sezione,
       titolo
     });
   };

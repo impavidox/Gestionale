@@ -43,7 +43,7 @@ const GestioneRicevute = () => {
     setShowError(false);
     
     try {
-      const response = await socioService.retrieveSocio(null, cognome, 0, 0, false, 0);
+      const response = await socioService.retrieveSocio(cognome, 0, 0, 0, 0,0);
       setSoci(response.data);
     } catch (err) {
       console.error('Errore nella ricerca dei soci:', err);

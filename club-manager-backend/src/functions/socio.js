@@ -77,89 +77,114 @@ app.http('socio', {
 
 async function handleRetrieveSocio(context, params) {
     try {
-        const { param1: nome, param2: cognome, param3: scadenza, param4: attivita, param5: scadute, param6: anno } = params;
-        
-        context.log('Recupero soci con filtri:', { nome, cognome, scadenza, attivita, scadute, anno });
-        
+        const { 
+            param1: cognome, 
+            param2: scadenza, 
+            param3: attivita, 
+            param4: scadute, 
+            param5: anno,
+            param6: sezione  // Add sezione parameter
+        } = params;
+
+        context.log('Recupero soci con filtri:', { cognome, scadenza, attivita, scadute, anno, sezione });
+
         const pool = await getPool();
         const request = pool.request();
-        
+
         let query = `
-            SELECT s.*,
-                   CASE 
-                       WHEN s.isEffettivo = 1 THEN 'Effettivo'
-                       WHEN s.isTesserato = 1 THEN 'Tesserato'
-                       WHEN s.isVolontario = 1 THEN 'Volontario'
-                       ELSE 'N/D'
-                   END as TipoSocio,
-                   ROW_NUMBER() OVER (ORDER BY s.id) as NSocio,
-                   -- Check if socio has paid quota associativa (any receipt with quotaAss = 1)
-                   CASE WHEN EXISTS (
-                       SELECT 1 FROM ricevuteAttività ra 
-                       WHERE ra.socioId = s.id AND ra.quotaAss = 1
-                   ) THEN 1 ELSE 0 END as hasQuotaAssociativa,
-                   -- Get payment expiry for specific activity (if attivita filter is applied)
-                   ${attivita && attivita !== '0' ? `
-                   (SELECT TOP 1 ra.scadenzaPagamento 
-                    FROM ricevuteAttività ra 
-                    WHERE ra.socioId = s.id 
-                    AND ra.attivitàId = @attivita 
-                    ORDER BY ra.dataRicevuta DESC) as scadenzaPagamentoAttivita,
-                   (SELECT TOP 1 ra.importoIncassato 
-                    FROM ricevuteAttività ra 
-                    WHERE ra.socioId = s.id 
-                    AND ra.attivitàId = @attivita 
-                    ORDER BY ra.dataRicevuta DESC) as importoIncassatoAttivita,
-                   (SELECT TOP 1 ra.dataRicevuta 
-                    FROM ricevuteAttività ra 
-                    WHERE ra.socioId = s.id 
-                    AND ra.attivitàId = @attivita 
-                    ORDER BY ra.dataRicevuta DESC) as dataUltimaRicevutaAttivita
-                   ` : `
-                   NULL as scadenzaPagamentoAttivita,
-                   NULL as importoIncassatoAttivita,
-                   NULL as dataUltimaRicevutaAttivita
-                   `},
-                   -- Get latest receipt info for general display
-                   (SELECT TOP 1 ra.scadenzaPagamento 
-                    FROM ricevuteAttività ra 
-                    WHERE ra.socioId = s.id 
-                    ORDER BY ra.dataRicevuta DESC) as ultimaScadenzaPagamento
+            SELECT s.*, 
+                CASE 
+                    WHEN s.isEffettivo = 1 THEN 'Effettivo'
+                    WHEN s.isTesserato = 1 THEN 'Tesserato' 
+                    WHEN s.isVolontario = 1 THEN 'Volontario'
+                    ELSE 'N/D' 
+                END as TipoSocio,
+                -- Check if socio has paid quota associativa 
+                -- For Effettivi: check quotaAss = 1, For Tesserati: check if they have any receipt
+                CASE 
+                    WHEN s.isEffettivo = 1 THEN 
+                        CASE WHEN EXISTS (
+                            SELECT 1 FROM ricevuteAttività ra 
+                            WHERE ra.socioId = s.id AND ra.quotaAss = 1
+                        ) THEN 1 ELSE 0 END
+                    WHEN s.isTesserato = 1 THEN 
+                        CASE WHEN EXISTS (
+                            SELECT 1 FROM ricevuteAttività ra 
+                            WHERE ra.socioId = s.id
+                        ) THEN 1 ELSE 0 END
+                    ELSE 0 
+                END as hasQuotaAssociativa,
+                -- Get payment expiry for specific activity (if attivita filter is applied)
+                ${attivita && attivita !== '0' ? `
+                    (SELECT TOP 1 ra.scadenzaPagamento 
+                     FROM ricevuteAttività ra 
+                     WHERE ra.socioId = s.id AND ra.attivitàId = @attivita 
+                     ORDER BY ra.dataRicevuta DESC) as scadenzaPagamentoAttivita,
+                    (SELECT TOP 1 ra.importoIncassato 
+                     FROM ricevuteAttività ra 
+                     WHERE ra.socioId = s.id AND ra.attivitàId = @attivita 
+                     ORDER BY ra.dataRicevuta DESC) as importoIncassatoAttivita,
+                    (SELECT TOP 1 ra.dataRicevuta 
+                     FROM ricevuteAttività ra 
+                     WHERE ra.socioId = s.id AND ra.attivitàId = @attivita 
+                     ORDER BY ra.dataRicevuta DESC) as dataUltimaRicevutaAttivita
+                ` : `
+                    NULL as scadenzaPagamentoAttivita,
+                    NULL as importoIncassatoAttivita, 
+                    NULL as dataUltimaRicevutaAttivita
+                `},
+                -- Get latest receipt info for general display
+                (SELECT TOP 1 ra.scadenzaPagamento 
+                 FROM ricevuteAttività ra 
+                 WHERE ra.socioId = s.id 
+                 ORDER BY ra.dataRicevuta DESC) as ultimaScadenzaPagamento
             FROM soci s
             WHERE 1=1
         `;
-        
-        // Apply filters
-        if (nome && nome !== 'null') {
-            query += ` AND s.nome LIKE @nome`;
-            request.input('nome', sql.NVarChar, `%${nome}%`);
-        }
-        
+
+
         if (cognome && cognome !== 'null') {
             query += ` AND s.cognome LIKE @cognome`;
             request.input('cognome', sql.NVarChar, `%${cognome}%`);
         }
-        
+
         if (attivita && attivita !== '0') {
-            query += ` AND EXISTS (SELECT 1 FROM ricevuteAttività r WHERE r.socioId = s.id AND r.attivitàId = @attivita)`;
+            // Filter by specific activity
+            query += ` AND EXISTS (
+                SELECT 1 FROM ricevuteAttività r 
+                WHERE r.socioId = s.id AND r.attivitàId = @attivita
+            )`;
             request.input('attivita', sql.Int, parseInt(attivita));
+        } else if (attivita === '0' && sezione && sezione !== 'null' && sezione !== '0') {
+            // Filter by sezione when attivita is 0
+            // Assuming you need to join with activities table to get sezione
+            query += ` AND EXISTS (
+                SELECT 1 FROM ricevuteAttività ra 
+                JOIN attività a ON ra.attivitàId = a.id 
+                WHERE ra.socioId = s.id AND a.sezioneId = @sezione
+            )`;
+            request.input('sezione', sql.Int, parseInt(sezione));
         }
-        
-        if (scadenza && scadenza !== '0') {
-            const dataScadenza = new Date();
-            dataScadenza.setMonth(dataScadenza.getMonth() + parseInt(scadenza));
-            query += ` AND s.scadenzaCertificato <= @dataScadenza`;
-            request.input('dataScadenza', sql.DateTime, dataScadenza);
-        }
-        
-        if (scadute === 'true') {
+
+        if (scadenza === '1') {
+            // Show only soci with expired certificate
             query += ` AND s.scadenzaCertificato < GETDATE()`;
         }
-        
-        query += ` ORDER BY s.cognome, s.nome`;
-        
+
+        if (scadute === '1' && attivita && attivita !== '0') {
+            // Show only soci with expired subscription for the specific activity (based on latest receipt)
+            query += ` AND (
+                SELECT TOP 1 ra.scadenzaPagamento 
+                FROM ricevuteAttività ra 
+                WHERE ra.socioId = s.id AND ra.attivitàId = @attivita 
+                ORDER BY ra.dataRicevuta DESC
+            ) < GETDATE()`;
+        }
+
+        query += ` ORDER BY s.created_at, s.cognome`;
+
         const result = await request.query(query);
-        
+
         // Normalize response for frontend compatibility
         const normalizedItems = result.recordset.map(item => {
             const normalized = normalizeSocioResponse(item);
@@ -184,10 +209,10 @@ async function handleRetrieveSocio(context, params) {
                 ultimaScadenzaPagamento: item.ultimaScadenzaPagamento
             };
         });
-        
+
         context.log(`${result.recordset.length} soci trovati`);
         return createSuccessResponse({ items: normalizedItems });
-        
+
     } catch (error) {
         context.log('Errore nel recupero soci:', error);
         return createErrorResponse(500, 'Errore nel recupero soci', error.message);

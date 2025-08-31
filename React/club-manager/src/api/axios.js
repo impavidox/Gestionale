@@ -33,7 +33,7 @@ const dispatchLoadingEvent = (loading) => {
 api.interceptors.request.use(
   config => {
     // Create a unique identifier for this request
-    const requestId = `${config.method}-${config.url}-${Date.now()}`;
+    const requestId = `${config.method}-${config.url}_${Date.now()}`;
     config.requestId = requestId;
     
     pendingRequests.add(requestId);

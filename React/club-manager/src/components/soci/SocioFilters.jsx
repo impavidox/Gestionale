@@ -22,10 +22,11 @@ const SocioFilters = ({
   // Stato per i filtri
   const [filters, setFilters] = useState({
     cognome: initialFilters.cognome || '',
-    scadenza: initialFilters.scadenza || 0,
+    scadenza: initialFilters.scadenza ? 1 : 0,   // 👈 forzato a 0/1
     attivita: initialFilters.attivita || 0,
-    scadute: initialFilters.scadute || false,
+    scadute: initialFilters.scadute ? 1 : 0,     // 👈 forzato a 0/1
     anno: initialFilters.anno || 0,
+    sezione: initialFilters.sezione || 0,
     ...initialFilters
   });
 
@@ -130,6 +131,12 @@ const SocioFilters = ({
     setSelectedSezione(selectedValue.value);
     setSelectedAttivita(null);
     setAttivita([]);
+
+    setFilters(prev => ({
+      ...prev,
+      sezione: idSezione,
+      attivita: 0
+    }));
     
     // Carica attività per la Sezione selezionata
     try {
@@ -250,12 +257,11 @@ const SocioFilters = ({
               />
             </Col>
             <Col md={6}>
-              <SelectField
-                label="Scadenza"
+              <CheckboxField
+                label="Certificati medici scaduti"
                 name="scadenza"
-                value={selectedScadenza}
-                options={scadenzaOptions}
-                onChange={handleScadenzaChange}
+                checked={filters.scadenza}
+                onChange={handleInputChange}
               />
             </Col>
           </Row>
@@ -295,7 +301,7 @@ const SocioFilters = ({
             </Col>
             <Col md={6}>
               <CheckboxField
-                label="Includi abbonamenti scaduti"
+                label="Mostra abbonamenti scaduti"
                 name="scadute"
                 checked={filters.scadute}
                 onChange={handleInputChange}
