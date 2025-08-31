@@ -17,6 +17,17 @@ const LibroSoci = () => {
   // Stati per i filtri
   const [tipoSocio, setTipoSocio] = useState(null);
   const [annoValidita, setAnnoValidita] = useState(null);
+
+  // Mapping dei tipi
+  const getTipoNome = (tipoCode) => {
+    console.log(tipoCode)
+    const tipi = {
+      1: 'Soci Effettivi',
+      2: 'Soci Volontari', 
+      3: 'Soci Tesserati'
+    };
+    return tipi[tipoCode.value];
+  };
   
   // Stati per i dati
   const [anni, setAnni] = useState([]);
@@ -58,7 +69,6 @@ const LibroSoci = () => {
         
         setAnni(yearsArray);
         setAnnoValidita(yearsArray[0]); // Imposta anno corrente come default
-        console.log(elencoTipi  )
         // Imposta tipo di default
         setTipoSocio(elencoTipi[0]);
         
@@ -81,8 +91,12 @@ const LibroSoci = () => {
   // Gestione del cambio di tipo socio
   const handleTipoSocioChange = (name, selectedValue) => {
     setTipoSocio(selectedValue.value);
-    console.log(selectedValue)
-    setTitolo(`Libro ${elencoTipi[(selectedValue.value.value)-1].hd}`);
+    const selectedId = selectedValue.value.value;
+    const tipo = elencoTipi.find(t => t.value === selectedId);
+
+    if (tipo) {
+      setTitolo(`Libro ${tipo.hd}`);
+    }
   };
   
   // Gestione del cambio di anno
@@ -150,7 +164,6 @@ const LibroSoci = () => {
 
   // Configura colonne dinamiche in base al tipo di socio
   const getTableColumns = () => {
-    console.log(tipoSocio)
     // Colonne per tesserati (senza N. Socio e Data Adesione)
     if (tipoSocio && tipoSocio.value === 3) {
       return [
@@ -159,7 +172,7 @@ const LibroSoci = () => {
         { key: 'dataNascita', label: 'Data di Nascita', width: '12%' },
         { key: 'luogoNascita', label: 'Luogo di Nascita', width: '20%' },
         { key: 'codiceFiscale', label: 'Codice Fiscale', width: '16%' },
-        { key: 'codice', label: 'Codice', width: '8%' },
+        { key: 'codice', label: 'Codice Coni', width: '8%' },
         { key: 'attivitaNome', label: 'Attività', width: '15%' },
         { key: 'email', label: 'Email', width: '13%' }
       ];
@@ -273,7 +286,7 @@ const LibroSoci = () => {
         <Card>
           <Card.Header>
             <div className="d-flex justify-content-between align-items-center">
-              <h5>{titolo}</h5>
+              <h5>{'Libro '+ getTipoNome(tipoSocio)}</h5>
               <span className="text-muted">
                 Anno {annoValidita?.name} - {soci.length} soci
               </span>

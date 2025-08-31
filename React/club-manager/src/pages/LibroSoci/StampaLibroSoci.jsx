@@ -74,16 +74,16 @@ const StampaLibroSoci = () => {
   const getTableColumns = () => {
     // Colonne per tesserati (senza N. Socio e Data Adesione)
     if (tipo === 3) {
-      return [
-        { key: 'cognome', label: 'Cognome', width: '18%' },
-        { key: 'nome', label: 'Nome', width: '18%' },
-        { key: 'dataNascita', label: 'Data di Nascita', width: '12%' },
-        { key: 'luogoNascita', label: 'Luogo di Nascita', width: '20%' },
-        { key: 'codiceFiscale', label: 'Codice Fiscale', width: '16%' },
-        { key: 'codice', label: 'Codice', width: '8%' },
-        { key: 'attivitaNome', label: 'Attività', width: '15%' },
-        { key: 'email', label: 'Email', width: '13%' }
-      ];
+        return [
+        { key: 'cognome', label: 'Cognome', width: '13%' },
+        { key: 'nome', label: 'Nome', width: '10%' },
+        { key: 'dataNascita', label: 'Data di Nascita', width: '9%' },
+        { key: 'luogoNascita', label: 'Luogo di Nascita', width: '17%' },
+        { key: 'codiceFiscale', label: 'Codice Fiscale', width: '14%' },
+        { key: 'codice', label: 'Codice Coni', width: '10%' },
+        { key: 'attivitaNome', label: 'Attività', width: '20%' },
+        { key: 'email', label: 'Email', width: '7%' }
+        ];
     }
 
     // Colonne base per effettivi e volontari
@@ -153,7 +153,7 @@ const StampaLibroSoci = () => {
         <Card.Body>
           <div className="text-center mb-4">
             <img src='./headercso.jpg'></img>
-            <h2>{titoloParam || getTipoNome(tipo)}</h2>
+            <h2>{'Libro '+ getTipoNome(tipo)}</h2>
             <p className="mb-1">Anno Sportivo: {anno}/{anno + 1}</p>
           </div>
           
