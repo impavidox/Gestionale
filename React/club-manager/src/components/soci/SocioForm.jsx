@@ -570,7 +570,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       if (mode === 'C') {
         const createdSocio = response.data.data.socio;
         // Navigate to RicevuteElenco with socio data
-        navigate(`/ricevute/elenco?socioId=${createdSocio.id}&cognome=${encodeURIComponent(createdSocio.cognome)}&nome=${encodeURIComponent(createdSocio.nome)}&isNewSocio=true`);
+        navigate(`/ricevute/elenco?socioId=${createdSocio.id}&cognome=${encodeURIComponent(createdSocio.cognome)}&nome=${encodeURIComponent(createdSocio.nome)}&isNewSocio=true&tipoSocio=${encodeURIComponent(body.isEffettivo)}`);
       } else {
         // For update mode, keep the existing behavior
         setViewAbo(true);

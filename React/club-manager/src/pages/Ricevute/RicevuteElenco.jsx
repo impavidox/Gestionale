@@ -21,6 +21,7 @@ const RicevuteElenco = () => {
   
   // Estrai parametri dall'URL
   const socioId = parseInt(searchParams.get('socioId') || '0');
+  const tipoSocio = parseInt(searchParams.get('tipoSocio') || '0');
   const cognome = searchParams.get('cognome') || '';
   const nome = searchParams.get('nome') || '';
   const isNewSocio = searchParams.get('isNewSocio') === 'true';
@@ -291,12 +292,29 @@ const RicevuteElenco = () => {
         await fetchRicevute();
         
         // Se è la prima ricevuta (per un nuovo socio), apri la stampa della domanda associativa
-        if (isFirstRicevuta || isNewSocio) {
+        if (isNewSocio && tipoSocio === 1) {
           setTimeout(() => {
-            // Apri la stampa della domanda associativa e privacy
             goNewTab('domanda-associativa/stampa', {
               socioId: socioId,
-              ricevutaId: response.data.idRicevuta || response.data.id
+              attivita: ricevutaData.attivita.value,
+              privacy: 1
+            });
+          }, 1000);
+        } else if (isFirstRicevuta && tipoSocio === 1) {
+            setTimeout(() => {
+            goNewTab('domanda-associativa/stampa', {
+              socioId: socioId,
+              attivita: ricevutaData.attivita.value,
+              privacy:0
+            });
+          }, 1000);
+        } else if (isNewSocio) {
+            setTimeout(() => {
+            goNewTab('domanda-associativa/stampa', {
+              socioId: socioId,
+              attivita: ricevutaData.attivita.value,
+              privacy:1,
+              tesserato:1
             });
           }, 1000);
         }
@@ -572,7 +590,7 @@ const RicevuteElenco = () => {
               </Col>
             </Row>
             
-            <Row>
+            <Row>{tipoSocio===1&&
               <Col md={6}>
                 <DateField
                   label="Scadenza Quota"
@@ -581,7 +599,7 @@ const RicevuteElenco = () => {
                   onChange={handleRicevutaInputChange}
                   required
                 />
-              </Col>
+              </Col>}
               <Col md={6}>
                 <DateField
                   label="Scadenza Abbonamento"
@@ -622,7 +640,7 @@ const RicevuteElenco = () => {
                 />
               </Col>
             </Row>
-            
+            {tipoSocio===1&&
             <Row>
               <Col md={12}>
                 <CheckboxField
@@ -632,7 +650,7 @@ const RicevuteElenco = () => {
                   onChange={handleRicevutaInputChange}
                 />
               </Col>
-            </Row>
+            </Row>}
 
             {ricevute.length === 0 && (
               <Alert variant="info" className="mt-3">

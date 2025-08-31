@@ -221,9 +221,9 @@ const SocioList = ({ soci = [], onSelect, onRefresh, filters = {} }) => {
   const handleElencoRicevute = async () => {
     try {
       setLoading(true);
-      
+      console.log(selectedSocio)
       // Navigate to the new RicevuteElenco page with URL parameters
-      navigate(`/ricevute/elenco?socioId=${selectedSocio.id}&cognome=${encodeURIComponent(selectedSocio.cognome)}&nome=${encodeURIComponent(selectedSocio.nome)}`);
+      navigate(`/ricevute/elenco?socioId=${selectedSocio.id}&cognome=${encodeURIComponent(selectedSocio.cognome)}&nome=${encodeURIComponent(selectedSocio.nome)}&tipoSocio=${encodeURIComponent(selectedSocio.isEffettivo)}`);
       
       handleCloseModals();
     } catch (error) {

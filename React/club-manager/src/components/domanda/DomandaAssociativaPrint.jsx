@@ -16,11 +16,12 @@ const DomandaAssociativaPrint = () => {
   
   const socioId = parseInt(searchParams.get('socioId') || '0');
   const ricevutaId = parseInt(searchParams.get('ricevutaId') || '0');
-  
+  const privacy= parseInt(searchParams.get('privacy') || '0'); 
+  const attivita= (searchParams.get('attivita') || '_____'); 
+  const tesserato= parseInt(searchParams.get('tesserato') || '0'); 
   // Stati per i dati
   const [socio, setSocio] = useState(null);
   const [ricevuta, setRicevuta] = useState(null);
-  const [attivita, setAttivita] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -47,18 +48,6 @@ const calculateAge = (birthdate) => {
         const socioResponse = await socioService.retrieveSocioById(socioId);
         setSocio(socioResponse.data.data);
  
-        
-        // Se c'è una ricevuta, caricala
-        if (ricevutaId) {
-          try {
-            const ricevutaResponse = await ricevutaService.retrieveRicevutaForUser(socioId);
-            const ricevute = ricevutaResponse.data?.data?.items || ricevutaResponse.data?.items || [];
-            const ricevutaTrovata = ricevute.find(r => (r.idRicevuta || r.id) === ricevutaId);
-            setRicevuta(ricevutaTrovata);
-          } catch (ricevutaError) {
-            console.warn('Errore nel caricamento della ricevuta:', ricevutaError);
-          }
-        }
         
       } catch (err) {
         console.error('Errore nel caricamento dei dati:', err);
@@ -117,9 +106,9 @@ const calculateAge = (birthdate) => {
           {/* Header con loghi */}
           <div className="page-header">
             <img src='/headercso.jpg' width='100%'></img>
-            <h2 className="document-title">DOMANDA DI ASSOCIAZIONE</h2>
           </div>
-          
+            {tesserato===0 &&<div>
+          <h2 className="page2-title">DOMANDA DI ASSOCIAZIONE</h2>
           {/* Dati anagrafici compilati automaticamente */}
           <div className="socio-data">
             <div className="field-row">
@@ -160,7 +149,7 @@ const calculateAge = (birthdate) => {
           {/* Richiesta di associazione */}
           <div className="association-request">
             <p>
-              Fa domanda di associazione per l'anno sportivo <strong>2024/25</strong> al ASD-APS Centro Sportivo Orbassano in qualità di <strong>Socio Effettivo</strong>
+              Fa domanda di associazione per l'anno sportivo <strong>2024/25</strong> al ASD-APS Centro Sportivo Orbassano in qualità di <strong>Socio Effettivo</strong> con l'attività di <strong>{attivita}</strong>
             </p>
             
             <p className="statute-text">
@@ -185,16 +174,17 @@ const calculateAge = (birthdate) => {
           <div className="gdpr-consent">
             <label className="checkbox-label">
               <span className="checkbox"></span>
-              Ricevuta l'informativa sull'utilizzazione dei miei dati, ai sensi dell'art. 13 del Regolamentno UE n 2016/679, consento, 
-              ai sensi del Regolamentno UE n 2016/679 al loro trattamento nella misura necessaria per il perseguimento degli scopi 
+              Ricevuta l'informativa sull'utilizzazione dei miei dati, ai sensi dell'art. 13 del Regolamento UE n 2016/679, consento, 
+              ai sensi del Regolamento UE n 2016/679 al loro trattamento nella misura necessaria per il perseguimento degli scopi 
               statutari.
             </label>
             
             <div className="signature-box-small">
               <span>Firma: ______________________</span>
             </div>
-          </div>
-          
+          </div></div>
+          }
+          {privacy===1 &&<div>
           <h2 className="page2-title">CONSENSO AL TRATTAMENTO DEI DATI PERSONALI</h2>
           
             {/* Identificazione del soggetto */}
@@ -300,7 +290,8 @@ const calculateAge = (birthdate) => {
                 <span>Firma _________________________</span>
               </div>
             </div>
-          </div>
+          </div></div>
+            }
         </div>
       </div>
 
