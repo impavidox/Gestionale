@@ -22,7 +22,6 @@ const LibroSoci = () => {
   const [anni, setAnni] = useState([]);
   const [elencoTipi, setElencoTipi] = useState([
     { code: 1, name: 'Effettivi', hd: 'Soci Effettivi' },
-    { code: 2, name: 'Volontari', hd: 'Soci Volontari' },
     { code: 3, name: 'Tesserati', hd: 'Soci Tesserati' }
   ]);
   const [soci, setSoci] = useState([]);

@@ -173,7 +173,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         setListProv(provinceWithEstero);
         
         // Carica tipi socio (now just for reference, not used in selector)
-        const tipiSocioResponse = ['Effettivo', 'Tesserato', 'Volontario'];
+        const tipiSocioResponse = ['Effettivo', 'Tesserato'];
         setListTipiSocio(tipiSocioResponse);
         
         // Carica federazioni
@@ -867,14 +867,6 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
                     label="Tesserato"
                     name="tipoSocio.tesserato"
                     checked={formData.tipoSocio.tesserato}
-                    onChange={handleChange}
-                  />
-                </Col>
-                <Col md={4}>
-                  <CheckboxField
-                    label="Volontario"
-                    name="tipoSocio.volontario"
-                    checked={formData.tipoSocio.volontario}
                     onChange={handleChange}
                   />
                 </Col>
