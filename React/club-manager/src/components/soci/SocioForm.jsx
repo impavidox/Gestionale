@@ -48,7 +48,7 @@ const onuNations = [
   'Tailandia', 'Timor Est', 'Togo', 'Tonga', 'Trinidad e Tobago', 'Tunisia',
   'Turchia', 'Turkmenistan', 'Tuvalu', 'Ucraina', 'Uganda', 'Ungheria', 'Uruguay',
   'Uzbekistan', 'Vanuatu', 'Vaticano', 'Venezuela', 'Vietnam', 'Yemen', 'Zambia',
-  'Zimbabwe'
+  'Zimbabwe','Cina Repubblica Popolare'
 ];
 
 /**
@@ -509,10 +509,10 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
     setViewAlert(false);
     setViewAlert1(false);
     
-    if (!controlParameters()) {
-      setError('Tutti i parametri non sono stati compilati');
-      return;
-    }
+    // if (!controlParameters()) {
+    //   setError('Tutti i parametri non sono stati compilati');
+    //   return;
+    // }
     
     try {
       setLoading(true);

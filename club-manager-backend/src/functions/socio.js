@@ -647,7 +647,7 @@ async function handleRetrieveLibroSoci(context, tipoSocio, annoValidita) {
                     FROM soci s
                     INNER JOIN effettivi e ON s.id = e.socioId
                     WHERE e.annoValidità = @anno
-                    ORDER BY s.cognome, s.nome
+                    ORDER BY e.id
                 `;
                 break;
                 

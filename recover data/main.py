@@ -1,9 +1,10 @@
 import requests
 from datetime import datetime
 from datetime import date
+import time
 
 # API endpoint to retrieve soci
-BASE_URL = "https://server.mathric.com/cso/rest/socio/retrieveLibroSocio/0/{start}/{end}/2"
+BASE_URL = "https://server.mathric.com/cso/rest/socio/retrieveLibroSocio/0/{start}/{end}/1"
 
 # Your target endpoint to create a socio (replace with your actual URL)
 CREATE_SOCIO_URL = "https://backend-cso.azurewebsites.net/api/socio/createSocio"
@@ -38,7 +39,7 @@ def transform_record(record: dict) -> dict:
             and datetime.strptime(record["dataInscrizione"], "%Y-%m-%d").strftime("%d-%m-%Y")
         ),
         "isTesserato": 0,
-        "isEffettivo": 0,  # business rule: default true
+        "isEffettivo": 1,  # business rule: default true
         "isVolontario": 0,  # business rule: default false
         "scadenzaCertificato": (
             format_date(record.get("scadenzaCertificatMedical"), "%d/%m/%Y")
@@ -68,7 +69,9 @@ def fetch_and_migrate(start: int, end: int):
             print("✅ Created successfully")
         else:
             print(f"❌ Error {res.status_code}: {res.text}")
+            break
+        time.sleep(1)
 
 if __name__ == "__main__":
     # Example: fetch IDs from 50 to 100
-    fetch_and_migrate(3, 3)
+    fetch_and_migrate(0, 25)

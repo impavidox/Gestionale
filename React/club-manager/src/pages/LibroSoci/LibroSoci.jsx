@@ -56,7 +56,7 @@ const LibroSoci = () => {
         // const currentYear = annoResponse.data.data || annoResponse.data;
         
         // Crea array di anni (anno corrente e precedenti)
-        const currentYearNum = 2025;
+        const currentYearNum = 2026;
         const yearsArray = [];
         for (let i = 0; i < 5; i++) {
           const year = currentYearNum - i;
