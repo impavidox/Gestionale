@@ -500,7 +500,6 @@ async function handleUpdateSocio(context, socioData) {
                 
                 if (tesseratoExists.recordset[0].count === 0) {
                     tesseratoCheck.input('codice', sql.VarChar(5), socioData.codice);
-                    tesseratoCheck.input('dataAdesione', sql.Date, value.dataIscrizione || new Date());
                     
                     // Get attivitàId from codice
                     const attivitaResult = await tesseratoCheck.query(`
@@ -511,13 +510,13 @@ async function handleUpdateSocio(context, socioData) {
                         tesseratoCheck.input('attivitàId', sql.Int, attivitaResult.recordset[0].id);
                         
                         await tesseratoCheck.query(`
-                            INSERT INTO tesserati (socioId, codice, attivitàId, annoValidità, dataAdesione)
-                            VALUES (@socioId, @codice, @attivitàId, @annoValidità, @dataAdesione)
+                            INSERT INTO tesserati (socioId, codice, attivitàId, annoValidità)
+                            VALUES (@socioId, @codice, @attivitàId, @annoValidità)
                         `);
                     } else {
                         await tesseratoCheck.query(`
-                            INSERT INTO tesserati (socioId, codice, annoValidità, dataAdesione)
-                            VALUES (@socioId, @codice, @annoValidità, @dataAdesione)
+                            INSERT INTO tesserati (socioId, codice, annoValidità)
+                            VALUES (@socioId, @codice, @annoValidità)
                         `);
                     }
                 } else {
@@ -557,11 +556,10 @@ async function handleUpdateSocio(context, socioData) {
                 `);
                 
                 if (effettivoExists.recordset[0].count === 0) {
-                    effettivoCheck.input('dataAdesione', sql.Date, value.dataIscrizione || new Date());
                     
                     await effettivoCheck.query(`
-                        INSERT INTO effettivi (socioId, annoValidità, dataAdesione)
-                        VALUES (@socioId, @annoValidità, @dataAdesione)
+                        INSERT INTO effettivi (socioId, annoValidità)
+                        VALUES (@socioId, @annoValidità)
                     `);
                 }
             } else {
@@ -582,11 +580,10 @@ async function handleUpdateSocio(context, socioData) {
                 `);
                 
                 if (volontarioExists.recordset[0].count === 0) {
-                    volontarioCheck.input('dataAdesione', sql.Date, value.dataIscrizione || new Date());
                     
                     await volontarioCheck.query(`
-                        INSERT INTO volontari (socioId, annoValidità, dataAdesione)
-                        VALUES (@socioId, @annoValidità, @dataAdesione)
+                        INSERT INTO volontari (socioId, annoValidità)
+                        VALUES (@socioId, @annoValidità)
                     `);
                 }
             } else {

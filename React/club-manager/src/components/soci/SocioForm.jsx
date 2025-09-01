@@ -223,7 +223,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         if (existingSocio.isTesserato) {
           setViewFede(true);
         }
-        
+        console.log(existingSocio)
         // Imposta i dati del form
         setFormData({
           nome: existingSocio.nome || '',
@@ -243,6 +243,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
           email: existingSocio.email || '',
           codice: existingSocio.codice || null
         });
+        console.log(formData)
         
         // FIX: Set sesso selector with correct format
         const sessoValue = existingSocio.sesso === 'F' ? 
@@ -524,7 +525,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
         nome: formData.nome.toUpperCase(),
         cognome: formData.cognome.toUpperCase(),
         sesso: selectedSesso.label,
-        dataNascita: `${formData.birthJJ}-${selectedMM?.value}-${formData.anno}`,
+        dataNascita: `${formData.birthJJ}-${formData.birthMM?formData.birthMM:selectedMM?.value}-${formData.anno}`,
         provinciaNascita: provinciaCode,
         comuneNascita: birthcomune, // This will be a nation name if Estero is selected
         provinciaResidenza: listCodes.find(p => p.nome === resProv).provCode,
