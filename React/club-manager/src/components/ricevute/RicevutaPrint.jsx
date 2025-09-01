@@ -29,6 +29,23 @@ const RicevutaPrint = ({
   const [sending, setSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   
+  // Funzione per calcolare se è minore
+  const isMinor = (birthDate) => {
+    if (!birthDate) return false;
+    
+    const today = new Date();
+    const birth = new Date(birthDate);
+    const age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    // Se non ha ancora compiuto anni quest'anno
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      return (age - 1) < 18;
+    }
+    
+    return age < 18;
+  };
+  
   // Carica i dati all'avvio
   useEffect(() => {
     const fetchRicevutaData = async () => {
@@ -160,6 +177,8 @@ const RicevutaPrint = ({
 
   // Genera HTML per ricevuta
   const generateRicevutaHTML = (data) => {
+    const isMinorPerson = isMinor(data.dataNascita || data.birhDate);
+    
     return `
       <div style="font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #000;">
         <!-- Header con logo e numero ricevuta -->
@@ -199,7 +218,7 @@ const RicevutaPrint = ({
           </div>
           
           <!-- Sezione minore -->
-          ${data.isMinore ? `
+          ${isMinorPerson ? `
             <div style="margin-bottom: 15px;">
               residente in ${data.citta || '...........................................................................'}
             </div>
@@ -211,11 +230,11 @@ const RicevutaPrint = ({
             </div>
             <div style="margin-bottom: 10px;">
               quale esercente la patria potestà del minore 
-              <span style="font-weight: bold;">${data.socioCognome +' '+ data.socioNome}</span>
+              <span style="font-weight: bold;">${data.socioCognome + ' ' + data.socioNome}</span>
             </div>
             <div style="margin-bottom: 20px;">
-              nato a <span style="font-weight: bold;">TORINO</span> il 
-              <span style="font-weight: bold;">10/11/2015</span>
+              nato a <span style="font-weight: bold;">${data.birthCity || 'TORINO'}</span> il 
+              <span style="font-weight: bold;">${formatDateDisplay(data.dataNascita || data.birhDate) || '10/11/2015'}</span>
             </div>
           ` : ''}
 
@@ -272,7 +291,7 @@ const RicevutaPrint = ({
               <p><strong>Cognome:</strong> ${data.cognome}</p>
               <p><strong>Nome:</strong> ${data.nome}</p>
               <p><strong>Codice Fiscale:</strong> ${data.codeFiscale}</p>
-              <p><strong>Data di nascita:</strong> ${formatDateDisplay(data.birhDate)}</p>
+              <p><strong>Data di nascita:</strong> ${formatDateDisplay(data.dataNascita || data.birhDate)}</p>
               <p><strong>Luogo di nascita:</strong> ${data.birthCity} (${data.birthProv})</p>
             </div>
             <div style="flex: 1; min-width: 250px;">
@@ -363,9 +382,6 @@ const RicevutaPrint = ({
                 </>
               )}
             </Button>
-            {!ricevutaData.email && (
-              <span className="text-muted small">Email non disponibile</span>
-            )}
           </div>
           
           {/* Messaggi di feedback */}
@@ -405,6 +421,25 @@ const RicevutaPrint = ({
  * Componente per il contenuto della ricevuta - Struttura italiana ufficiale
  */
 const RicevutaContent = ({ data }) => {
+  // Funzione per calcolare se è minore
+  const isMinor = (birthDate) => {
+    if (!birthDate) return false;
+    
+    const today = new Date();
+    const birth = new Date(birthDate);
+    const age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    // Se non ha ancora compiuto anni quest'anno
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      return (age - 1) < 18;
+    }
+    
+    return age < 18;
+  };
+
+  const isMinorPerson = isMinor(data.dataNascita || data.birhDate);
+
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px', lineHeight: '1.4' }}>
       {/* Header con logo e info club */}
@@ -446,7 +481,7 @@ const RicevutaContent = ({ data }) => {
         </div>
         
         {/* Sezione minore - residente in, via, e patria potestà */}
-        {data.isMinore && (
+        {isMinorPerson && (
           <>
             <div style={{ marginBottom: '15px' }}>
               residente in {data.citta || '...........................................................................'}
@@ -463,12 +498,12 @@ const RicevutaContent = ({ data }) => {
             <div style={{ marginBottom: '10px' }}>
               quale esercente la patria potestà del minore{' '}
               <span style={{ fontWeight: 'bold' }}>
-                {data.socioCognome + ' '+ data.socioNome}
+                {data.socioCognome + ' ' + data.socioNome}
               </span>
             </div>
             <div style={{ marginBottom: '20px' }}>
-              nato a <span style={{ fontWeight: 'bold' }}>TORINO</span> il{' '}
-              <span style={{ fontWeight: 'bold' }}>10/11/2015</span>
+              nato a <span style={{ fontWeight: 'bold' }}>{data.birthCity || 'TORINO'}</span> il{' '}
+              <span style={{ fontWeight: 'bold' }}>{formatDateDisplay(data.dataNascita || data.birhDate) || '10/11/2015'}</span>
             </div>
           </>
         )}
@@ -566,7 +601,7 @@ const SchedaContent = ({ data }) => {
           <p><strong>Cognome:</strong> {data.cognome}</p>
           <p><strong>Nome:</strong> {data.nome}</p>
           <p><strong>Codice Fiscale:</strong> {data.codeFiscale}</p>
-          <p><strong>Data di nascita:</strong> {formatDateDisplay(data.birhDate)}</p>
+          <p><strong>Data di nascita:</strong> {formatDateDisplay(data.dataNascita || data.birhDate)}</p>
           <p><strong>Luogo di nascita:</strong> {data.birthCity} ({data.birthProv})</p>
         </Col>
         <Col md={6}>
