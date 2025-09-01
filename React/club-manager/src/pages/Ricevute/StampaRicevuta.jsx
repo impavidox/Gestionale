@@ -34,16 +34,6 @@ const StampaRicevuta = ({ isScheda = false }) => {
   
   return (
     <Container className="mt-4 mb-5">
-      <h2 className="mb-4">
-        {isScheda 
-          ? 'Scheda Socio' 
-          : reprint === 0 
-            ? 'Nuova Ricevuta' 
-            : reprint === 1 
-              ? 'Visualizza Ricevuta' 
-              : 'Modifica Ricevuta'
-        }
-      </h2>
       
       {showPrint ? (
         <RicevutaPrint 
