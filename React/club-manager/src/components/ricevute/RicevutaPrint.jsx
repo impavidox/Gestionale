@@ -266,12 +266,30 @@ const RicevutaPrint = ({
         </div>
 
         <!-- Firma -->
-        <div style="text-align: right; margin-top: 50px; position: relative;">
-          <div style="margin-bottom: 40px;">
-            Il presidente
-            <span style="border-bottom: 1px dotted #000; display: inline-block; width: 120px; margin-left: 10px;"></span>
-          </div>
-        </div>
+        <div className="text-end" style={{ marginTop: '50px' }}>
+  <div style={{ 
+    marginBottom: '40px',
+    position: 'relative'
+  }}>
+    Il presidente
+    <span style={{
+      borderBottom: '1px dotted #000',
+      display: 'inline-block',
+      width: '27%',
+      marginLeft: '10px'
+    }}></span>
+    <img 
+      src='/sign.png' 
+      width='25%'
+      style={{
+        position: 'absolute',
+        right: '0',
+        top: '60%',
+        transform: 'translateY(-60%)'
+      }}
+    />
+  </div>
+</div>
       </div>
     `;
   };
