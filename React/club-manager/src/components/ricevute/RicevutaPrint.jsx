@@ -26,6 +26,8 @@ const RicevutaPrint = ({
   const [ricevutaData, setRicevutaData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendSuccess, setSendSuccess] = useState(false);
   
   // Carica i dati all'avvio
   useEffect(() => {
@@ -69,12 +71,255 @@ const RicevutaPrint = ({
     window.print();
   };
 
+  // Genera PDF usando html2pdf
+  const generatePDF = async () => {
+    try {
+      // Importa html2pdf dinamicamente
+      const html2pdf = (await import('html2pdf.js')).default;
+      
+      // Crea un elemento temporaneo con il contenuto da convertire
+      const element = document.createElement('div');
+      element.innerHTML = generatePrintableHTML(ricevutaData, isScheda);
+      
+      // Applica gli stili per il PDF
+      element.style.fontFamily = 'Arial, sans-serif';
+      element.style.fontSize = '12px';
+      element.style.lineHeight = '1.4';
+      element.style.color = '#000';
+      
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: isScheda ? 
+          `scheda_socio_${ricevutaData.cognome}_${ricevutaData.nome}.pdf` : 
+          `ricevuta_${ricevutaData.nrRicevuta}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      return await html2pdf().set(opt).from(element).outputPdf('datauristring');
+    } catch (error) {
+      console.error('Errore nella generazione del PDF:', error);
+      throw new Error('Impossibile generare il PDF');
+    }
+  };
+
   // Gestione dell'invio
-  const handleSend = () => {
-    // Implementa la logica per inviare la ricevuta (email, ecc.)
-    console.log('Invio ricevuta...');
-    // Qui puoi aggiungere la chiamata API per inviare la ricevuta via email
-    alert('Funzionalità di invio da implementare');
+  const handleSend = async () => {
+    if (!ricevutaData || !ricevutaData.email) {
+      setError('Email del socio non disponibile. Impossibile inviare la ricevuta.');
+      return;
+    }
+
+    setSending(true);
+    setSendSuccess(false);
+    setError('');
+
+    try {
+      // Genera il PDF
+      const pdfDataUri = await generatePDF();
+      const pdfBase64 = pdfDataUri.split(',')[1]; // Rimuove il prefisso data:application/pdf;base64,
+      
+      const fileName = isScheda ? 
+        `scheda_socio_${ricevutaData.cognome}_${ricevutaData.nome}.pdf` : 
+        `ricevuta_${ricevutaData.nrRicevuta}.pdf`;
+      
+      // Chiamata API per inviare l'email con PDF allegato
+      const response = await ricevutaService.sendRicevutaEmail({
+        recipientEmail: ricevutaData.email,
+        recipientName: `${ricevutaData.socioCognome || ricevutaData.cognome} ${ricevutaData.socioNome || ricevutaData.nome}`,
+        subject: isScheda ? 'Scheda Socio - Centro Sportivo Orbassano' : `Ricevuta N° ${ricevutaData.nrRicevuta} - Centro Sportivo Orbassano`,
+        pdfBase64: pdfBase64,
+        fileName: fileName,
+        isScheda: isScheda,
+        ricevutaNumber: ricevutaData.nrRicevuta
+      });
+
+      if (response.success) {
+        setSendSuccess(true);
+        setTimeout(() => setSendSuccess(false), 5000); // Nascondi il messaggio dopo 5 secondi
+      } else {
+        throw new Error(response.message || 'Errore nell\'invio dell\'email');
+      }
+    } catch (err) {
+      console.error('Errore nell\'invio della ricevuta:', err);
+      setError('Si è verificato un errore nell\'invio della ricevuta via email.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Genera HTML per il PDF (uguale al contenuto stampabile)
+  const generatePrintableHTML = (data, isScheda) => {
+    if (isScheda) {
+      return generateSchedaHTML(data);
+    } else {
+      return generateRicevutaHTML(data);
+    }
+  };
+
+  // Genera HTML per ricevuta
+  const generateRicevutaHTML = (data) => {
+    return `
+      <div style="font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #000;">
+        <!-- Header con logo e numero ricevuta -->
+        <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+          <div style="flex: 1;">
+            <img src="/headercsoric.jpg" style="max-width: 200px;" alt="Centro Sportivo Orbassano">
+          </div>
+          <div style="text-align: right; margin-top: 20px;">
+            <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px;">
+              N° ${data.nrRicevuta || '___'}
+            </div>
+            <div>
+              Data ${formatDateDisplay(data.dataRicevuta) || '___________'}
+            </div>
+          </div>
+        </div>
+
+        <!-- Sottoscritto -->
+        <div style="margin-bottom: 20px;">
+          <div>
+            Il Sottoscritto <span style="font-weight: bold;">PAOLO SOTTILE</span> nella qualità di Presidente Pro-tempore dell'ASD-APS Centro Sportivo Orbassano
+          </div>
+        </div>
+
+        <!-- Dichiarazione principale -->
+        <div style="margin-bottom: 30px;">
+          <div style="text-align: center; margin: 20px 0;">
+            <h3 style="font-weight: bold; text-decoration: underline; margin: 0;">
+              DICHIARA DI AVER RICEVUTO
+            </h3>
+          </div>
+
+          <div style="margin-bottom: 15px;">
+            da ${data.socioCognome && data.socioNome ? 
+              `${data.socioCognome} ${data.socioNome}` : 
+              '.................................................................................'}
+          </div>
+          
+          <!-- Sezione minore -->
+          ${data.isMinore ? `
+            <div style="margin-bottom: 15px;">
+              residente in ${data.citta || '...........................................................................'}
+            </div>
+            <div style="margin-bottom: 15px;">
+              via ${data.indirizzo || '.................................................................................'}
+            </div>
+            <div style="margin-bottom: 20px;">
+              C.Fisc. ${data.codiceFiscale || '................................................................'}
+            </div>
+            <div style="margin-bottom: 10px;">
+              quale esercente la patria potestà del minore 
+              <span style="font-weight: bold;">${data.socioCognome +' '+ data.socioNome}</span>
+            </div>
+            <div style="margin-bottom: 20px;">
+              nato a <span style="font-weight: bold;">TORINO</span> il 
+              <span style="font-weight: bold;">10/11/2015</span>
+            </div>
+          ` : ''}
+
+          <!-- Importo -->
+          <div style="margin-bottom: 15px; font-size: 14px;">
+            la somma di <span style="font-weight: bold;">${data.importoRicevuta || '80'} €</span>
+          </div>
+
+          <!-- Dettagli quote -->
+          <div style="margin-bottom: 10px;">
+            • per la quota associativa di fino al ${formatDateDisplay(data.scadenzaQuota) || '31/08/2025'}
+          </div>
+          <div style="margin-bottom: 15px;">
+            • per la quota di frequenza fino al ${formatDateDisplay(data.scadenzaPagamento) || '31/10/2024'}
+          </div>
+
+          <!-- Attività -->
+          <div style="margin-bottom: 30px;">
+            relativo alla pratica sportiva dilettantistica 
+            <span style="font-weight: bold;">${data.attivitaNome || 'Attività Integrativa Ven Pavese'}</span>
+          </div>
+        </div>
+
+        <!-- Note legali -->
+        <div style="font-size: 9px; margin-bottom: 30px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
+          <p style="margin: 0;">
+            Ai sensi dell'art. 15, c.1 lett=quinquies D.P.R. 917/1986, l'importo corrisposto beneficia della detrazione d'imposta IRPEF pari al 19% dell'importo pagato (calcolato su un massimo di Euro 210,00 per ciascuna persona che effettui il pagamento), come disposto dal c. 319 della L. 27/12/2006, N° 296 e relativo decreto di attuazione del 28/03/2007
+          </p>
+        </div>
+
+        <!-- Firma -->
+        <div style="text-align: right; margin-top: 50px; position: relative;">
+          <div style="margin-bottom: 40px;">
+            Il presidente
+            <span style="border-bottom: 1px dotted #000; display: inline-block; width: 120px; margin-left: 10px;"></span>
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  // Genera HTML per scheda
+  const generateSchedaHTML = (data) => {
+    return `
+      <div style="font-family: Arial, sans-serif; color: #000;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1>SCHEDA SOCIO</h1>
+        </div>
+        
+        <div style="margin-bottom: 20px; border: 1px solid #ddd; padding: 15px;">
+          <h3 style="margin-top: 0; color: #333;">Dati Anagrafici</h3>
+          <div style="display: flex; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 250px; margin-right: 20px;">
+              <p><strong>Cognome:</strong> ${data.cognome}</p>
+              <p><strong>Nome:</strong> ${data.nome}</p>
+              <p><strong>Codice Fiscale:</strong> ${data.codeFiscale}</p>
+              <p><strong>Data di nascita:</strong> ${formatDateDisplay(data.birhDate)}</p>
+              <p><strong>Luogo di nascita:</strong> ${data.birthCity} (${data.birthProv})</p>
+            </div>
+            <div style="flex: 1; min-width: 250px;">
+              <p><strong>Indirizzo:</strong> ${data.indirizzo}</p>
+              <p><strong>Città:</strong> ${data.citta}</p>
+              <p><strong>Cap:</strong> ${data.cap}</p>
+              <p><strong>Provincia:</strong> ${data.provRes}</p>
+              <p><strong>Telefono:</strong> ${data.tel || 'N/D'}</p>
+              <p><strong>Email:</strong> ${data.email || 'N/D'}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 20px; border: 1px solid #ddd; padding: 15px;">
+          <h3 style="margin-top: 0; color: #333;">Dati Abbonamento</h3>
+          ${data.abbonamento ? `
+            <div style="display: flex; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 250px; margin-right: 20px;">
+                <p><strong>Numero Tessera:</strong> ${data.abbonamento.numeroTessara}</p>
+                <p><strong>Data Iscrizione:</strong> ${formatDateDisplay(data.abbonamento.incription)}</p>
+              </div>
+              <div style="flex: 1; min-width: 250px;">
+                <p><strong>Abbonamento Firmato:</strong> ${data.abbonamento.firmato ? 'Sì' : 'No'}</p>
+                <p><strong>Tipo Socio:</strong> ${data.tipo?.descrizione || 'N/D'}</p>
+              </div>
+            </div>
+          ` : '<p>Nessun abbonamento attivo</p>'}
+        </div>
+        
+        <div style="margin-bottom: 20px; border: 1px solid #ddd; padding: 15px;">
+          <h3 style="margin-top: 0; color: #333;">Certificato Medico</h3>
+          <div style="display: flex; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 250px; margin-right: 20px;">
+              <p><strong>Scadenza:</strong> ${data.dateCertificat ? formatDateDisplay(data.dateCertificat) : 'N/D'}</p>
+            </div>
+            <div style="flex: 1; min-width: 250px;">
+              <p><strong>Tipo:</strong> ${data.typeCertificat ? 'Agonistico' : 'Non agonistico'}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 50px; padding-top: 30px; border-top: 1px solid #ddd;">
+          <p>Data e firma</p>
+          <p style="margin-top: 30px;">_______________________</p>
+        </div>
+      </div>
+    `;
   };
   
   // Loader durante il caricamento
@@ -102,10 +347,40 @@ const RicevutaPrint = ({
             <Button variant="primary" onClick={handlePrint}>
               <i className="bi bi-printer me-1"></i> Stampa
             </Button>
-            <Button variant="success" onClick={handleSend}>
-              <i className="bi bi-envelope me-1"></i> Invia
+            <Button 
+              variant="success" 
+              onClick={handleSend}
+              disabled={sending || !ricevutaData.email}
+            >
+              {sending ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  Invio...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-envelope me-1"></i> Invia PDF
+                </>
+              )}
             </Button>
+            {!ricevutaData.email && (
+              <span className="text-muted small">Email non disponibile</span>
+            )}
           </div>
+          
+          {/* Messaggi di feedback */}
+          {sendSuccess && (
+            <div className="alert alert-success mt-2 mb-0" role="alert">
+              <i className="bi bi-check-circle me-1"></i>
+              {isScheda ? 'Scheda' : 'Ricevuta'} PDF inviata con successo a {ricevutaData.email}
+            </div>
+          )}
+          {error && (
+            <div className="alert alert-danger mt-2 mb-0" role="alert">
+              <i className="bi bi-exclamation-triangle me-1"></i>
+              {error}
+            </div>
+          )}
         </div>
       </div>
       
@@ -188,7 +463,7 @@ const RicevutaContent = ({ data }) => {
             <div style={{ marginBottom: '10px' }}>
               quale esercente la patria potestà del minore{' '}
               <span style={{ fontWeight: 'bold' }}>
-                {data.nomeMinore || 'AMBROSIO BIANCA'}
+                {data.socioCognome + ' '+ data.socioNome}
               </span>
             </div>
             <div style={{ marginBottom: '20px' }}>

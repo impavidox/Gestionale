@@ -28,6 +28,13 @@ const endpoints = {
       ANNUL: 'ricevuta/annulRicevuta',
       PREPARE_SCHEDA: 'ricevuta/prepareScheda'
     },
+
+
+    // Add email endpoint
+    EMAIL: {
+      SEND: '/send-email'
+    },
+
     
     // Prima Nota
     PRIMA_NOTA: {

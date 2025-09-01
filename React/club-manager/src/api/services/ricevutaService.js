@@ -76,6 +76,36 @@ const ricevutaService = {
    */
   prepareScheda: (idSocio) => {
     return api.get(`${endpoints.RICEVUTA.PREPARE_SCHEDA}/${idSocio}`);
+  },
+
+  /**
+   * Invia ricevuta o scheda via email
+   * @param {Object} emailData - Dati per l'invio email
+   * @param {string} emailData.recipientEmail - Email destinatario
+   * @param {string} emailData.recipientName - Nome destinatario
+   * @param {string} emailData.subject - Oggetto email
+   * @param {string} emailData.htmlContent - Contenuto HTML email
+   * @param {boolean} emailData.isScheda - Se è una scheda o ricevuta
+   * @param {string} emailData.ricevutaNumber - Numero ricevuta
+   * @returns {Promise} Promise con la risposta del server
+   */
+  sendRicevutaEmail: async (emailData) => {
+    try {
+      const response = await api.post('/send-email', emailData);
+      return response.data;
+    } catch (error) {
+      console.error('Error sending ricevuta email:', error);
+      if (error.response && error.response.data) {
+        return {
+          success: false,
+          message: error.response.data.message || 'Errore nell\'invio dell\'email'
+        };
+      }
+      return {
+        success: false,
+        message: 'Errore di connessione durante l\'invio dell\'email'
+      };
+    }
   }
 };
 

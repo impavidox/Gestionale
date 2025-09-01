@@ -304,6 +304,8 @@ async function handleBuildRicevuta(context, socioId, abboId, ricevutaId) {
                 s.nome AS socioNome,
                 s.cognome AS socioCognome,
                 s.codiceFiscale,
+                s.dataNascita,
+                s.email,
                 a.nome AS attivitaNome,
                 ROW_NUMBER() OVER (
                     PARTITION BY
@@ -337,6 +339,8 @@ async function handleBuildRicevuta(context, socioId, abboId, ricevutaId) {
             socioNome: ricevuta.socioNome,
             socioCognome: ricevuta.socioCognome,
             codiceFiscale: ricevuta.codiceFiscale,
+            dataNascita: ricevuta.dataNascita,
+            email:ricevuta.email,
             attivitaNome: ricevuta.attivitaNome,
             // Convert amounts from cents to euros
             pagato: (ricevuta.importoRicevuta || 0) / 100,
