@@ -8,8 +8,8 @@
     "test": "echo \"No tests yet...\""
   },
   "dependencies": {
-    "@azure/functions": "^4.0.0",
     "@azure/communication-email": "^1.0.0",
+    "@azure/functions": "^4.0.0",
     "axios": "^1.10.0",
     "codice-fiscale-js": "^2.3.23",
     "joi": "^17.13.3",
