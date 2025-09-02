@@ -507,11 +507,10 @@ async function handleUpdateSocio(context, socioData) {
                     `);
                     
                     if (attivitaResult.recordset.length > 0) {
-                        tesseratoCheck.input('attivitàId', sql.Int, attivitaResult.recordset[0].id);
                         
                         await tesseratoCheck.query(`
-                            INSERT INTO tesserati (socioId, codice, attivitàId, annoValidità)
-                            VALUES (@socioId, @codice, @attivitàId, @annoValidità)
+                            INSERT INTO tesserati (socioId, codice, annoValidità)
+                            VALUES (@socioId, @codice, @annoValidità)
                         `);
                     } else {
                         await tesseratoCheck.query(`
@@ -528,11 +527,10 @@ async function handleUpdateSocio(context, socioData) {
                     `);
                     
                     if (attivitaResult.recordset.length > 0) {
-                        tesseratoCheck.input('attivitàId', sql.Int, attivitaResult.recordset[0].id);
                         
                         await tesseratoCheck.query(`
                             UPDATE tesserati 
-                            SET codice = @codice, attivitàId = @attivitàId 
+                            SET codice = @codice
                             WHERE socioId = @socioId AND annoValidità = @annoValidità
                         `);
                     }
