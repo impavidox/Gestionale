@@ -2,8 +2,8 @@ import axios from 'axios';
 
 // Base URL configuration based on environment
 const getBaseURL = () => {
-    //return 'https://backend-cso.azurewebsites.net/api/';
-    return 'http://localhost:7071/api/';
+    return 'https://backend-cso.azurewebsites.net/api/';
+    //return 'http://localhost:7071/api/';
 };
 
 // Configurazione di base di Axios
