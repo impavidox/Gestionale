@@ -147,8 +147,8 @@ const RicercaStampa = () => {
       return { status: 'unpaid', label: 'Non incassato', variant: 'warning' };
     }
     
-    if (!scadenza) {
-      return { status: 'paid', label: 'Pagato', variant: 'success' };
+    if (socio.importoIncassatoAttivita) {
+      return { status: 'paid', label: socio.importoIncassatoAttivita, variant: 'success' };
     }
     
     const today = new Date();
@@ -189,7 +189,7 @@ const RicercaStampa = () => {
       <Card className="mb-4">
         <Card.Header className="text-center">
           <img src='./headercso.jpg'></img>
-          <h2 className="mb-0">{titolo}</h2>
+          <h2 className="mb-0">{titolo+' '+data[0].nomeAttivita}</h2>
           <p className="mb-0">Data: {formatDateDisplay(new Date())}</p>
         </Card.Header>
         <Card.Body>

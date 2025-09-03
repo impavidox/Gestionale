@@ -212,7 +212,7 @@ const RicevutaPrint = ({
           </div>
 
           <div style="margin-bottom: 15px;">
-            da ${data.socioCognome && data.socioNome ? 
+            da ${data.socioCognome && data.socioNome&&!isMinorPerson ? 
               `${data.socioCognome} ${data.socioNome}` : 
               '.................................................................................'}
           </div>
@@ -244,9 +244,10 @@ const RicevutaPrint = ({
           </div>
 
           <!-- Dettagli quote -->
+          {data.tipoSocio===1&&
           <div style="margin-bottom: 10px;">
             • per la quota associativa di fino al ${formatDateDisplay(data.scadenzaQuota) || '31/08/2025'}
-          </div>
+          </div>}
           <div style="margin-bottom: 15px;">
             • per la quota di frequenza fino al ${formatDateDisplay(data.scadenzaPagamento) || '31/10/2024'}
           </div>
@@ -493,7 +494,7 @@ const RicevutaContent = ({ data }) => {
         </div>
 
         <div style={{ marginBottom: '15px' }}>
-          da {data.socioCognome && data.socioNome ? 
+          da {data.socioCognome && data.socioNome&&!isMinorPerson ? 
             `${data.socioCognome} ${data.socioNome}` : 
             '.................................................................................'}
         </div>
@@ -533,10 +534,11 @@ const RicevutaContent = ({ data }) => {
         </div>
 
         {/* Dettagli quote */}
+        {data.tipoSocio===1&&
         <div style={{ marginBottom: '10px' }}>
           • per la quota associativa di
           fino al {formatDateDisplay(data.scadenzaQuota) || '31/08/2025'}
-        </div>
+        </div>}
         
         <div style={{ marginBottom: '15px' }}>
           • per la quota di frequenza 

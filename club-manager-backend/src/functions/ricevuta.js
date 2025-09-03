@@ -251,7 +251,6 @@ async function handleCreateNewRicevuta(context, ricevutaData) {
                     @dataRicevuta, @scadenzaPagamento, GETDATE()
                 )
             `;
-            
             request.input('attivitaId', sql.Int, value.attivitàId);
             request.input('socioId', sql.Int, value.socioId);
             request.input('importoRicevuta', sql.Int, value.importoRicevuta || 0);
@@ -299,27 +298,35 @@ async function handleBuildRicevuta(context, socioId, abboId, ricevutaId) {
         request.input('ricevutaId', sql.Int, parseInt(ricevutaId));
         
         const query = `
-            SELECT 
-                ra.*,
-                s.nome AS socioNome,
-                s.cognome AS socioCognome,
-                s.codiceFiscale,
-                s.dataNascita,
-                s.email,
-                a.nome AS attivitaNome,
-                ROW_NUMBER() OVER (
-                    PARTITION BY
-                    CASE
-                        WHEN MONTH(ra.dataRicevuta) >= 9 THEN YEAR(ra.dataRicevuta)
-                        ELSE YEAR(ra.dataRicevuta) - 1
-                    END
-                    ORDER BY
-                    ra.dataRicevuta, ra.id
-                ) AS numero_ricevuta_progressivo
-            FROM ricevuteAttività ra
-            INNER JOIN soci s ON ra.socioId = s.id
-            INNER JOIN attività a ON ra.attivitàId = a.id
-            WHERE ra.socioId = @socioId AND ra.id = @ricevutaId
+            WITH RicevuteConNumeroProgressivo AS (
+                SELECT 
+                    ra.*,
+                    s.nome AS socioNome,
+                    s.cognome AS socioCognome,
+                    s.codiceFiscale,
+                    s.dataNascita,
+                    s.email,
+                    CASE 
+                        WHEN s.isEffettivo = 1 THEN '1'
+                        WHEN s.isTesserato = 1 THEN '3' 
+                    END as tipoSocio,
+                    a.nome AS attivitaNome,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY
+                        CASE
+                            WHEN MONTH(ra.dataRicevuta) >= 9 THEN YEAR(ra.dataRicevuta)
+                            ELSE YEAR(ra.dataRicevuta) - 1
+                        END
+                        ORDER BY
+                        ra.dataRicevuta, ra.id
+                    ) AS numero_ricevuta_progressivo
+                FROM ricevuteAttività ra
+                INNER JOIN soci s ON ra.socioId = s.id
+                INNER JOIN attività a ON ra.attivitàId = a.id
+            )
+            SELECT *
+            FROM RicevuteConNumeroProgressivo
+            WHERE socioId = @socioId AND id = @ricevutaId
         `;
         
         const result = await request.query(query);
@@ -342,6 +349,7 @@ async function handleBuildRicevuta(context, socioId, abboId, ricevutaId) {
             dataNascita: ricevuta.dataNascita,
             email:ricevuta.email,
             attivitaNome: ricevuta.attivitaNome,
+            tipoSocio: ricevuta.tipoSocio,
             // Convert amounts from cents to euros
             pagato: (ricevuta.importoRicevuta || 0) / 100,
             incassato: (ricevuta.importoIncassato || 0) / 100

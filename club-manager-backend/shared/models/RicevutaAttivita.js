@@ -18,7 +18,7 @@ const parseDateFromString = (dateStr) => {
     const year = parseInt(parts[2], 10);
     
     if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-      return new Date(year, month, day);
+      return new Date(Date.UTC(year, month, day));
     }
   }
   

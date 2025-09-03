@@ -109,7 +109,8 @@ const normalizeSocioResponse = (socio) => {
     isEffettivo: socio.isEffettivo,
     isVolontario: socio.isVolontario,
     dataIscrizione: socio.dataIscrizione,
-    isScaduto: socio.isScaduto
+    isScaduto: socio.isScaduto,
+    numeroSocio:socio.numeroSocio
   };
 };
 

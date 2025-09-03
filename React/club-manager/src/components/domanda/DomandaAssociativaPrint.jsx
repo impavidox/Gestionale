@@ -149,7 +149,7 @@ const calculateAge = (birthdate) => {
           {/* Richiesta di associazione */}
           <div className="association-request">
             <p>
-              Fa domanda di associazione per l'anno sportivo <strong>2024/25</strong> al ASD-APS Centro Sportivo Orbassano in qualità di <strong>Socio Effettivo</strong> con l'attività di <strong>{attivita}</strong>
+              Fa domanda di associazione per l'anno sportivo <strong>2025/26</strong> al ASD-APS Centro Sportivo Orbassano in qualità di <strong>Socio Effettivo</strong> con il nr. socio <strong>{socio.numeroSocio}</strong>
             </p>
             
             <p className="statute-text">

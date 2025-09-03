@@ -120,18 +120,19 @@ async function handleRetrieveSocio(context, params) {
                      FROM ricevuteAttività ra 
                      WHERE ra.socioId = s.id AND ra.attivitàId = @attivita 
                      ORDER BY ra.dataRicevuta DESC) as scadenzaPagamentoAttivita,
-                    (SELECT TOP 1 ra.importoIncassato 
+                    (SELECT SUM(ra.importoIncassato) 
                      FROM ricevuteAttività ra 
-                     WHERE ra.socioId = s.id AND ra.attivitàId = @attivita 
-                     ORDER BY ra.dataRicevuta DESC) as importoIncassatoAttivita,
+                     WHERE ra.socioId = s.id AND ra.attivitàId = @attivita ) as importoIncassatoAttivita,
                     (SELECT TOP 1 ra.dataRicevuta 
                      FROM ricevuteAttività ra 
                      WHERE ra.socioId = s.id AND ra.attivitàId = @attivita 
-                     ORDER BY ra.dataRicevuta DESC) as dataUltimaRicevutaAttivita
+                     ORDER BY ra.dataRicevuta DESC) as dataUltimaRicevutaAttivita,
+                     (SELECT a.nome FROM attività a WHERE a.id = @attivita) as nomeAttivita
                 ` : `
                     NULL as scadenzaPagamentoAttivita,
                     NULL as importoIncassatoAttivita, 
-                    NULL as dataUltimaRicevutaAttivita
+                    NULL as dataUltimaRicevutaAttivita,
+                    NULL as nomeAttivita
                 `},
                 -- Get latest receipt info for general display
                 (SELECT TOP 1 ra.scadenzaPagamento 
@@ -199,6 +200,7 @@ async function handleRetrieveSocio(context, params) {
                     scadenzaPagamentoAttivita: item.scadenzaPagamentoAttivita,
                     importoIncassatoAttivita: item.importoIncassatoAttivita,
                     dataUltimaRicevutaAttivita: item.dataUltimaRicevutaAttivita,
+                    nomeAttivita: item.nomeAttivita,
                     // For activity-specific display
                     abbonamento: {
                         scadenza: item.scadenzaPagamentoAttivita,
@@ -229,19 +231,37 @@ async function handleRetrieveSocioById(context, id) {
         const request = pool.request();
         request.input('id', sql.Int, parseInt(id));
         
+        // Main socio query with numeroSocio only for effettivi
+        const currentYear = new Date().getFullYear() + 1;
         const query = `
-            SELECT s.*
+            SELECT 
+                s.*,
+                e_num.numeroSocio
             FROM soci s
+            LEFT JOIN (
+                SELECT 
+                    s.id, 
+                    ROW_NUMBER() OVER (ORDER BY e.id) as numeroSocio
+                FROM soci s
+                INNER JOIN effettivi e ON s.id = e.socioId
+                WHERE e.annoValidità = @anno
+            ) e_num ON s.id = e_num.id
             WHERE s.id = @id
         `;
         
-        const result = await request.query(query);
+        request.input('anno', sql.VarChar(4), currentYear.toString());
         
+        const result = await request.query(query);
         if (result.recordset.length === 0) {
             return createErrorResponse(404, 'Socio non trovato');
         }
         
         const normalizedSocio = normalizeSocioResponse(result.recordset[0]);
+        
+        // Add numeroSocio only if it exists (i.e., if the person is an effettivo)
+        if (result.recordset[0].numeroSocio) {
+            normalizedSocio.numeroSocio = result.recordset[0].numeroSocio;
+        }
         
         context.log(`Socio ${id} recuperato`);
         return createSuccessResponse(normalizedSocio);

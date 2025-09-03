@@ -140,6 +140,7 @@ const RicevuteElenco = () => {
 
     // Calcola la prossima scadenza (31 agosto)
     const today = new Date();
+    console.log(today)
     const year = today.getFullYear();
     const august31stThisYear = new Date(year, 7, 31); // August is month 7 (0-indexed)
 
@@ -264,6 +265,7 @@ const RicevuteElenco = () => {
       setLoading(true);
       setError('');
       setShowAlert(false);
+
 
       const ricevutaPayload = {
         dataRicevuta: formatDateForApi(ricevutaData.dataRicevuta),
@@ -696,13 +698,13 @@ const RicevuteElenco = () => {
                 </div>
                 <div className="col-6">
                   <small className="text-muted">Importo:</small><br/>
-                  <strong>{formatImporto(selectedRicevuta.importo || selectedRicevuta.ammontare)}</strong>
+                  <strong>{formatImporto(selectedRicevuta.importoRicevuta || selectedRicevuta.ammontare)}</strong>
                 </div>
               </div>
               <div className="row mt-2">
                 <div className="col-12">
                   <small className="text-muted">Attività:</small><br/>
-                  <strong>{selectedRicevuta.attivitaDesc || selectedRicevuta.attivita || 'N/D'}</strong>
+                  <strong>{selectedRicevuta.attivitaNome || selectedRicevuta.attivita || 'N/D'}</strong>
                 </div>
               </div>
             </div>
@@ -758,11 +760,11 @@ const RicevuteElenco = () => {
                 <div className="row mt-2">
                   <div className="col-6">
                     <small className="text-muted">Importo:</small><br/>
-                    <strong>{formatImporto(selectedRicevuta.importo || selectedRicevuta.ammontare)}</strong>
+                    <strong>{formatImporto(selectedRicevuta.importoRicevuta || selectedRicevuta.ammontare)}</strong>
                   </div>
                   <div className="col-6">
                     <small className="text-muted">Attività:</small><br/>
-                    <strong>{selectedRicevuta.attivitaDesc || selectedRicevuta.attivita || 'N/D'}</strong>
+                    <strong>{selectedRicevuta.attivitaNome || selectedRicevuta.attivita || 'N/D'}</strong>
                   </div>
                 </div>
               </div>
