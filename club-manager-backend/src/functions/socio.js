@@ -182,7 +182,7 @@ async function handleRetrieveSocio(context, params) {
             ) < GETDATE()`;
         }
 
-        query += ` ORDER BY s.created_at, s.cognome`;
+        query += ` ORDER BY s.cognome`;
 
         const result = await request.query(query);
 

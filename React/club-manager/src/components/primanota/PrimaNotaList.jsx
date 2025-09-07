@@ -40,10 +40,10 @@ const PrimaNotaList = () => {
   
   // Opzioni per il tipo di prima nota
   const typeOptions = [
-    { name: 'Tutte le Ricevute', code: 0 },
-    { name: 'Solo POS', code: 1 },
-    { name: 'Solo Contanti', code: 2 },
-    { name: 'Solo Bonifico', code: 3 }
+    { label: 'Tutte le Ricevute', value: 0 },
+    { label: 'Solo POS', value: 1 },
+    { label: 'Solo Contanti', value: 2 },
+    { label: 'Solo Bonifico', value: 3 }
   ];
 
   // Tipologie di pagamento per visualizzazione
@@ -98,13 +98,12 @@ const PrimaNotaList = () => {
     setLoading(true);
     setError('');
     setShowError(false);
-    
     try {
       // Chiama l'API delle ricevute invece di prima nota
       const response = await ricevutaService.retrieveAllByDateRange(
         formattedBeginDate,
         formattedEndDate,
-        selectedType.code
+        selectedType.value
       );
       
       console.log('Response from ricevute API:', response);
@@ -206,7 +205,7 @@ const PrimaNotaList = () => {
     }
     
     goNewTab('stampa-prima-nota', {
-      type: selectedType.code,
+      type: selectedType.value,
       begin: formattedBeginDate,
       end: formattedEndDate
     });
