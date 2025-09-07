@@ -24,7 +24,7 @@ const endpoints = {
       BUILD: 'ricevuta/buildRicevuta',
       RETRIEVE_FOR_USER: 'ricevuta/retrieveRicevutaForUser',
       RETRIEVE_ALL_BY_DATE_RANGE: 'ricevuta/retrieveAllByDateRange',
-      UPDATE_INCASSI: 'ricevuta/updateIncassi',
+      UPDATE: 'ricevuta/updateRicevuta',
       ANNUL: 'ricevuta/annulRicevuta',
       PREPARE_SCHEDA: 'ricevuta/prepareScheda'
     },

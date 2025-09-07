@@ -41,6 +41,7 @@ const RicevuteElenco = () => {
   const [showActionModal, setShowActionModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showNewRicevutaModal, setShowNewRicevutaModal] = useState(false);
+  const [showModifyRicevutaModal, setShowModifyRicevutaModal] = useState(false);
   
   // Stati per il form della ricevuta (copiato da SocioList)
   const [ricevutaData, setRicevutaData] = useState({
@@ -156,6 +157,32 @@ const RicevuteElenco = () => {
       scadenzaAbbonamento: new Date(new Date().getFullYear(), new Date().getMonth()+6, new Date().getDate())
     }));
   };
+
+  // Gestisce l'apertura del modal per modificare ricevuta
+  const handleShowModifyRicevutaModal = () => {
+    if (!selectedRicevuta) return;
+    // Trova l'attività associata alla ricevuta
+    const ricevutaAttivita = attivita.find(att => att.id === selectedRicevuta.attivitàId);
+    const ricevutaSezione = sezioni.find(sez => sez.id === ricevutaAttivita?.sezioneId);
+    // Trova la tipologia di pagamento
+    const ricevutaTipoPagamento = tipologiePagamento.find(tip => tip.id === selectedRicevuta.tipologiaPagamento);
+
+    // Popola il form con i dati della ricevuta selezionata
+    setRicevutaData({
+      dataRicevuta: new Date(selectedRicevuta.dataRicevuta || selectedRicevuta.data),
+      tipologiaPagamento: {label:ricevutaTipoPagamento.nome,value:ricevutaTipoPagamento.id},
+      somma: selectedRicevuta.importoRicevuta || selectedRicevuta.ammontare || 0,
+      sommaIncassata: selectedRicevuta.importoIncassato || 0,
+      scadenzaQuota: selectedRicevuta.scadenzaQuota ? new Date(selectedRicevuta.scadenzaQuota) : new Date(),
+      scadenzaAbbonamento: selectedRicevuta.scadenzaPagamento ? new Date(selectedRicevuta.scadenzaPagamento) : new Date(),
+      sezione: {label:ricevutaSezione.nome,value:ricevutaSezione.id},
+      attivita: {label:ricevutaAttivita.nome,value:ricevutaAttivita.id},
+      quotaAssociativa: Boolean(selectedRicevuta.quotaAss)
+    });
+
+    setShowActionModal(false);
+    setShowModifyRicevutaModal(true);
+  };
   
   // Gestisce il click su una riga della tabella
   const handleRowClick = (ricevuta) => {
@@ -168,6 +195,7 @@ const RicevuteElenco = () => {
     setShowActionModal(false);
     setShowDeleteModal(false);
     setShowNewRicevutaModal(false);
+    setShowModifyRicevutaModal(false);
     setSelectedRicevuta(null);
     resetRicevutaForm();
   };
@@ -266,7 +294,6 @@ const RicevuteElenco = () => {
       setError('');
       setShowAlert(false);
 
-
       const ricevutaPayload = {
         dataRicevuta: formatDateForApi(ricevutaData.dataRicevuta),
         socioId: socioId,
@@ -334,6 +361,77 @@ const RicevuteElenco = () => {
       setLoading(false);
     }
   };
+
+  // Gestione modifica ricevuta
+  const handleModificaRicevuta = async () => {
+    // Validazione
+    if (!ricevutaData.sezione) {
+      setError('Selezionare una sezione');
+      setAlertVariant('danger');
+      setShowAlert(true);
+      return;
+    }
+    
+    if (!ricevutaData.attivita) {
+      setError('Selezionare un\'attività');
+      setAlertVariant('danger');
+      setShowAlert(true);
+      return;
+    }
+    
+    if (!ricevutaData.somma || ricevutaData.somma <= 0) {
+      setError('Inserire un importo valido');
+      setAlertVariant('danger');
+      setShowAlert(true);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      setShowAlert(false);
+      console.log(ricevutaData)
+      const ricevutaPayload = {
+        idRicevuta: selectedRicevuta.idRicevuta || selectedRicevuta.id,
+        dataRicevuta: formatDateForApi(ricevutaData.dataRicevuta),
+        socioId: socioId,
+        scadenzaQuota: formatDateForApi(ricevutaData.scadenzaQuota),
+        scadenzaPagamento: formatDateForApi(ricevutaData.scadenzaAbbonamento),
+        importoRicevuta: parseFloat(ricevutaData.somma),
+        importoIncassato: parseFloat(ricevutaData.sommaIncassata) || 0,
+        tipologiaPagamento: ricevutaData.tipologiaPagamento.value,
+        quotaAss: Number(ricevutaData.quotaAssociativa),
+        attivitàId: ricevutaData.attivita.value,
+        sezione: ricevutaData.sezione.value,
+      };
+      console.log(ricevutaPayload)
+      // Assumendo che esista un metodo updateRicevuta nel service
+      const response = await ricevutaService.updateRicevuta(ricevutaPayload);
+      
+      if (response.data.success || response.data.testPrint) {
+        setSuccess('Ricevuta modificata con successo');
+        setAlertVariant('success');
+        setShowAlert(true);
+        
+        // Chiudi il modal
+        handleCloseModals();
+        
+        // Ricarica le ricevute
+        await fetchRicevute();
+        
+      } else {
+        throw new Error(response.data.messageError || 'Errore nella modifica della ricevuta');
+      }
+      
+    } catch (error) {
+      console.error('Errore nella modifica della ricevuta:', error);
+      setError(error.message || 'Errore nella modifica della ricevuta');
+      setAlertVariant('danger');
+      setShowAlert(true);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Gestisce la visualizzazione di una ricevuta
   const handleVisualizeRicevuta = () => {
@@ -349,7 +447,7 @@ const RicevuteElenco = () => {
     handleCloseModals();
   };
   
-  // Gestisce la modifica di una ricevuta
+  // Gestisce la modifica di una ricevuta (versione vecchia - redirect)
   const handleModifyRicevuta = () => {
     if (!selectedRicevuta) return;
     
@@ -675,6 +773,152 @@ const RicevuteElenco = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* Modal per modifica ricevuta */}
+      <Modal show={showModifyRicevutaModal} onHide={handleCloseModals} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            Modifica Ricevuta - {cognome} {nome}
+            {selectedRicevuta && (
+              <div className="text-muted fs-6 mt-1">
+                N. {selectedRicevuta.numero || selectedRicevuta.numeroRicevuta || `#${selectedRicevuta.idRicevuta || selectedRicevuta.id}`}
+              </div>
+            )}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Row>
+              <Col md={6}>
+                <DateField
+                  label="Data Ricevuta"
+                  name="dataRicevuta"
+                  value={ricevutaData.dataRicevuta}
+                  onChange={handleRicevutaInputChange}
+                  required
+                />
+              </Col>
+              <Col md={6}>
+                <SelectField
+                  label="Tipologia Pagamento"
+                  name="tipologiaPagamento"
+                  value={ricevutaData.tipologiaPagamento}
+                  options={tipologiePagamento.map(item => item.nome)}
+                  onChange={handlePagamentoChange}
+                  placeholder="Seleziona metodo pagamento"
+                  required
+                />
+              </Col>
+            </Row>
+
+            <Row>
+              <Col md={6}>
+                <TextField
+                  label="Somma (€)"
+                  name="somma"
+                  value={ricevutaData.somma}
+                  onChange={handleRicevutaInputChange}
+                  type="number"
+                  step="1"
+                  min="0"
+                  required
+                />
+              </Col>
+              <Col md={6}>
+                <TextField
+                  label="Somma Incassata (€)"
+                  name="sommaIncassata"
+                  value={ricevutaData.sommaIncassata}
+                  onChange={handleRicevutaInputChange}
+                  type="number"
+                  step="1"
+                  min="0"
+                  required
+                />
+              </Col>
+            </Row>
+            
+            <Row>{tipoSocio===1&&
+              <Col md={6}>
+                <DateField
+                  label="Scadenza Quota"
+                  name="scadenzaQuota"
+                  value={ricevutaData.scadenzaQuota}
+                  onChange={handleRicevutaInputChange}
+                  required
+                />
+              </Col>}
+              <Col md={6}>
+                <DateField
+                  label="Scadenza Abbonamento"
+                  name="scadenzaAbbonamento"
+                  value={ricevutaData.scadenzaAbbonamento}
+                  onChange={handleRicevutaInputChange}
+                  required
+                />
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col md={6}>
+                <SelectField
+                  label="Sezione"
+                  name="sezione"
+                  value={ricevutaData.sezione}
+                  options={sezioni.map(item => item.nome)}
+                  onChange={handleSezioneChange}
+                  placeholder="Seleziona una sezione"
+                  required
+                />
+              </Col>
+              <Col md={6}>
+                <SelectField
+                  label="Attività"
+                  name="attivita"
+                  value={ricevutaData.attivita}
+                  options={attivita.filter(att => 
+                    ricevutaData.sezione ? 
+                    att.sezioneId === sezioni.find(s => s.nome === ricevutaData.sezione.value)?.id :
+                    true
+                  ).map(item => item.nome)}
+                  onChange={handleAttivitaChange}
+                  placeholder={!ricevutaData.sezione ? "Prima seleziona una sezione" : "Seleziona un'attività"}
+                  isDisabled={!ricevutaData.sezione}
+                  required
+                />
+              </Col>
+            </Row>
+            {tipoSocio===1&&
+            <Row>
+              <Col md={12}>
+                <CheckboxField
+                  label="Quota Associativa"
+                  name="quotaAssociativa"
+                  checked={ricevutaData.quotaAssociativa}
+                  onChange={handleRicevutaInputChange}
+                />
+              </Col>
+            </Row>}
+
+            <Alert variant="warning" className="mt-3">
+              <i className="bi bi-exclamation-triangle me-2"></i>
+              <strong>Attenzione:</strong> Le modifiche alla ricevuta potrebbero richiedere una ristampa.
+            </Alert>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseModals} disabled={loading}>
+            Annulla
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleModificaRicevuta}
+            disabled={loading}
+          >
+            {loading ? 'Modifica...' : 'Salva Modifiche'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
       
       {/* Modal per azioni sulla ricevuta */}
       <Modal show={showActionModal} onHide={handleCloseModals} centered>
@@ -715,7 +959,7 @@ const RicevuteElenco = () => {
               <i className="bi bi-eye me-2"></i>
               Visualizza Ricevuta
             </Button>
-            <Button variant="warning" onClick={handleModifyRicevuta}>
+            <Button variant="warning" onClick={handleShowModifyRicevutaModal}>
               <i className="bi bi-pencil me-2"></i>
               Modifica Ricevuta
             </Button>

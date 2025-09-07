@@ -56,8 +56,8 @@ const ricevutaService = {
    * @param {Object} data - Dati per l'aggiornamento
    * @returns {Promise} Promise con la risposta del server
    */
-  updateIncassi: (data) => {
-    return api.post(endpoints.RICEVUTA.UPDATE_INCASSI, data);
+  updateRicevuta: (data) => {
+    return api.post(endpoints.RICEVUTA.UPDATE, data);
   },
   
   /**

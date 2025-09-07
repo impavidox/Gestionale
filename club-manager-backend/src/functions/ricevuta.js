@@ -66,8 +66,8 @@ app.http('ricevuta', {
                 case 'retrieveAllByDateRange':
                     return await handleRetrieveAllByDateRange(context, queryParams);
                 
-                case 'updateIncassi':
-                    return await handleUpdateIncassi(context, requestBody);
+                case 'updateRicevuta':
+                    return await handleUpdateRicevuta(context, requestBody);
                 
                 case 'annulRicevuta':
                     return await handleAnnulRicevuta(context, requestBody);
@@ -286,6 +286,101 @@ async function handleCreateNewRicevuta(context, ricevutaData) {
     }
 }
 
+async function handleUpdateRicevuta(context, ricevutaData) {
+    try {
+        // Validate required fields
+        if (!ricevutaData.idRicevuta && !ricevutaData.id) {
+            return createErrorResponse(400, 'ID ricevuta richiesto per la modifica');
+        }
+
+        const ricevutaId = ricevutaData.idRicevuta || ricevutaData.id;
+        
+        // Validate the incoming data
+        const { error, value } = validateRicevutaAttivita(ricevutaData, context);
+        
+        if (error) {
+            context.log('Dati ricevuta non validi per l\'aggiornamento:', error.details);
+            return createErrorResponse(400, 'Dati ricevuta non validi per l\'aggiornamento', error.details);
+        }
+
+        const pool = await getPool();
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+        
+        try {
+            const request = new sql.Request(transaction);
+            
+            // First, check if the receipt exists
+            request.input('ricevutaId', sql.Int, parseInt(ricevutaId));
+            
+            const checkQuery = `SELECT id FROM ricevuteAttività WHERE id = @ricevutaId`;
+            const checkResult = await request.query(checkQuery);
+            
+            if (checkResult.recordset.length === 0) {
+                await transaction.rollback();
+                return createErrorResponse(404, 'Ricevuta non trovata');
+            }
+
+            // Update all fields with the complete receipt data
+            const requestUpdate = new sql.Request(transaction);
+            requestUpdate.input('ricevutaId', sql.Int, parseInt(ricevutaId));
+            requestUpdate.input('attivitaId', sql.Int, value.attivitàId);
+            requestUpdate.input('socioId', sql.Int, value.socioId);
+            requestUpdate.input('importoRicevuta', sql.Int, value.importoRicevuta || 0);
+            requestUpdate.input('importoIncassato', sql.Int, value.importoIncassato || 0);
+            requestUpdate.input('tipologiaPagamento', sql.Int, value.tipologiaPagamento || 0);
+            requestUpdate.input('quotaAss', sql.Int, value.quotaAss || 0);
+            requestUpdate.input('scadenzaQuota', sql.Date, value.scadenzaQuota || null);
+            requestUpdate.input('dataRicevuta', sql.Date, value.dataRicevuta || new Date());
+            requestUpdate.input('scadenzaPagamento', sql.Date, value.scadenzaPagamento || null);
+
+            const updateQuery = `
+                UPDATE ricevuteAttività 
+                SET 
+                    attivitàId = @attivitaId,
+                    socioId = @socioId,
+                    importoRicevuta = @importoRicevuta,
+                    importoIncassato = @importoIncassato,
+                    tipologiaPagamento = @tipologiaPagamento,
+                    quotaAss = @quotaAss,
+                    scadenzaQuota = @scadenzaQuota,
+                    dataRicevuta = @dataRicevuta,
+                    scadenzaPagamento = @scadenzaPagamento
+                WHERE id = @ricevutaId
+            `;
+
+            context.log(`Aggiornamento completo ricevuta ${ricevutaId}`);
+            
+            const updateResult = await requestUpdate.query(updateQuery);
+            
+            if (updateResult.rowsAffected[0] === 0) {
+                await transaction.rollback();
+                return createErrorResponse(404, 'Ricevuta non trovata o nessun aggiornamento effettuato');
+            }
+
+            await transaction.commit();
+            
+            context.log(`Ricevuta ${ricevutaId} aggiornata completamente con successo`);
+            
+            return createSuccessResponse({
+                id: parseInt(ricevutaId),
+                returnCode: true,
+                success: true,
+                testPrint: true,
+                message: 'Ricevuta aggiornata con successo'
+            });
+            
+        } catch (dbError) {
+            await transaction.rollback();
+            throw dbError;
+        }
+        
+    } catch (error) {
+        context.log('Errore nell\'aggiornamento ricevuta:', error);
+        return createErrorResponse(500, 'Errore nell\'aggiornamento ricevuta', error.message);
+    }
+}
+
 async function handleBuildRicevuta(context, socioId, abboId, ricevutaId) {
     try {
         if (!socioId || !ricevutaId) {
@@ -430,47 +525,6 @@ async function handleRetrieveRicevutaForUser(context, socioId) {
     } catch (error) {
         context.log('Errore nel recupero ricevute utente:', error);
         return createErrorResponse(500, 'Errore nel recupero ricevute utente', error.message);
-    }
-}
-
-async function handleUpdateIncassi(context, incassoData) {
-    try {
-        if (!incassoData.ricevutaId && !incassoData.id) {
-            return createErrorResponse(400, 'ID ricevuta richiesto');
-        }
-        
-        const ricevutaId = incassoData.ricevutaId || incassoData.id;
-        
-        const pool = await getPool();
-        const request = pool.request();
-        request.input('ricevutaId', sql.Int, ricevutaId);
-        request.input('importoIncassato', sql.Int, incassoData.importoIncassato || 0);
-        request.input('tipologiaPagamento', sql.Int, incassoData.tipologiaPagamento || 0);
-        
-        const updateQuery = `
-            UPDATE ricevuteAttività SET 
-                importoIncassato = @importoIncassato,
-                tipologiaPagamento = @tipologiaPagamento
-            WHERE id = @ricevutaId
-        `;
-        
-        const result = await request.query(updateQuery);
-        
-        if (result.rowsAffected[0] === 0) {
-            return createErrorResponse(404, 'Ricevuta non trovata');
-        }
-        
-        context.log(`Incasso aggiornato per ricevuta ${ricevutaId}`);
-        
-        return createSuccessResponse({
-            returnCode: true,
-            rc: true,
-            message: 'Incasso aggiornato con successo'
-        });
-        
-    } catch (error) {
-        context.log.error('Errore nell\'aggiornamento incassi:', error);
-        return createErrorResponse(500, 'Errore nell\'aggiornamento incassi', error.message);
     }
 }
 

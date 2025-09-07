@@ -20,6 +20,18 @@ const RicevutaList = ({ ricevute = [], onBack, onUpdate }) => {
   const [selectedRicevuta, setSelectedRicevuta] = useState(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [showIncassoModal, setShowIncassoModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  
+  // Stati per il form di modifica
+  const [editFormData, setEditFormData] = useState({
+    numero: '',
+    dataRicevuta: '',
+    attivitaDesc: '',
+    periodoDesc: '',
+    importo: '',
+    importoIncassato: '',
+    note: ''
+  });
   
   // Stati per UI
   const [loading, setLoading] = useState(false);
@@ -38,7 +50,17 @@ const RicevutaList = ({ ricevute = [], onBack, onUpdate }) => {
   const handleCloseModals = () => {
     setShowActionModal(false);
     setShowIncassoModal(false);
+    setShowEditModal(false);
     setSelectedRicevuta(null);
+    setEditFormData({
+      numero: '',
+      dataRicevuta: '',
+      attivitaDesc: '',
+      periodoDesc: '',
+      importo: '',
+      importoIncassato: '',
+      note: ''
+    });
   };
   
   // Gestione visualizzazione ricevuta
@@ -55,18 +77,74 @@ const RicevutaList = ({ ricevute = [], onBack, onUpdate }) => {
     handleCloseModals();
   };
   
-  // Gestione modifica ricevuta
+  // Gestione apertura modal di modifica
   const handleEditRicevuta = () => {
     if (!selectedRicevuta) return;
     
-    goNewTab('ricevute/stampa', {
-      reprint: 2,
-      idsocio: selectedRicevuta.idSocio,
-      abbo: selectedRicevuta.idAttivitaAbbonamentoAffiliazione,
-      ricevuta: selectedRicevuta.idRicevuta
+    // Popola il form con i dati della ricevuta selezionata
+    setEditFormData({
+      numero: selectedRicevuta.numero || '',
+      dataRicevuta: selectedRicevuta.dataRicevuta ? selectedRicevuta.dataRicevuta.split('T')[0] : '',
+      attivitaDesc: selectedRicevuta.attivitaDesc || '',
+      periodoDesc: selectedRicevuta.periodoDesc || '',
+      importo: selectedRicevuta.importo || '',
+      importoIncassato: selectedRicevuta.importoIncassato || '',
+      note: selectedRicevuta.note || ''
     });
     
-    handleCloseModals();
+    setShowActionModal(false);
+    setShowEditModal(true);
+  };
+  
+  // Gestione cambio valori nel form di modifica
+  const handleEditFormChange = (field, value) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  // Gestione salvataggio modifica ricevuta
+  const handleSaveEdit = async () => {
+    if (!selectedRicevuta) return;
+    
+    try {
+      setLoading(true);
+      
+      const body = {
+        idRicevuta: selectedRicevuta.idRicevuta,
+        numero: editFormData.numero,
+        dataRicevuta: editFormData.dataRicevuta,
+        attivitaDesc: editFormData.attivitaDesc,
+        periodoDesc: editFormData.periodoDesc,
+        importo: parseFloat(editFormData.importo),
+        importoIncassato: parseFloat(editFormData.importoIncassato) || 0,
+        note: editFormData.note
+      };
+      
+      // Assumendo che esista un metodo updateRicevuta nel service
+      const response = await ricevutaService.updateRicevuta(body);
+      
+      setSuccess('La ricevuta è stata modificata con successo.');
+      setAlertVariant('success');
+      setShowAlert(true);
+      
+      // Chiude i modali
+      handleCloseModals();
+      
+      // Aggiorna la lista delle ricevute
+      if (onUpdate) {
+        onUpdate();
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Errore nella modifica della ricevuta:', error);
+      setError('Si è verificato un errore nella modifica della ricevuta.');
+      setAlertVariant('danger');
+      setShowAlert(true);
+      setLoading(false);
+    }
   };
   
   // Gestione apertura modale incasso
@@ -281,6 +359,115 @@ const RicevutaList = ({ ricevute = [], onBack, onUpdate }) => {
         <Modal.Footer>
           <Button variant="secondary" onClick={handleCloseModals}>
             Chiudi
+          </Button>
+        </Modal.Footer>
+      </Modal>
+      
+      {/* Modal per modifica ricevuta */}
+      <Modal show={showEditModal} onHide={handleCloseModals} centered size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {selectedRicevuta && `Modifica Ricevuta n. ${selectedRicevuta.numero}`}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Numero Ricevuta</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={editFormData.numero}
+                    onChange={(e) => handleEditFormChange('numero', e.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Data Ricevuta</Form.Label>
+                  <Form.Control
+                    type="date"
+                    value={editFormData.dataRicevuta}
+                    onChange={(e) => handleEditFormChange('dataRicevuta', e.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Attività</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={editFormData.attivitaDesc}
+                    onChange={(e) => handleEditFormChange('attivitaDesc', e.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Periodo</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={editFormData.periodoDesc}
+                    onChange={(e) => handleEditFormChange('periodoDesc', e.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Importo (€)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    step="0.01"
+                    value={editFormData.importo}
+                    onChange={(e) => handleEditFormChange('importo', e.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Importo Incassato (€)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    step="0.01"
+                    value={editFormData.importoIncassato}
+                    onChange={(e) => handleEditFormChange('importoIncassato', e.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col xs={12}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Note</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    value={editFormData.note}
+                    onChange={(e) => handleEditFormChange('note', e.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseModals}>
+            Annulla
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleSaveEdit}
+            disabled={loading}
+          >
+            {loading ? 'Salvataggio...' : 'Salva Modifiche'}
           </Button>
         </Modal.Footer>
       </Modal>
