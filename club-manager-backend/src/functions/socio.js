@@ -99,6 +99,11 @@ async function handleRetrieveSocio(context, params) {
                     WHEN s.isVolontario = 1 THEN 'Volontario'
                     ELSE 'N/D' 
                 END as TipoSocio,
+                CASE
+                    WHEN s.isTesserato = 1 THEN 
+                        (SELECT t.codice FROM tesserati t WHERE t.socioId = s.id)
+                    ELSE NULL
+                END as codice,
                 -- Check if socio has paid quota associativa 
                 -- For Effettivi: check quotaAss = 1, For Tesserati: check if they have any receipt
                 CASE 
@@ -193,6 +198,7 @@ async function handleRetrieveSocio(context, params) {
             // Add the new fields for quota associativa and payment expiry
             return {
                 ...normalized,
+                codice: item.codice,
                 hasQuotaAssociativa: item.hasQuotaAssociativa === 1,
                 quotaAssociativaPagata: item.hasQuotaAssociativa === 1, // Alternative naming for frontend
                 // Only include activity-specific fields if activity filter is applied

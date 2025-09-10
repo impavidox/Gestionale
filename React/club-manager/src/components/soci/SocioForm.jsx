@@ -575,9 +575,8 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
           const foundActivity = activitiesList.find(activity => 
             activity.codice === existingSocio.codice
           );
-          
           if (foundActivity) {
-            setSelectedActivity(foundActivity.nome);
+            setSelectedActivity({label:foundActivity.nome});
             setFormData(prev => ({ ...prev, codice: foundActivity.codice }));
           }
         }

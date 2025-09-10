@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Table, Button, Badge } from 'react-bootstrap';
+import { Container, Card, Table, Button, Badge, Modal, Form, Row, Col } from 'react-bootstrap';
 import { useSearchParams } from 'react-router-dom';
 import socioService from '../../api/services/socioService';
 import { formatDateDisplay } from '../../utils/dateUtils';
@@ -19,6 +19,22 @@ const RicercaStampa = () => {
   const [hasActivityFilter, setHasActivityFilter] = useState(false);
   const [showQuotaAssociativa, setShowQuotaAssociativa] = useState(false);
   
+  // Stati per il modal di selezione colonne
+  const [showColumnModal, setShowColumnModal] = useState(false);
+  const [selectedColumns, setSelectedColumns] = useState({
+    tessera: true,
+    cognome: true,
+    nome: true,
+    telefono: true,
+    email: true,
+    certificato: true,
+    quotaAssociativa: true,
+    scadenzaAttivita: false,
+    statoPagamento: false,
+    tesseraConsegnata: false,
+    coperturaAssicurativa: false
+  });
+  
   // Carica i dati all'avvio
   useEffect(() => {
     const fetchData = async () => {
@@ -34,8 +50,16 @@ const RicercaStampa = () => {
       setTitolo(titoloParam.toUpperCase());
       
       // Imposta flag per mostrare colonne specifiche
-      setHasActivityFilter(parseInt(attivita) > 0);
-      setShowQuotaAssociativa(true); // Always show quota associativa status
+      const hasActivity = parseInt(attivita) > 0;
+      setHasActivityFilter(hasActivity);
+      setShowQuotaAssociativa(true);
+      
+      // Aggiorna la selezione delle colonne basata sui filtri
+      setSelectedColumns(prev => ({
+        ...prev,
+        scadenzaAttivita: hasActivity,
+        statoPagamento: hasActivity
+      }));
       
       try {
         setLoading(true);
@@ -86,9 +110,35 @@ const RicercaStampa = () => {
     fetchData();
   }, [searchParams]);
   
-  // Gestione della stampa
+  // Gestione della stampa con modal
   const handlePrint = () => {
-    window.print();
+    setShowColumnModal(true);
+  };
+  
+  // Conferma stampa dopo selezione colonne
+  const confirmPrint = () => {
+    setShowColumnModal(false);
+    // Piccolo delay per permettere al modal di chiudersi prima della stampa
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+  
+  // Gestione cambio selezione colonne
+  const handleColumnChange = (columnKey) => {
+    setSelectedColumns(prev => ({
+      ...prev,
+      [columnKey]: !prev[columnKey]
+    }));
+  };
+  
+  // Seleziona/Deseleziona tutte le colonne
+  const toggleAllColumns = (selectAll) => {
+    const newState = {};
+    Object.keys(selectedColumns).forEach(key => {
+      newState[key] = selectAll;
+    });
+    setSelectedColumns(newState);
   };
   
   // Determina lo stato del certificato medico
@@ -169,6 +219,11 @@ const RicercaStampa = () => {
     return { status: 'valid', label: 'Valido', variant: 'success' };
   };
   
+  // Calcola il numero di colonne totali per il colspan
+  const getTotalColumns = () => {
+    return Object.values(selectedColumns).filter(Boolean).length;
+  };
+  
   if (loading) {
     return <Loader />;
   }
@@ -178,99 +233,254 @@ const RicercaStampa = () => {
   }
   
   return (
-    <Container className="mt-4 mb-5">
-      {/* Barra degli strumenti (nascosta in stampa) */}
-      <div className="mb-4 no-print">
-        <Button variant="primary" onClick={handlePrint}>
-          <i className="bi bi-printer me-1"></i> Stampa
-        </Button>
-      </div>
-      
-      <Card className="mb-4">
-        <Card.Header className="text-center">
-          <img src='./headercso.jpg'></img>
-          <h2 className="mb-0">{titolo+' '+data[0].nomeAttivita}</h2>
-          <p className="mb-0">Data: {formatDateDisplay(new Date())}</p>
-        </Card.Header>
-        <Card.Body>
-          <Table striped bordered hover responsive>
-            <thead>
-              <tr>
-                <th>Tessera</th>
-                <th>Cognome</th>
-                <th>Nome</th>
-                <th>Telefono</th>
-                <th>Email</th>
-                <th>Certificato</th>
-                {showQuotaAssociativa && <th>Quota Ass.</th>}
-                {hasActivityFilter && <th>Scadenza Attività</th>}
-                {hasActivityFilter && <th>Stato Pagamento</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {data.length === 0 ? (
+    <>
+      <Container className="mt-4 mb-5">
+        {/* Barra degli strumenti (nascosta in stampa) */}
+        <div className="mb-4 no-print">
+          <Button variant="primary" onClick={handlePrint}>
+            <i className="bi bi-printer me-1"></i> Stampa
+          </Button>
+        </div>
+        
+        <Card className="mb-4">
+          <Card.Header className="text-center">
+            <img src='./headercso.jpg' alt="Header" />
+            <h2 className="mb-0">{titolo + (data.length > 0 && data[0].nomeAttivita ? ' ' + data[0].nomeAttivita : '')}</h2>
+            <p className="mb-0">Data: {formatDateDisplay(new Date())}</p>
+          </Card.Header>
+          <Card.Body>
+            <Table striped bordered hover responsive>
+              <thead>
                 <tr>
-                  <td colSpan={6 + (showQuotaAssociativa ? 1 : 0) + (hasActivityFilter ? 2 : 0)} className="text-center">
-                    Nessun socio trovato
-                  </td>
+                  {selectedColumns.tessera && <th>Tessera</th>}
+                  {selectedColumns.cognome && <th>Cognome</th>}
+                  {selectedColumns.nome && <th>Nome</th>}
+                  {selectedColumns.telefono && <th>Telefono</th>}
+                  {selectedColumns.email && <th>Email</th>}
+                  {selectedColumns.certificato && <th>Certificato</th>}
+                  {selectedColumns.quotaAssociativa && <th>Quota Ass.</th>}
+                  {selectedColumns.scadenzaAttivita && hasActivityFilter && <th>Scadenza Attività</th>}
+                  {selectedColumns.statoPagamento && hasActivityFilter && <th>Stato Pagamento</th>}
+                  {selectedColumns.tesseraConsegnata && <th>Tessera Consegnata</th>}
+                  {selectedColumns.coperturaAssicurativa && <th>Copertura Assicurativa</th>}
                 </tr>
-              ) : (
-                data.map((socio) => {
-                  const certificatoStatus = getCertificatoStatus(socio);
-                  const pagamentoStatus = hasActivityFilter ? getPagamentoStatus(socio) : null;
-                  
-                  return (
-                    <tr key={socio.id}>
-                      <td>{socio.tesseraNumber || socio.NSocio || '---'}</td>
-                      <td>{socio.cognome}</td>
-                      <td>{socio.nome}</td>
-                      <td>{socio.tel || socio.telefono || '---'}</td>
-                      <td>{socio.email || '---'}</td>
-                      <td className={`table-${certificatoStatus.variant}`}>
-                        {socio.dateCertificat || socio.scadenzaCertificato
-                          ? `${formatDateDisplay(socio.dateCertificat || socio.scadenzaCertificato)} (${certificatoStatus.label})`
-                          : 'Mancante'
-                        }
-                      </td>
-                      {showQuotaAssociativa && (
-                        <td>
-                          <Badge 
-                            bg={socio.hasQuotaAssociativa || socio.quotaAssociativaPagata ? 'success' : 'danger'}
-                            className="w-100"
-                          >
-                            {socio.hasQuotaAssociativa || socio.quotaAssociativaPagata ? 'Pagata' : 'Non Pagata'}
-                          </Badge>
-                        </td>
-                      )}
-                      {hasActivityFilter && (
-                        <td>
-                          {socio.abbonamento?.scadenza 
-                            ? formatDateDisplay(socio.abbonamento.scadenza)
-                            : socio.scadenzaPagamentoAttivita
-                            ? formatDateDisplay(socio.scadenzaPagamentoAttivita)
-                            : '---'
-                          }
-                        </td>
-                      )}
-                      {hasActivityFilter && (
-                        <td className={pagamentoStatus ? `table-${pagamentoStatus.variant}` : ''}>
-                          <Badge 
-                            bg={pagamentoStatus ? pagamentoStatus.variant : 'secondary'}
-                            className="w-100"
-                          >
-                            {pagamentoStatus ? pagamentoStatus.label : 'N/D'}
-                          </Badge>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })
+              </thead>
+              <tbody>
+                {data.length === 0 ? (
+                  <tr>
+                    <td colSpan={getTotalColumns()} className="text-center">
+                      Nessun socio trovato
+                    </td>
+                  </tr>
+                ) : (
+                  data.map((socio) => {
+                    const certificatoStatus = getCertificatoStatus(socio);
+                    const pagamentoStatus = hasActivityFilter ? getPagamentoStatus(socio) : null;
+                    
+                    return (
+                      <tr key={socio.id}>
+                        {selectedColumns.tessera && (
+                          <td>{socio.tesseraNumber || socio.NSocio || '---'}</td>
+                        )}
+                        {selectedColumns.cognome && (
+                          <td>{socio.cognome}</td>
+                        )}
+                        {selectedColumns.nome && (
+                          <td>{socio.nome}</td>
+                        )}
+                        {selectedColumns.telefono && (
+                          <td>{socio.tel || socio.telefono || '---'}</td>
+                        )}
+                        {selectedColumns.email && (
+                          <td>{socio.email || '---'}</td>
+                        )}
+                        {selectedColumns.certificato && (
+                          <td className={`table-${certificatoStatus.variant}`}>
+                            {socio.dateCertificat || socio.scadenzaCertificato
+                              ? `${formatDateDisplay(socio.dateCertificat || socio.scadenzaCertificato)} (${certificatoStatus.label})`
+                              : 'Mancante'
+                            }
+                          </td>
+                        )}
+                        {selectedColumns.quotaAssociativa && (
+                          <td>
+                            <Badge 
+                              bg={socio.hasQuotaAssociativa || socio.quotaAssociativaPagata ? 'success' : 'danger'}
+                              className="w-100"
+                            >
+                              {socio.hasQuotaAssociativa || socio.quotaAssociativaPagata ? 'Pagata' : 'Non Pagata'}
+                            </Badge>
+                          </td>
+                        )}
+                        {selectedColumns.scadenzaAttivita && hasActivityFilter && (
+                          <td>
+                            {socio.abbonamento?.scadenza 
+                              ? formatDateDisplay(socio.abbonamento.scadenza)
+                              : socio.scadenzaPagamentoAttivita
+                              ? formatDateDisplay(socio.scadenzaPagamentoAttivita)
+                              : '---'
+                            }
+                          </td>
+                        )}
+                        {selectedColumns.statoPagamento && hasActivityFilter && (
+                          <td className={pagamentoStatus ? `table-${pagamentoStatus.variant}` : ''}>
+                            <Badge 
+                              bg={pagamentoStatus ? pagamentoStatus.variant : 'secondary'}
+                              className="w-100"
+                            >
+                              {pagamentoStatus ? pagamentoStatus.label : 'N/D'}
+                            </Badge>
+                          </td>
+                        )}
+                        {selectedColumns.tesseraConsegnata && (
+                          <td className="text-center">
+                            <input type="checkbox" style={{ transform: 'scale(1.2)' }} />
+                          </td>
+                        )}
+                        {selectedColumns.coperturaAssicurativa && (
+                          <td className="text-center">
+                            <input type="checkbox" style={{ transform: 'scale(1.2)' }} />
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </Table>
+          </Card.Body>
+        </Card>
+      </Container>
+
+      {/* Modal per selezione colonne */}
+      <Modal show={showColumnModal} onHide={() => setShowColumnModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Seleziona Colonne da Stampare</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="mb-3">
+            <Button 
+              variant="outline-primary" 
+              size="sm" 
+              className="me-2"
+              onClick={() => toggleAllColumns(true)}
+            >
+              Seleziona Tutto
+            </Button>
+            <Button 
+              variant="outline-secondary" 
+              size="sm"
+              onClick={() => toggleAllColumns(false)}
+            >
+              Deseleziona Tutto
+            </Button>
+          </div>
+          
+          <Row>
+            <Col md={6}>
+              <h6 className="text-muted mb-3">Colonne Base</h6>
+              <Form.Check
+                type="checkbox"
+                label="Tessera"
+                checked={selectedColumns.tessera}
+                onChange={() => handleColumnChange('tessera')}
+                className="mb-2"
+              />
+              <Form.Check
+                type="checkbox"
+                label="Cognome"
+                checked={selectedColumns.cognome}
+                onChange={() => handleColumnChange('cognome')}
+                className="mb-2"
+              />
+              <Form.Check
+                type="checkbox"
+                label="Nome"
+                checked={selectedColumns.nome}
+                onChange={() => handleColumnChange('nome')}
+                className="mb-2"
+              />
+              <Form.Check
+                type="checkbox"
+                label="Telefono"
+                checked={selectedColumns.telefono}
+                onChange={() => handleColumnChange('telefono')}
+                className="mb-2"
+              />
+              <Form.Check
+                type="checkbox"
+                label="Email"
+                checked={selectedColumns.email}
+                onChange={() => handleColumnChange('email')}
+                className="mb-2"
+              />
+            </Col>
+            
+            <Col md={6}>
+              <h6 className="text-muted mb-3">Colonne Aggiuntive</h6>
+              <Form.Check
+                type="checkbox"
+                label="Certificato Medico"
+                checked={selectedColumns.certificato}
+                onChange={() => handleColumnChange('certificato')}
+                className="mb-2"
+              />
+              <Form.Check
+                type="checkbox"
+                label="Quota Associativa"
+                checked={selectedColumns.quotaAssociativa}
+                onChange={() => handleColumnChange('quotaAssociativa')}
+                className="mb-2"
+              />
+              {hasActivityFilter && (
+                <>
+                  <Form.Check
+                    type="checkbox"
+                    label="Scadenza Attività"
+                    checked={selectedColumns.scadenzaAttivita}
+                    onChange={() => handleColumnChange('scadenzaAttivita')}
+                    className="mb-2"
+                  />
+                  <Form.Check
+                    type="checkbox"
+                    label="Stato Pagamento"
+                    checked={selectedColumns.statoPagamento}
+                    onChange={() => handleColumnChange('statoPagamento')}
+                    className="mb-2"
+                  />
+                </>
               )}
-            </tbody>
-          </Table>
-        </Card.Body>
-      </Card>
-    </Container>
+              
+              <hr className="my-3" />
+              <h6 className="text-muted mb-3">Colonne per Controllo Manuale</h6>
+              <Form.Check
+                type="checkbox"
+                label="Tessera Consegnata"
+                checked={selectedColumns.tesseraConsegnata}
+                onChange={() => handleColumnChange('tesseraConsegnata')}
+                className="mb-2"
+              />
+              <Form.Check
+                type="checkbox"
+                label="Copertura Assicurativa"
+                checked={selectedColumns.coperturaAssicurativa}
+                onChange={() => handleColumnChange('coperturaAssicurativa')}
+                className="mb-2"
+              />
+            </Col>
+          </Row>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowColumnModal(false)}>
+            Annulla
+          </Button>
+          <Button variant="primary" onClick={confirmPrint}>
+            <i className="bi bi-printer me-1"></i>
+            Stampa con Colonne Selezionate
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
   );
 };
 
