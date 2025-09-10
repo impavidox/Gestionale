@@ -401,8 +401,8 @@ const RicevuteElenco = () => {
         importoIncassato: parseFloat(ricevutaData.sommaIncassata) || 0,
         tipologiaPagamento: ricevutaData.tipologiaPagamento.value,
         quotaAss: Number(ricevutaData.quotaAssociativa),
-        attivitàId: ricevutaData.attivita.value,
-        sezione: ricevutaData.sezione.value,
+        attivitàId: attivita.find(item=>item.nome===ricevutaData.attivita.value).id,
+        sezione: sezioni.find(item=>item.nome===ricevutaData.sezione.value).id,
       };
       console.log(ricevutaPayload)
       // Assumendo che esista un metodo updateRicevuta nel service
