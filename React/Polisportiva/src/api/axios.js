@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Base URL configuration based on environment
 const getBaseURL = () => {
-    return 'https://backend-cso.azurewebsites.net/api/';
+    return 'backend-polisportiva-cyd8cjbyg0b2c5hg.westeurope-01.azurewebsites.net/api/';
     //return 'http://localhost:7071/api/';
 };
 
