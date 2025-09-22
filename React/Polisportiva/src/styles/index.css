@@ -1,0 +1,190 @@
+/* Base styles */
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #f5f5f5;
+  }
+  
+  code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+      monospace;
+  }
+  
+  /* Print styles */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    
+    .print-only {
+      display: block !important;
+    }
+    
+    body {
+      background-color: #fff;
+    }
+  }
+  
+  /* Utility classes */
+  .cursor-pointer {
+    cursor: pointer;
+  }
+  
+  /* Cards with equal height */
+  .card-deck .card {
+    display: flex;
+    flex: 1 0 0%;
+    flex-direction: column;
+    margin-right: 15px;
+    margin-bottom: 15px;
+    margin-left: 15px;
+  }
+  
+  .card-deck .card .card-body {
+    flex: 1 1 auto;
+  }
+  
+  /* Table responsive fixes */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Custom title styles */
+  .app-title {
+    color: #007bff;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Custom badge styles */
+  .badge.badge-expired {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .badge.badge-expiring {
+    background-color: #ffc107;
+    color: black;
+  }
+  
+  .badge.badge-valid {
+    background-color: #28a745;
+    color: white;
+  }
+
+  /* Print styles for LibroSoci */
+@media print {
+  /* Hide elements that shouldn't appear in print */
+  .no-print {
+    display: none !important;
+  }
+  
+  /* Optimize page layout for printing */
+  body {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+  
+  .container {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+  
+  .card-body {
+    padding: 10px !important;
+  }
+  
+  /* Table styling for print */
+  table {
+    font-size: 10px;
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  table th,
+  table td {
+    padding: 4px 2px;
+    border: 1px solid #000;
+    word-wrap: break-word;
+  }
+  
+  table th {
+    background-color: #f5f5f5 !important;
+    font-weight: bold;
+    text-align: center;
+  }
+  
+  /* Force page breaks */
+  .page-break {
+    page-break-before: always;
+  }
+  
+  /* Signature section */
+  .signature-section {
+    margin-top: 30px;
+    page-break-inside: avoid;
+  }
+  
+  /* Title section */
+  .print-title {
+    text-align: center;
+    margin-bottom: 20px;
+    page-break-after: avoid;
+  }
+  
+  .print-title h2 {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+  
+  .print-title p {
+    font-size: 12px;
+    margin: 2px 0;
+  }
+  
+  /* Summary section */
+  .summary-section {
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    background-color: #f9f9f9;
+    page-break-inside: avoid;
+  }
+  
+  .summary-section h6 {
+    font-size: 12px;
+    margin-bottom: 5px;
+  }
+  
+  .summary-section p {
+    font-size: 10px;
+    margin: 2px 0;
+  }
+}
+
+/* Additional styles for better screen display */
+@media screen {
+  .print-only {
+    display: none;
+  }
+}
+.document-header img {
+  width: 100%;
+  height: auto;
+  display: block; /* removes extra bottom spacing */
+  object-fit: contain; /* keeps proportions without cropping */
+}
+  
