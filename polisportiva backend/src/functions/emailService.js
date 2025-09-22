@@ -74,17 +74,17 @@ class EmailService {
     if (isScheda) {
       return `Gentile ${recipientName},
 
-in allegato troverà la sua scheda socio del Centro Sportivo Orbassano.
+in allegato troverà la sua scheda socio del Polisportiva Rivoli.
 
 Cordiali saluti,
-Centro Sportivo Orbassano`;
+Polisportiva Rivoli`;
     } else {
       return `Gentile ${recipientName},
 
-in allegato troverà la ricevuta N° ${ricevutaNumber} del Centro Sportivo Orbassano.
+in allegato troverà la ricevuta N° ${ricevutaNumber} del Polisportiva Rivoli.
 
 Cordiali saluti,
-Centro Sportivo Orbassano`;
+Polisportiva Rivoli`;
     }
   }
 
@@ -94,10 +94,10 @@ Centro Sportivo Orbassano`;
         <html>
           <body style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">
             <p>Gentile <strong>${recipientName}</strong>,</p>
-            <p>in allegato troverà la sua scheda socio del Centro Sportivo Orbassano.</p>
+            <p>in allegato troverà la sua scheda socio del Polisportiva Rivoli.</p>
             <br>
             <p>Cordiali saluti,<br>
-            <strong>Centro Sportivo Orbassano</strong></p>
+            <strong>Polisportiva Rivoli</strong></p>
           </body>
         </html>`;
     } else {
@@ -105,10 +105,10 @@ Centro Sportivo Orbassano`;
         <html>
           <body style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">
             <p>Gentile <strong>${recipientName}</strong>,</p>
-            <p>in allegato troverà la ricevuta N° <strong>${ricevutaNumber}</strong> del Centro Sportivo Orbassano.</p>
+            <p>in allegato troverà la ricevuta N° <strong>${ricevutaNumber}</strong> del Polisportiva Rivoli.</p>
             <br>
             <p>Cordiali saluti,<br>
-            <strong>Centro Sportivo Orbassano</strong></p>
+            <strong>Polisportiva Rivoli</strong></p>
           </body>
         </html>`;
     }
