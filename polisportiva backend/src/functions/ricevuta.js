@@ -152,9 +152,9 @@ async function handleRetrieveAllByDateRange(context, queryParams) {
                         ra.dataRicevuta, ra.id
                     ) AS numero_ricevuta_progressivo
                 FROM
-                    ricevuteAttività ra
-                    INNER JOIN attività a ON ra.attivitàId = a.id
-                    INNER JOIN soci s ON ra.socioId = s.id
+                    ricevuteAttivitàrivoli ra
+                    INNER JOIN attivitàrivoli a ON ra.attivitàId = a.id
+                    INNER JOIN socirivoli s ON ra.socioId = s.id
                 ${whereClause}
             )
             SELECT *
@@ -241,7 +241,7 @@ async function handleCreateNewRicevuta(context, ricevutaData) {
             const request = new sql.Request(transaction);
             
             const insertQuery = `
-                INSERT INTO ricevuteAttività (
+                INSERT INTO ricevuteAttivitàrivoli (
                     attivitàId, socioId, importoRicevuta, importoIncassato, 
                     tipologiaPagamento, quotaAss, scadenzaQuota, 
                     dataRicevuta, scadenzaPagamento, created_at
@@ -313,7 +313,7 @@ async function handleUpdateRicevuta(context, ricevutaData) {
             // First, check if the receipt exists
             request.input('ricevutaId', sql.Int, parseInt(ricevutaId));
             
-            const checkQuery = `SELECT id FROM ricevuteAttività WHERE id = @ricevutaId`;
+            const checkQuery = `SELECT id FROM ricevuteAttivitàrivoli WHERE id = @ricevutaId`;
             const checkResult = await request.query(checkQuery);
             
             if (checkResult.recordset.length === 0) {
@@ -335,7 +335,7 @@ async function handleUpdateRicevuta(context, ricevutaData) {
             requestUpdate.input('scadenzaPagamento', sql.Date, value.scadenzaPagamento || null);
 
             const updateQuery = `
-                UPDATE ricevuteAttività 
+                UPDATE ricevuteAttivitàrivoli 
                 SET 
                     attivitàId = @attivitaId,
                     socioId = @socioId,
@@ -415,9 +415,9 @@ async function handleBuildRicevuta(context, socioId, abboId, ricevutaId) {
                         ORDER BY
                         ra.dataRicevuta, ra.id
                     ) AS numero_ricevuta_progressivo
-                FROM ricevuteAttività ra
-                INNER JOIN soci s ON ra.socioId = s.id
-                INNER JOIN attività a ON ra.attivitàId = a.id
+                FROM ricevuteAttivitàrivoli ra
+                INNER JOIN socirivoli s ON ra.socioId = s.id
+                INNER JOIN attivitàrivoli a ON ra.attivitàId = a.id
             )
             SELECT *
             FROM RicevuteConNumeroProgressivo
@@ -497,9 +497,9 @@ async function handleRetrieveRicevutaForUser(context, socioId) {
                         ra.dataRicevuta, ra.id
                     ) AS numero_ricevuta_progressivo
                 FROM
-                    ricevuteAttività ra
-                    INNER JOIN attività a ON ra.attivitàId = a.id
-                    INNER JOIN soci s ON ra.socioId = s.id
+                    ricevuteAttivitàrivoli ra
+                    INNER JOIN attivitàrivoli a ON ra.attivitàId = a.id
+                    INNER JOIN socirivoli s ON ra.socioId = s.id
             )
             SELECT *
             FROM ProgressiveReceipts
@@ -543,7 +543,7 @@ async function handleAnnulRicevuta(context, annullamentoData) {
         // For this new schema, we'll delete the record instead of marking as annullata
         // since the original schema doesn't have annullata fields
         const deleteQuery = `
-            DELETE FROM ricevuteAttività WHERE id = @ricevutaId
+            DELETE FROM ricevuteAttivitàrivoli WHERE id = @ricevutaId
         `;
         
         const result = await request.query(deleteQuery);
@@ -562,8 +562,8 @@ async function handleAnnulRicevuta(context, annullamentoData) {
         });
         
     } catch (error) {
-        context.log.error('Errore nell\'annullamento ricevuta:', error);
-        return createErrorResponse(500, 'Errore nell\'annullamento ricevuta', error.message);
+        context.log('Errore nella preparazione scheda:', error);
+        return createErrorResponse(500, 'Errore nella preparazione scheda', error.message);
     }
 }
 
@@ -581,16 +581,16 @@ async function handlePrepareScheda(context, socioId) {
             SELECT 
                 s.*, 
                 -- Get tesserato info
-                (SELECT TOP 1 a.nome FROM tesserati t 
-                 INNER JOIN attività a ON t.attivitàId = a.id 
+                (SELECT TOP 1 a.nome FROM tesseratirivoli t 
+                 INNER JOIN attivitàrivoli a ON t.attivitàId = a.id 
                  WHERE t.socioId = s.id 
                  ORDER BY t.id DESC) as attivitaNome,
                 -- Get receipt statistics
                 COUNT(ra.id) as numeroRicevute,
                 SUM(ra.importoIncassato) as totaleIncassato,
                 SUM(ra.importoRicevuta) as totaleRicevute
-            FROM soci s
-            LEFT JOIN ricevuteAttività ra ON s.id = ra.socioId
+            FROM socirivoli s
+            LEFT JOIN ricevuteAttivitàrivoli ra ON s.id = ra.socioId
             WHERE s.id = @socioId
             GROUP BY s.id, s.nome, s.cognome, s.codiceFiscale, s.sesso, s.dataNascita, 
                      s.provinciaNascita, s.comuneNascita, s.provinciaResidenza, s.comuneResidenza,

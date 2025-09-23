@@ -88,7 +88,7 @@ async function handleUpdateAbbonamento(context, requestBody) {
             }
 
             const updateQuery = `
-                UPDATE Abbonamenti 
+                UPDATE Abbonamentirivoli 
                 SET dataIscrizione = @dataIscrizione,
                     firmato = @firmato,
                     ${value.numeroTessera ? 'numeroTessera = @numeroTessera,' : ''}
@@ -96,8 +96,8 @@ async function handleUpdateAbbonamento(context, requestBody) {
                 WHERE id = @id AND socioId = @socioId;
                 
                 SELECT a.*, at.nome as attivitaNome
-                FROM Abbonamenti a
-                LEFT JOIN Attivita at ON a.attivitaId = at.id
+                FROM Abbonamentirivoli a
+                LEFT JOIN Attivitàrivoli at ON a.attivitaId = at.id
                 WHERE a.id = @id;
             `;
 
@@ -133,8 +133,8 @@ async function handleUpdateAbbonamento(context, requestBody) {
                 
                 const tesseraQuery = `
                     SELECT COUNT(*) as count
-                    FROM Abbonamenti a
-                    INNER JOIN AnnoSportivo ans ON a.idAnno = ans.id
+                    FROM Abbonamentirivoli a
+                    INNER JOIN AnnoSportivorivoli ans ON a.idAnno = ans.id
                     WHERE ans.annoName LIKE '%' + @annoSportivo + '%'
                 `;
                 
@@ -146,13 +146,13 @@ async function handleUpdateAbbonamento(context, requestBody) {
             request.input('numeroTessera', sql.VarChar(50), numeroTessera);
 
             const insertQuery = `
-                INSERT INTO Abbonamenti (socioId, dataIscrizione, attivitaId, importo, firmato, idAnno, numeroTessera, dataCreazione)
+                INSERT INTO Abbonamentirivoli (socioId, dataIscrizione, attivitaId, importo, firmato, idAnno, numeroTessera, dataCreazione)
                 OUTPUT INSERTED.*
                 VALUES (@socioId, @dataIscrizione, @attivitaId, @importo, @firmato, @idAnno, @numeroTessera, GETDATE());
                 
                 SELECT a.*, at.nome as attivitaNome
-                FROM Abbonamenti a
-                LEFT JOIN Attivita at ON a.attivitaId = at.id
+                FROM Abbonamentirivoli a
+                LEFT JOIN Attivitàrivoli at ON a.attivitaId = at.id
                 WHERE a.id = (SELECT id FROM INSERTED);
             `;
 
@@ -185,8 +185,8 @@ async function handleRetrieveCurrentAbbonamento(context, socioId) {
 
         const query = `
             SELECT TOP 1 a.*, at.nome as attivitaNome
-            FROM Abbonamenti a
-            LEFT JOIN Attivita at ON a.attivitaId = at.id
+            FROM Abbonamentirivoli a
+            LEFT JOIN Attivitàrivoli at ON a.attivitaId = at.id
             WHERE a.socioId = @socioId AND a.attivo = 1
             ORDER BY a.dataIscrizione DESC, a.id DESC
         `;
@@ -225,8 +225,8 @@ async function handleRetrieveAbbonamentoById(context, abbonamentoId) {
 
         const query = `
             SELECT a.*, at.nome as attivitaNome
-            FROM Abbonamenti a
-            LEFT JOIN Attivita at ON a.attivitaId = at.id
+            FROM Abbonamentirivoli a
+            LEFT JOIN Attivitàrivoli at ON a.attivitaId = at.id
             WHERE a.id = @id
         `;
 
@@ -261,8 +261,8 @@ async function handleRetrieveAbbonamentiBySocio(context, socioId) {
 
         const query = `
             SELECT a.*, at.nome as attivitaNome
-            FROM Abbonamenti a
-            LEFT JOIN Attivita at ON a.attivitaId = at.id
+            FROM Abbonamentirivoli a
+            LEFT JOIN Attivitàrivoli at ON a.attivitaId = at.id
             WHERE a.socioId = @socioId
             ORDER BY a.dataIscrizione DESC, a.id DESC
         `;

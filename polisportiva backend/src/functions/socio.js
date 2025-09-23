@@ -101,7 +101,7 @@ async function handleRetrieveSocio(context, params) {
                 END as TipoSocio,
                 CASE
                     WHEN s.isTesserato = 1 THEN 
-                        (SELECT t.codice FROM tesserati t WHERE t.socioId = s.id)
+                        (SELECT t.codice FROM tesseratirivoli t WHERE t.socioId = s.id)
                     ELSE NULL
                 END as codice,
                 -- Check if socio has paid quota associativa 
@@ -109,12 +109,12 @@ async function handleRetrieveSocio(context, params) {
                 CASE 
                     WHEN s.isEffettivo = 1 THEN 
                         CASE WHEN EXISTS (
-                            SELECT 1 FROM ricevuteAttività ra 
+                            SELECT 1 FROM ricevuteAttivitàrivoli ra 
                             WHERE ra.socioId = s.id AND ra.quotaAss = 1
                         ) THEN 1 ELSE 0 END
                     WHEN s.isTesserato = 1 THEN 
                         CASE WHEN EXISTS (
-                            SELECT 1 FROM ricevuteAttività ra 
+                            SELECT 1 FROM ricevuteAttivitàrivoli ra 
                             WHERE ra.socioId = s.id
                         ) THEN 1 ELSE 0 END
                     ELSE 0 
@@ -122,17 +122,17 @@ async function handleRetrieveSocio(context, params) {
                 -- Get payment expiry for specific activity (if attivita filter is applied)
                 ${attivita && attivita !== '0' ? `
                     (SELECT TOP 1 ra.scadenzaPagamento 
-                     FROM ricevuteAttività ra 
+                     FROM ricevuteAttivitàrivoli ra 
                      WHERE ra.socioId = s.id AND ra.attivitàId = @attivita 
                      ORDER BY ra.dataRicevuta DESC) as scadenzaPagamentoAttivita,
                     (SELECT SUM(ra.importoIncassato) 
-                     FROM ricevuteAttività ra 
+                     FROM ricevuteAttivitàrivoli ra 
                      WHERE ra.socioId = s.id AND ra.attivitàId = @attivita ) as importoIncassatoAttivita,
                     (SELECT TOP 1 ra.dataRicevuta 
-                     FROM ricevuteAttività ra 
+                     FROM ricevuteAttivitàrivoli ra 
                      WHERE ra.socioId = s.id AND ra.attivitàId = @attivita 
                      ORDER BY ra.dataRicevuta DESC) as dataUltimaRicevutaAttivita,
-                     (SELECT a.nome FROM attività a WHERE a.id = @attivita) as nomeAttivita
+                     (SELECT a.nome FROM attivitàrivoli a WHERE a.id = @attivita) as nomeAttivita
                 ` : `
                     NULL as scadenzaPagamentoAttivita,
                     NULL as importoIncassatoAttivita, 
@@ -141,13 +141,12 @@ async function handleRetrieveSocio(context, params) {
                 `},
                 -- Get latest receipt info for general display
                 (SELECT TOP 1 ra.scadenzaPagamento 
-                 FROM ricevuteAttività ra 
+                 FROM ricevuteAttivitàrivoli ra 
                  WHERE ra.socioId = s.id 
                  ORDER BY ra.dataRicevuta DESC) as ultimaScadenzaPagamento
-            FROM soci s
+            FROM socirivoli s
             WHERE 1=1
         `;
-
 
         if (cognome && cognome !== 'null') {
             query += ` AND s.cognome LIKE @cognome`;
@@ -157,7 +156,7 @@ async function handleRetrieveSocio(context, params) {
         if (attivita && attivita !== '0') {
             // Filter by specific activity
             query += ` AND EXISTS (
-                SELECT 1 FROM ricevuteAttività r 
+                SELECT 1 FROM ricevuteAttivitàrivoli r 
                 WHERE r.socioId = s.id AND r.attivitàId = @attivita
             )`;
             request.input('attivita', sql.Int, parseInt(attivita));
@@ -165,8 +164,8 @@ async function handleRetrieveSocio(context, params) {
             // Filter by sezione when attivita is 0
             // Assuming you need to join with activities table to get sezione
             query += ` AND EXISTS (
-                SELECT 1 FROM ricevuteAttività ra 
-                JOIN attività a ON ra.attivitàId = a.id 
+                SELECT 1 FROM ricevuteAttivitàrivoli ra 
+                JOIN attivitàrivoli a ON ra.attivitàId = a.id 
                 WHERE ra.socioId = s.id AND a.sezioneId = @sezione
             )`;
             request.input('sezione', sql.Int, parseInt(sezione));
@@ -181,7 +180,7 @@ async function handleRetrieveSocio(context, params) {
             // Show only soci with expired subscription for the specific activity (based on latest receipt)
             query += ` AND (
                 SELECT TOP 1 ra.scadenzaPagamento 
-                FROM ricevuteAttività ra 
+                FROM ricevuteAttivitàrivoli ra 
                 WHERE ra.socioId = s.id AND ra.attivitàId = @attivita 
                 ORDER BY ra.dataRicevuta DESC
             ) < GETDATE()`;
@@ -243,13 +242,13 @@ async function handleRetrieveSocioById(context, id) {
             SELECT 
                 s.*,
                 e_num.numeroSocio
-            FROM soci s
+            FROM socirivoli s
             LEFT JOIN (
                 SELECT 
                     s.id, 
                     ROW_NUMBER() OVER (ORDER BY e.id) as numeroSocio
-                FROM soci s
-                INNER JOIN effettivi e ON s.id = e.socioId
+                FROM socirivoli s
+                INNER JOIN effettivirivoli e ON s.id = e.socioId
                 WHERE e.annoValidità = @anno
             ) e_num ON s.id = e_num.id
             WHERE s.id = @id
@@ -307,7 +306,7 @@ async function handleCreateSocio(context, socioData) {
             
             // Check for duplicate codice fiscale
             request.input('codiceFiscale', sql.NVarChar, value.codiceFiscale);
-            const checkResult = await request.query('SELECT id FROM soci WHERE codiceFiscale = @codiceFiscale');
+            const checkResult = await request.query('SELECT id FROM socirivoli WHERE codiceFiscale = @codiceFiscale');
             
             if (checkResult.recordset.length > 0) {
                 await transaction.rollback();
@@ -316,7 +315,7 @@ async function handleCreateSocio(context, socioData) {
             
             // Insert new socio
             const insertQuery = `
-                INSERT INTO soci (
+                INSERT INTO socirivoli (
                     nome, cognome, codiceFiscale, sesso, dataNascita, 
                     provinciaNascita, comuneNascita, provinciaResidenza, comuneResidenza, 
                     viaResidenza, capResidenza, telefono, email, scadenzaCertificato,
@@ -370,18 +369,18 @@ async function handleCreateSocio(context, socioData) {
                 
                 // Get attivitàId from codice
                 const attivitaResult = await tesseratoRequest.query(`
-                    SELECT id FROM attività WHERE codice = @codice
+                    SELECT id FROM attivitàrivoli WHERE codice = @codice
                 `);
                 
                 if (attivitaResult.recordset.length > 0) {
                     
                     await tesseratoRequest.query(`
-                        INSERT INTO tesserati (socioId, codice, annoValidità)
+                        INSERT INTO tesseratirivoli (socioId, codice, annoValidità)
                         VALUES (@socioId, @codice, @annoValidità)
                     `);
                 } else {
                     await tesseratoRequest.query(`
-                        INSERT INTO tesserati (socioId, codice, annoValidità)
+                        INSERT INTO tesseratirivoli (socioId, codice, annoValidità)
                         VALUES (@socioId, @codice, @annoValidità)
                     `);
                 }
@@ -393,7 +392,7 @@ async function handleCreateSocio(context, socioData) {
                 effettivoRequest.input('annoValidità', sql.VarChar(4), currentYear);
                 
                 await effettivoRequest.query(`
-                    INSERT INTO effettivi (socioId, annoValidità)
+                    INSERT INTO effettivirivoli (socioId, annoValidità)
                     VALUES (@socioId, @annoValidità)
                 `);
             }
@@ -404,7 +403,7 @@ async function handleCreateSocio(context, socioData) {
                 volontarioRequest.input('annoValidità', sql.VarChar(4), currentYear);
                 
                 await volontarioRequest.query(`
-                    INSERT INTO volontari (socioId, annoValidità)
+                    INSERT INTO volontaririvoli (socioId, annoValidità)
                     VALUES (@socioId, @annoValidità)
                 `);
             }
@@ -463,7 +462,7 @@ async function handleUpdateSocio(context, socioData) {
             const request = new sql.Request(transaction);
             
             const updateQuery = `
-                UPDATE soci SET 
+                UPDATE socirivoli SET 
                     nome = @nome, cognome = @cognome, codiceFiscale = @codiceFiscale,
                     sesso = @sesso, dataNascita = @dataNascita,
                     provinciaNascita = @provinciaNascita, comuneNascita = @comuneNascita,
@@ -520,7 +519,7 @@ async function handleUpdateSocio(context, socioData) {
                 tesseratoCheck.input('annoValidità', sql.VarChar(4), currentYear);
                 
                 const tesseratoExists = await tesseratoCheck.query(`
-                    SELECT COUNT(*) as count FROM tesserati 
+                    SELECT COUNT(*) as count FROM tesseratirivoli 
                     WHERE socioId = @socioId AND annoValidità = @annoValidità
                 `);
                 
@@ -529,18 +528,18 @@ async function handleUpdateSocio(context, socioData) {
                     
                     // Get attivitàId from codice
                     const attivitaResult = await tesseratoCheck.query(`
-                        SELECT id FROM attività WHERE codice = @codice
+                        SELECT id FROM attivitàrivoli WHERE codice = @codice
                     `);
                     
                     if (attivitaResult.recordset.length > 0) {
                         
                         await tesseratoCheck.query(`
-                            INSERT INTO tesserati (socioId, codice, annoValidità)
+                            INSERT INTO tesseratirivoli (socioId, codice, annoValidità)
                             VALUES (@socioId, @codice, @annoValidità)
                         `);
                     } else {
                         await tesseratoCheck.query(`
-                            INSERT INTO tesserati (socioId, codice, annoValidità)
+                            INSERT INTO tesseratirivoli (socioId, codice, annoValidità)
                             VALUES (@socioId, @codice, @annoValidità)
                         `);
                     }
@@ -549,13 +548,13 @@ async function handleUpdateSocio(context, socioData) {
                     tesseratoCheck.input('codice', sql.VarChar(5), socioData.codice);
                     
                     const attivitaResult = await tesseratoCheck.query(`
-                        SELECT id FROM attività WHERE codice = @codice
+                        SELECT id FROM attivitàrivoli WHERE codice = @codice
                     `);
                     
                     if (attivitaResult.recordset.length > 0) {
                         
                         await tesseratoCheck.query(`
-                            UPDATE tesserati 
+                            UPDATE tesseratirivoli 
                             SET codice = @codice
                             WHERE socioId = @socioId AND annoValidità = @annoValidità
                         `);
@@ -565,7 +564,7 @@ async function handleUpdateSocio(context, socioData) {
                 // Remove tesserato records if flag is false
                 const removeTesserato = new sql.Request(transaction);
                 removeTesserato.input('socioId', sql.Int, value.id);
-                await removeTesserato.query('DELETE FROM tesserati WHERE socioId = @socioId');
+                await removeTesserato.query('DELETE FROM tesseratirivoli WHERE socioId = @socioId');
             }
             
             // Handle effettivi status
@@ -575,21 +574,21 @@ async function handleUpdateSocio(context, socioData) {
                 effettivoCheck.input('annoValidità', sql.VarChar(4), currentYear);
                 
                 const effettivoExists = await effettivoCheck.query(`
-                    SELECT COUNT(*) as count FROM effettivi 
+                    SELECT COUNT(*) as count FROM effettivirivoli 
                     WHERE socioId = @socioId AND annoValidità = @annoValidità
                 `);
                 
                 if (effettivoExists.recordset[0].count === 0) {
                     
                     await effettivoCheck.query(`
-                        INSERT INTO effettivi (socioId, annoValidità)
+                        INSERT INTO effettivirivoli (socioId, annoValidità)
                         VALUES (@socioId, @annoValidità)
                     `);
                 }
             } else {
                 const removeEffettivo = new sql.Request(transaction);
                 removeEffettivo.input('socioId', sql.Int, value.id);
-                await removeEffettivo.query('DELETE FROM effettivi WHERE socioId = @socioId');
+                await removeEffettivo.query('DELETE FROM effettivirivoli WHERE socioId = @socioId');
             }
             
             // Handle volontari status
@@ -599,21 +598,21 @@ async function handleUpdateSocio(context, socioData) {
                 volontarioCheck.input('annoValidità', sql.VarChar(4), currentYear);
                 
                 const volontarioExists = await volontarioCheck.query(`
-                    SELECT COUNT(*) as count FROM volontari 
+                    SELECT COUNT(*) as count FROM volontaririvoli 
                     WHERE socioId = @socioId AND annoValidità = @annoValidità
                 `);
                 
                 if (volontarioExists.recordset[0].count === 0) {
                     
                     await volontarioCheck.query(`
-                        INSERT INTO volontari (socioId, annoValidità)
+                        INSERT INTO volontaririvoli (socioId, annoValidità)
                         VALUES (@socioId, @annoValidità)
                     `);
                 }
             } else {
                 const removeVolontario = new sql.Request(transaction);
                 removeVolontario.input('socioId', sql.Int, value.id);
-                await removeVolontario.query('DELETE FROM volontari WHERE socioId = @socioId');
+                await removeVolontario.query('DELETE FROM volontaririvoli WHERE socioId = @socioId');
             }
             
             await transaction.commit();
@@ -668,8 +667,8 @@ async function handleRetrieveLibroSoci(context, tipoSocio, annoValidita) {
                         s.dataIscrizione,
                         e.annoValidità,
                         ROW_NUMBER() OVER (ORDER BY s.cognome, s.nome) as numeroSocio
-                    FROM soci s
-                    INNER JOIN effettivi e ON s.id = e.socioId
+                    FROM socirivoli s
+                    INNER JOIN effettivirivoli e ON s.id = e.socioId
                     WHERE e.annoValidità = @anno
                     ORDER BY e.id
                 `;
@@ -690,8 +689,8 @@ async function handleRetrieveLibroSoci(context, tipoSocio, annoValidita) {
                         s.dataIscrizione,
                         v.annoValidità,
                         ROW_NUMBER() OVER (ORDER BY s.cognome, s.nome) as numeroSocio
-                    FROM soci s
-                    INNER JOIN volontari v ON s.id = v.socioId
+                    FROM socirivoli s
+                    INNER JOIN volontaririvoli v ON s.id = v.socioId
                     WHERE v.annoValidità = @anno
                     ORDER BY s.cognome, s.nome
                 `;
@@ -714,9 +713,9 @@ async function handleRetrieveLibroSoci(context, tipoSocio, annoValidita) {
                         t.codice,
                         a.nome as attivitaNome,
                         ROW_NUMBER() OVER (ORDER BY s.cognome, s.nome) as numeroSocio
-                    FROM soci s
-                    INNER JOIN tesserati t ON s.id = t.socioId
-                    LEFT JOIN mappingCodici a ON t.codice = a.codice
+                    FROM socirivoli s
+                    INNER JOIN tesseratirivoli t ON s.id = t.socioId
+                    LEFT JOIN mappingCodicirivoli a ON t.codice = a.codice
                     WHERE t.annoValidità = @anno
                     ORDER BY s.cognome, s.nome
                 `;
@@ -782,7 +781,7 @@ async function handleRetrieveStats(context) {
                 SUM(CASE WHEN isVolontario = 1 THEN 1 ELSE 0 END) as totVolontari,
                 SUM(CASE WHEN scadenzaCertificato < GETDATE() THEN 1 ELSE 0 END) as certificatiScaduti,
                 SUM(CASE WHEN scadenzaCertificato BETWEEN GETDATE() AND DATEADD(MONTH, 1, GETDATE()) THEN 1 ELSE 0 END) as certificatiInScadenza
-            FROM soci
+            FROM socirivoli
             WHERE created_at >= DATEFROMPARTS(@currentYear, 9, 1) 
                OR created_at >= DATEFROMPARTS(@previousYear, 9, 1)
         `;

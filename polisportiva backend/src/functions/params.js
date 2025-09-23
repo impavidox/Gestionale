@@ -76,7 +76,7 @@ async function handleRetrieveParameters(context) {
                 active,
                 createdDate,
                 updatedDate
-            FROM SystemParameters 
+            FROM SystemParametersrivoli 
             WHERE active = 1
             ORDER BY category, parameterName
         `);
@@ -117,7 +117,7 @@ async function handleRetrieveAnnoSportiva(context) {
                 dataFine,
                 active,
                 createdDate
-            FROM AnnoSportivo 
+            FROM AnnoSportivorivoli 
             WHERE active = 1
             ORDER BY dataInizio DESC
         `);
@@ -167,7 +167,7 @@ async function handleRetrieveMesiAttivita(context) {
                 abbreviazione,
                 active,
                 annoSportivoId
-            FROM MesiAttivita 
+            FROM MesiAttivitarivoli 
             WHERE active = 1
             ORDER BY mese
         `);
@@ -219,7 +219,7 @@ async function handleUpdateParameter(context, paramData) {
         request.input('updatedDate', sql.DateTime, new Date());
         
         const result = await request.query(`
-            UPDATE SystemParameters 
+            UPDATE SystemParametersrivoli 
             SET 
                 parameterValue = @parameterValue,
                 description = @description,
@@ -260,7 +260,7 @@ async function handleAddParameter(context, paramData) {
         request.input('parameterName', sql.NVarChar(100), value.parameterName);
         const checkResult = await request.query(`
             SELECT COUNT(*) as count 
-            FROM SystemParameters 
+            FROM SystemParametersrivoli 
             WHERE parameterName = @parameterName AND active = 1
         `);
         
@@ -277,7 +277,7 @@ async function handleAddParameter(context, paramData) {
         request.input('createdDate', sql.DateTime, new Date());
         
         const result = await request.query(`
-            INSERT INTO SystemParameters 
+            INSERT INTO SystemParametersrivoli 
             (parameterName, parameterValue, description, dataType, category, active, createdDate)
             VALUES 
             (@parameterName, @parameterValue, @description, @dataType, @category, @active, @createdDate);
@@ -315,7 +315,7 @@ async function handleDeleteParameter(context, parameterId) {
         
         // Soft delete - set active to false
         const result = await request.query(`
-            UPDATE SystemParameters 
+            UPDATE SystemParametersrivoli 
             SET active = 0, updatedDate = @updatedDate
             WHERE id = @id;
             

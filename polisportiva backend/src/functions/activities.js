@@ -103,9 +103,9 @@ async function handleRetrieveAllActivities(context) {
                 s.nome as sezioneNome,
                 a.codice,
                 a.emailReferente
-            FROM attività a
-            LEFT JOIN federazioni f ON a.federazioneId = f.id
-            LEFT JOIN sezioni s ON a.sezioneId = s.id
+            FROM attivitàrivoli a
+            LEFT JOIN federazionirivoli f ON a.federazioneId = f.id
+            LEFT JOIN sezionirivoli s ON a.sezioneId = s.id
             ORDER BY f.nome, a.nome
         `);
         
@@ -132,8 +132,8 @@ async function handleRetrieveCodes(context) {
             SELECT DISTINCT
                 a.codice,
                 f.nome
-            FROM attività a
-            LEFT JOIN mappingCodici f ON a.codice = f.codice
+            FROM attivitàrivoli a
+            LEFT JOIN mappingCodicirivoli f ON a.codice = f.codice
             WHERE a.codice IS NOT NULL
         `);
         
@@ -171,9 +171,9 @@ async function handleRetrieveActivitiesByFederazione(context, federazioneId) {
                 s.nome as sezioneNome,
                 a.codice,
                 a.emailReferente
-            FROM attività a
-            LEFT JOIN federazioni f ON a.federazioneId = f.id
-            LEFT JOIN sezioni s ON a.sezioneId = s.id
+            FROM attivitàrivoli a
+            LEFT JOIN federazionirivoli f ON a.federazioneId = f.id
+            LEFT JOIN sezionirivoli s ON a.sezioneId = s.id
             WHERE a.federazioneId = @federazioneId
             ORDER BY a.nome
         `);
@@ -210,8 +210,8 @@ async function handleRetrieveActivitiesBySezione(context, sezioneId) {
                 s.nome as sezioneNome,
                 a.codice,
                 a.emailReferente
-            FROM attività a
-            LEFT JOIN sezioni s ON a.sezioneId = s.id
+            FROM attivitàrivoli a
+            LEFT JOIN sezionirivoli s ON a.sezioneId = s.id
             WHERE a.sezioneId = @sezioneId
             ORDER BY a.nome
         `);
@@ -251,12 +251,12 @@ async function handleRetrieveFullActivitiesByFederazione(context, federazioneId)
                 a.codice,
                 a.emailReferente,
                 -- Get count of tesserati for this activity
-                (SELECT COUNT(*) FROM tesserati t WHERE t.attivitàId = a.id) as numeroTesserati,
+                (SELECT COUNT(*) FROM tesseratirivoli t WHERE t.attivitàId = a.id) as numeroTesserati,
                 -- Get recent activity
-                (SELECT COUNT(*) FROM ricevuteAttività ra WHERE ra.attivitàId = a.id AND ra.created_at >= DATEADD(month, -6, GETDATE())) as ricevuteRecenti
-            FROM attività a
-            LEFT JOIN federazioni f ON a.federazioneId = f.id
-            LEFT JOIN sezioni s ON a.sezioneId = s.id
+                (SELECT COUNT(*) FROM ricevuteAttivitàrivoli ra WHERE ra.attivitàId = a.id AND ra.created_at >= DATEADD(month, -6, GETDATE())) as ricevuteRecenti
+            FROM attivitàrivoli a
+            LEFT JOIN federazionirivoli f ON a.federazioneId = f.id
+            LEFT JOIN sezionirivoli s ON a.sezioneId = s.id
             WHERE a.federazioneId = @federazioneId
             ORDER BY a.nome
         `);
@@ -291,7 +291,7 @@ async function handleRetrieveFederazioni(context) {
             SELECT 
                 f.id,
                 f.nome
-            FROM federazioni f
+            FROM federazionirivoli f
             ORDER BY f.nome
         `);
         
@@ -321,7 +321,7 @@ async function handleRetrieveSezioni(context) {
             SELECT 
                 s.id,
                 s.nome
-            FROM sezioni s
+            FROM sezionirivoli s
             ORDER BY s.nome
         `);
         
@@ -369,7 +369,7 @@ async function handleUpdateActivity(context, activityData) {
                 request.input('emailReferente', sql.NVarChar(255), value.emailReferente || null);
                 
                 await request.query(`
-                    UPDATE attività 
+                    UPDATE attivitàrivoli 
                     SET 
                         nome = @nome,
                         federazioneId = @federazioneId,
@@ -390,7 +390,7 @@ async function handleUpdateActivity(context, activityData) {
                 request.input('emailReferente', sql.NVarChar(255), value.emailReferente || null);
                 
                 const result = await request.query(`
-                    INSERT INTO attività 
+                    INSERT INTO attivitàrivoli 
                     (nome, federazioneId, sezioneId, codice, emailReferente)
                     VALUES 
                     (@nome, @federazioneId, @sezioneId, @codice, @emailReferente);
@@ -435,7 +435,7 @@ async function handleRemoveActivity(context, activityData) {
             // Check if activity is in use
             const checkResult = await request.query(`
                 SELECT 
-                    (SELECT COUNT(*) FROM ricevuteAttività WHERE attivitàId = @id) as ricevute
+                    (SELECT COUNT(*) FROM ricevuteAttivitàrivoli WHERE attivitàId = @id) as ricevute
             `);
             
             const usage = checkResult.recordset[0];
@@ -446,7 +446,7 @@ async function handleRemoveActivity(context, activityData) {
             
             // Delete the activity
             const deleteResult = await request.query(`
-                DELETE FROM attività WHERE id = @id;
+                DELETE FROM attivitàrivoli WHERE id = @id;
                 SELECT @@ROWCOUNT as deletedRows;
             `);
             
@@ -485,7 +485,7 @@ async function handleCreateFederazione(context, federazioneData) {
         // Check if name already exists
         request.input('nome', sql.NVarChar(255), value.nome);
         const checkResult = await request.query(`
-            SELECT COUNT(*) as count FROM federazioni WHERE nome = @nome
+            SELECT COUNT(*) as count FROM federazionirivoli WHERE nome = @nome
         `);
         
         if (checkResult.recordset[0].count > 0) {
@@ -494,7 +494,7 @@ async function handleCreateFederazione(context, federazioneData) {
         
         // Create new federazione
         const result = await request.query(`
-            INSERT INTO federazioni (nome)
+            INSERT INTO federazionirivoli (nome)
             VALUES (@nome);
             SELECT SCOPE_IDENTITY() as newId;
         `);
@@ -529,7 +529,7 @@ async function handleCreateSezione(context, sezioneData) {
         // Check if name already exists
         request.input('nome', sql.NVarChar(255), value.nome);
         const checkResult = await request.query(`
-            SELECT COUNT(*) as count FROM sezioni WHERE nome = @nome
+            SELECT COUNT(*) as count FROM sezionirivoli WHERE nome = @nome
         `);
         
         if (checkResult.recordset[0].count > 0) {
@@ -538,7 +538,7 @@ async function handleCreateSezione(context, sezioneData) {
         
         // Create new sezione
         const result = await request.query(`
-            INSERT INTO sezioni (nome)
+            INSERT INTO sezionirivoli (nome)
             VALUES (@nome);
             SELECT SCOPE_IDENTITY() as newId;
         `);
