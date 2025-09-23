@@ -199,7 +199,7 @@ const RicevutaPrint = ({
         <!-- Sottoscritto -->
         <div style="margin-bottom: 20px;">
           <div>
-            Il Sottoscritto <span style="font-weight: bold;">PAOLO SOTTILE</span> nella qualità di Presidente Pro-tempore dell'ASD Polisportiva comunale Rivoli
+            Il Sottoscritto <span style="font-weight: bold;">PATRIZIA DI BELLO</span> nella qualità di Presidente Pro-tempore dell'ASD Polisportiva comunale Rivoli
           </div>
         </div>
 
@@ -481,7 +481,7 @@ const RicevutaContent = ({ data }) => {
       {/* Sottoscritto */}
       <div style={{ marginBottom: '20px' }}>
         <div style={{ marginBottom: '15px' }}>
-          Il Sottoscritto <span style={{ fontWeight: 'bold' }}>PAOLO SOTTILE</span> nella qualità di Presidente Pro-tempore dell'ASD Polisportiva comunale Rivoli
+          Il Sottoscritto <span style={{ fontWeight: 'bold' }}>PATRIZIA DI BELLO</span> nella qualità di Presidente Pro-tempore dell'ASD Polisportiva comunale Rivoli
         </div>
       </div>
 
