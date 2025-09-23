@@ -4,10 +4,10 @@ from datetime import date
 import time
 
 # API endpoint to retrieve soci
-BASE_URL = "https://server.mathric.com/cso/rest/socio/retrieveLibroSocio/0/{start}/{end}/1"
+BASE_URL = "https://server.mathric.com/polisportivo/rest/socio/retrieveLibroSocio/0/{start}/{end}/2"
 
 # Your target endpoint to create a socio (replace with your actual URL)
-CREATE_SOCIO_URL = "https://backend-cso.azurewebsites.net/api/socio/createSocio"
+CREATE_SOCIO_URL = "https://backend-polisportiva-cyd8cjbyg0b2c5hg.westeurope-01.azurewebsites.net/api/socio/createSocio"
 
 def convert_sesso(sex_value: int) -> str:
     """Convert integer sesso to 'M' or 'F'."""
@@ -22,6 +22,10 @@ def format_date(date_str: str, input_fmt: str = "%Y-%m-%d", output_fmt: str = "%
 
 def transform_record(record: dict) -> dict:
     """Transform a record from source API to target API structure."""
+    comune=record.get("birthCity")
+    if comune=='VENARIA':
+        comune='VENARIA REALE'
+
 
     return {
         "nome": record.get("nome"),
@@ -29,7 +33,7 @@ def transform_record(record: dict) -> dict:
         "sesso": convert_sesso(record.get("sesso")),
         "dataNascita": format_date(record.get("birhDate")),  # typo in API -> birhDate
         "provinciaNascita": record.get("birthProv"),
-        "comuneNascita": record.get("birthCity"),
+        "comuneNascita": comune,
         "provinciaResidenza": record.get("provRes"),
         "comuneResidenza": record.get("citta"),
         "viaResidenza": record.get("indirizzo"),
@@ -39,7 +43,7 @@ def transform_record(record: dict) -> dict:
             and datetime.strptime(record["dataInscrizione"], "%Y-%m-%d").strftime("%d-%m-%Y")
         ),
         "isTesserato": 0,
-        "isEffettivo": 1,  # business rule: default true
+        "isEffettivo": 0,  # business rule: default true
         "isVolontario": 0,  # business rule: default false
         "scadenzaCertificato": (
             format_date(record.get("scadenzaCertificatMedical"), "%d/%m/%Y")
@@ -69,9 +73,8 @@ def fetch_and_migrate(start: int, end: int):
             print("✅ Created successfully")
         else:
             print(f"❌ Error {res.status_code}: {res.text}")
-            break
         time.sleep(1)
 
 if __name__ == "__main__":
     # Example: fetch IDs from 50 to 100
-    fetch_and_migrate(0, 25)
+    fetch_and_migrate(200, 300)
