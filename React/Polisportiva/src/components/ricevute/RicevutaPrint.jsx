@@ -145,7 +145,7 @@ const RicevutaPrint = ({
       const response = await ricevutaService.sendRicevutaEmail({
         recipientEmail: ricevutaData.email,
         recipientName: `${ricevutaData.socioCognome || ricevutaData.cognome} ${ricevutaData.socioNome || ricevutaData.nome}`,
-        subject: isScheda ? 'Scheda Socio - Centro Sportivo Orbassano' : `Ricevuta N° ${ricevutaData.nrRicevuta} - Centro Sportivo Orbassano`,
+        subject: isScheda ? 'Scheda Socio - Polisportiva comunale Rivoli' : `Ricevuta N° ${ricevutaData.nrRicevuta} - Polisportiva comunale Rivoli`,
         pdfBase64: pdfBase64,
         fileName: fileName,
         isScheda: isScheda,
@@ -199,7 +199,7 @@ const RicevutaPrint = ({
         <!-- Sottoscritto -->
         <div style="margin-bottom: 20px;">
           <div>
-            Il Sottoscritto <span style="font-weight: bold;">PAOLO SOTTILE</span> nella qualità di Presidente Pro-tempore dell'ASD-APS Centro Sportivo Orbassano
+            Il Sottoscritto <span style="font-weight: bold;">PAOLO SOTTILE</span> nella qualità di Presidente Pro-tempore dell'ASD Polisportiva comunale Rivoli
           </div>
         </div>
 
@@ -481,7 +481,7 @@ const RicevutaContent = ({ data }) => {
       {/* Sottoscritto */}
       <div style={{ marginBottom: '20px' }}>
         <div style={{ marginBottom: '15px' }}>
-          Il Sottoscritto <span style={{ fontWeight: 'bold' }}>PAOLO SOTTILE</span> nella qualità di Presidente Pro-tempore dell'ASD-APS Centro Sportivo Orbassano
+          Il Sottoscritto <span style={{ fontWeight: 'bold' }}>PAOLO SOTTILE</span> nella qualità di Presidente Pro-tempore dell'ASD Polisportiva comunale Rivoli
         </div>
       </div>
 

@@ -149,11 +149,11 @@ const calculateAge = (birthdate) => {
           {/* Richiesta di associazione */}
           <div className="association-request">
             <p>
-              Fa domanda di associazione per l'anno sportivo <strong>2025/26</strong> al ASD-APS Centro Sportivo Orbassano in qualità di <strong>Socio Effettivo</strong> con il nr. socio <strong>{socio.numeroSocio}</strong>
+              Fa domanda di associazione per l'anno sportivo <strong>2025/26</strong> al ASD Polisportiva comunale Rivoli in qualità di <strong>Socio Effettivo</strong> con il nr. socio <strong>{socio.numeroSocio}</strong>
             </p>
             
             <p className="statute-text">
-              Presa visione dello STATUTO e del regolamento del ASD-APS Centro Sportivo Orbassano.
+              Presa visione dello STATUTO e del regolamento del ASD Polisportiva comunale Rivoli.
             </p>
           </div>
           
@@ -216,7 +216,7 @@ const calculateAge = (birthdate) => {
           {/* Dichiarazione principale */}
           <div className="main-declaration">
             <p>
-              <strong>dichiaro di aver preso visione dell'Informativa del CENTRO SPORTIVO ORBASSANO e di averne ricevuto copia.</strong>
+              <strong>dichiaro di aver preso visione dell'Informativa della Polisportiva comunale Rivoli e di averne ricevuto copia.</strong>
             </p>
             
             <p>
@@ -260,12 +260,12 @@ const calculateAge = (birthdate) => {
           
           {/* Sezione foto/video compatta */}
           <div className="photo-consent-section">
-            <p>inoltre, affinché il <strong>CENTRO SPORTIVO ORBASSANO:</strong></p>
+            <p>inoltre, affinché la <strong>Polisportiva comunale Rivoli:</strong></p>
             
             <ul className="photo-permissions-compact">
               <li>possa effettuare fotografie e riprese audio/video, in qualsiasi formato, che ritraggono la mia persona o quella del minore;</li>
-              <li>che le riprese audio, video e fotografiche vengano utilizzate dal CENTRO SPORTIVO ORBASSANO per la pubblicazione all'interno del sito internet societario o di altri siti ad esso riconducibili o nei Social Network;</li>
-              <li>che le immagini fotografiche e riprese audio/video vengano utilizzate dal CENTRO SPORTIVO ORBASSANO per fini promo-pubblicitari e orientativi (volantini, articoli su giornali e riviste, ecc.);</li>
+              <li>che le riprese audio, video e fotografiche vengano utilizzate dalla Polisportiva comunale Rivoli per la pubblicazione all'interno del sito internet societario o di altri siti ad esso riconducibili o nei Social Network;</li>
+              <li>che le immagini fotografiche e riprese audio/video vengano utilizzate dalla Polisportiva comunale Rivoli per fini promo-pubblicitari e orientativi (volantini, articoli su giornali e riviste, ecc.);</li>
               <li>che le immagini fotografiche e le riprese audio/video siano oggetto di eventuali modifiche e variazioni; che vengano utilizzate singolarmente e/o abbinandole con altre immagini;</li>
               <li>possa utilizzare e diffondere le immagini contenute nelle fotografie e riprese audio/video a fini di cui sopra;</li>
               <li>la cessione e l'utilizzo delle immagini fotografiche e riprese audio/video siano da considerarsi effettuate in forma completamente gratuita.</li>
