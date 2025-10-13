@@ -1,0 +1,128 @@
+/* Print styles for RicercaStampa component */
+
+@media print {
+  /* Hide elements not needed in print */
+  .no-print {
+    display: none !important;
+  }
+  
+  /* Reset page margins and padding */
+  @page {
+    margin: 0.5cm;
+    size: A4 portrait;
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Full width container */
+  .print-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Full width card */
+  .print-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  
+  /* Card body with no padding */
+  .print-body {
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  
+  /* Card header adjustments */
+  .print-header {
+    padding: 10px !important;
+    border: none !important;
+  }
+  
+  /* Header image full width */
+  .print-header-img {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  
+  /* Table full width */
+  .print-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    font-size: 10pt !important;
+  }
+  
+  /* Table cells padding */
+  .print-table th,
+  .print-table td {
+    padding: 5px !important;
+    font-size: 9pt !important;
+    word-wrap: break-word !important;
+  }
+  
+  /* Table headers */
+  .print-table thead th {
+    background-color: #f8f9fa !important;
+    font-weight: bold !important;
+    border: 1px solid #dee2e6 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Preserve table colors */
+  .table-success {
+    background-color: #d4edda !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  .table-danger {
+    background-color: #f8d7da !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  .table-warning {
+    background-color: #fff3cd !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Badge colors in print */
+  .badge {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Avoid page breaks inside table rows */
+  .print-table tr {
+    page-break-inside: avoid !important;
+  }
+  
+  /* Remove Bootstrap responsive table wrapper */
+  .table-responsive {
+    overflow: visible !important;
+  }
+}
+
+/* Optional: Adjust for portrait orientation */
+@media print and (orientation: portrait) {
+  .print-table {
+    font-size: 9pt !important;
+  }
+  
+  .print-table th,
+  .print-table td {
+    font-size: 8pt !important;
+    padding: 4px !important;
+  }
+}

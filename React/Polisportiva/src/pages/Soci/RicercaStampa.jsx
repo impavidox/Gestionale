@@ -5,6 +5,7 @@ import socioService from '../../api/services/socioService';
 import { formatDateDisplay } from '../../utils/dateUtils';
 import Loader from '../../components/common/Loader';
 import Alert from '../../components/common/Alert';
+import './RicercaStampa.css'; // Import the CSS file with print styles
 
 /**
  * Pagina per la stampa dei risultati di ricerca dei soci
@@ -234,7 +235,7 @@ const RicercaStampa = () => {
   
   return (
     <>
-      <Container className="mt-4 mb-5">
+      <Container className="mt-4 mb-5 print-container">
         {/* Barra degli strumenti (nascosta in stampa) */}
         <div className="mb-4 no-print">
           <Button variant="primary" onClick={handlePrint}>
@@ -242,14 +243,14 @@ const RicercaStampa = () => {
           </Button>
         </div>
         
-        <Card className="mb-4">
-          <Card.Header className="text-center">
-            <img src='./headerpoli.png' alt="Header" />
+        <Card className="mb-4 print-card">
+          <Card.Header className="text-center print-header">
+            <img src='./headerpoli.png' alt="Header" className="print-header-img" />
             <h2 className="mb-0">{titolo + (data.length > 0 && data[0].nomeAttivita ? ' ' + data[0].nomeAttivita : '')}</h2>
             <p className="mb-0">Data: {formatDateDisplay(new Date())}</p>
           </Card.Header>
-          <Card.Body>
-            <Table striped bordered hover responsive>
+          <Card.Body className="print-body">
+            <Table striped bordered hover responsive className="print-table">
               <thead>
                 <tr>
                   {selectedColumns.tessera && <th>Tessera</th>}
