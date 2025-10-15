@@ -233,7 +233,28 @@ const RicercaStampa = () => {
   }
   
   return (
-    <>
+    <>      <style>{`
+        @media print {
+          .table {
+            font-size: 10pt !important;
+          }
+          .table td, .table th {
+            padding: 0.4rem !important;
+            word-wrap: break-word;
+            max-width: 150px;
+          }
+        }
+        .table {
+          table-layout: fixed;
+          width: 100%;
+          font-size: 1rem;
+        }
+        .table td, .table th {
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          padding: 0.5rem;
+        }
+      `}</style>
       <Container className="mt-4 mb-5">
         {/* Barra degli strumenti (nascosta in stampa) */}
         <div className="mb-4 no-print">
