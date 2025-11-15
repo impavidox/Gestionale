@@ -257,51 +257,120 @@ async function handleStatistic(context, type) {
         
         switch (statisticType) {
             case 0:
-                // Statistiche generali
-                const generalStats = await request.query(`
-                    -- Totali entrate per mese corrente
-                    SELECT 
-                        COALESCE(SUM(r.importo), 0) as entrateDelMese
-                    FROM Ricevute r
-                    WHERE r.active = 1 
-                    AND MONTH(r.dataRicevuta) = MONTH(GETDATE())
-                    AND YEAR(r.dataRicevuta) = YEAR(GETDATE());
-                    
-                    -- Totali uscite per mese corrente
-                    SELECT 
-                        COALESCE(SUM(sp.importo), 0) as usciteDelMese
-                    FROM Spese sp
-                    WHERE sp.active = 1 
-                    AND MONTH(sp.dataSpesa) = MONTH(GETDATE())
-                    AND YEAR(sp.dataSpesa) = YEAR(GETDATE());
-                    
-                    -- Totali anno corrente
-                    SELECT 
-                        COALESCE(SUM(r.importo), 0) as entrateTotali,
-                        COUNT(*) as numeroRicevute
-                    FROM Ricevute r
-                    WHERE r.active = 1 
-                    AND YEAR(r.dataRicevuta) = YEAR(GETDATE());
-                    
-                    SELECT 
-                        COALESCE(SUM(sp.importo), 0) as usciteTotali,
-                        COUNT(*) as numeroSpese
-                    FROM Spese sp
-                    WHERE sp.active = 1 
-                    AND YEAR(sp.dataSpesa) = YEAR(GETDATE());
+                // Statistiche generali - con dati mensili e per categoria
+
+                // Calcola anno scolastico corrente (Settembre - Agosto)
+                // Se siamo tra Settembre e Dicembre, anno scolastico inizia quest'anno
+                // Se siamo tra Gennaio e Agosto, anno scolastico è iniziato l'anno scorso
+                const currentMonth = new Date().getMonth() + 1; // 1-12
+                const currentCalendarYear = new Date().getFullYear();
+                const schoolYearStart = currentMonth >= 9 ? currentCalendarYear : currentCalendarYear - 1;
+                const schoolYearEnd = schoolYearStart + 1;
+
+                context.log(`Anno scolastico corrente: ${schoolYearStart}-${schoolYearEnd}`);
+
+                // Query per statistiche mensili anno scolastico corrente (Settembre -> Agosto)
+                const currentYearStats = await request.query(`
+                    SELECT
+                        MONTH(ra.dataRicevuta) as meseNumero,
+                        CASE MONTH(ra.dataRicevuta)
+                            WHEN 1 THEN 'Gennaio'
+                            WHEN 2 THEN 'Febbraio'
+                            WHEN 3 THEN 'Marzo'
+                            WHEN 4 THEN 'Aprile'
+                            WHEN 5 THEN 'Maggio'
+                            WHEN 6 THEN 'Giugno'
+                            WHEN 7 THEN 'Luglio'
+                            WHEN 8 THEN 'Agosto'
+                            WHEN 9 THEN 'Settembre'
+                            WHEN 10 THEN 'Ottobre'
+                            WHEN 11 THEN 'Novembre'
+                            WHEN 12 THEN 'Dicembre'
+                        END as month,
+                        COALESCE(SUM(ra.importoRicevuta), 0) as entrate
+                    FROM ricevuteAttività ra
+                    WHERE (
+                        (YEAR(ra.dataRicevuta) = ${schoolYearStart} AND MONTH(ra.dataRicevuta) >= 9)
+                        OR
+                        (YEAR(ra.dataRicevuta) = ${schoolYearEnd} AND MONTH(ra.dataRicevuta) <= 8)
+                    )
+                    GROUP BY MONTH(ra.dataRicevuta)
+                    ORDER BY MONTH(ra.dataRicevuta)
                 `);
-                
+
+                // Se l'anno scolastico corrente è vuoto, prendi l'anno scolastico precedente
+                let monthlyStats = currentYearStats;
+                if (currentYearStats.recordset.length === 0) {
+                    const prevSchoolYearStart = schoolYearStart - 1;
+                    const prevSchoolYearEnd = schoolYearEnd - 1;
+
+                    monthlyStats = await request.query(`
+                        SELECT
+                            MONTH(ra.dataRicevuta) as meseNumero,
+                            CASE MONTH(ra.dataRicevuta)
+                                WHEN 1 THEN 'Gennaio'
+                                WHEN 2 THEN 'Febbraio'
+                                WHEN 3 THEN 'Marzo'
+                                WHEN 4 THEN 'Aprile'
+                                WHEN 5 THEN 'Maggio'
+                                WHEN 6 THEN 'Giugno'
+                                WHEN 7 THEN 'Luglio'
+                                WHEN 8 THEN 'Agosto'
+                                WHEN 9 THEN 'Settembre'
+                                WHEN 10 THEN 'Ottobre'
+                                WHEN 11 THEN 'Novembre'
+                                WHEN 12 THEN 'Dicembre'
+                            END as month,
+                            COALESCE(SUM(ra.importoRicevuta), 0) as entrate
+                        FROM ricevuteAttività ra
+                        WHERE (
+                            (YEAR(ra.dataRicevuta) = ${prevSchoolYearStart} AND MONTH(ra.dataRicevuta) >= 9)
+                            OR
+                            (YEAR(ra.dataRicevuta) = ${prevSchoolYearEnd} AND MONTH(ra.dataRicevuta) <= 8)
+                        )
+                        GROUP BY MONTH(ra.dataRicevuta)
+                        ORDER BY MONTH(ra.dataRicevuta)
+                    `);
+                    context.log(`Anno scolastico corrente vuoto, caricati dati ${prevSchoolYearStart}-${prevSchoolYearEnd}`);
+                }
+
+                // Query per statistiche per attività (categorie) - anno scolastico
+                const categoryStats = await request.query(`
+                    SELECT
+                        a.nome as categoria,
+                        COALESCE(SUM(ra.importoRicevuta), 0) as entrate,
+                        0 as uscite
+                    FROM attività a
+                    LEFT JOIN ricevuteAttività ra ON a.id = ra.attivitàId AND (
+                        (YEAR(ra.dataRicevuta) = ${schoolYearStart} AND MONTH(ra.dataRicevuta) >= 9)
+                        OR
+                        (YEAR(ra.dataRicevuta) = ${schoolYearEnd} AND MONTH(ra.dataRicevuta) <= 8)
+                    )
+                    GROUP BY a.id, a.nome
+                    ORDER BY entrate DESC
+                `);
+
+                // Query per totali anno scolastico
+                const yearTotals = await request.query(`
+                    SELECT
+                        COALESCE(SUM(ra.importoRicevuta), 0) as totaleEntrate
+                    FROM ricevuteAttività ra
+                    WHERE (
+                        (YEAR(ra.dataRicevuta) = ${schoolYearStart} AND MONTH(ra.dataRicevuta) >= 9)
+                        OR
+                        (YEAR(ra.dataRicevuta) = ${schoolYearEnd} AND MONTH(ra.dataRicevuta) <= 8)
+                    )
+                `);
+
+                context.log('Monthly stats count:', monthlyStats.recordset.length);
+                context.log('Category stats count:', categoryStats.recordset.length);
+                context.log('Total entrate:', yearTotals.recordset[0].totaleEntrate);
+
                 result = {
-                    meseCorrente: {
-                        entrate: generalStats.recordsets[0][0].entrateDelMese,
-                        uscite: generalStats.recordsets[1][0].usciteDelMese
-                    },
-                    annoCorrente: {
-                        entrate: generalStats.recordsets[2][0].entrateTotali,
-                        uscite: generalStats.recordsets[3][0].usciteTotali,
-                        numeroRicevute: generalStats.recordsets[2][0].numeroRicevute,
-                        numeroSpese: generalStats.recordsets[3][0].numeroSpese
-                    }
+                    monthlyStats: monthlyStats.recordset,
+                    categorieStats: categoryStats.recordset,
+                    totaleEntrate: yearTotals.recordset[0].totaleEntrate,
+                    totaleUscite: 0
                 };
                 break;
                 

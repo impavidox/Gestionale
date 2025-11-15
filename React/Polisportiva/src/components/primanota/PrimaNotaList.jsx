@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Row, Col, Form, Button, Alert, Badge } from 'react-bootstrap';
+import { Card, Table, Row, Col, Form, Button, Alert, Badge, Accordion } from 'react-bootstrap';
 import DateField from '../forms/DateField';
 import SelectField from '../forms/SelectField';
 import { formatDateForApi, formatDateDisplay } from '../../utils/dateUtils';
@@ -13,31 +13,62 @@ import { useApp } from '../../context/AppContext';
  */
 const PrimaNotaList = () => {
   const { goNewTab } = useApp();
-  
+
   // Stati per i filtri
   const [beginDate, setBeginDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
-  
+
   // Stati per la selezione delle date
   const [dateSelectionType, setDateSelectionType] = useState('range'); // 'range' o 'single'
   const [singleDate, setSingleDate] = useState(null);
-  
+
   // Stati per i dati
   const [primaNotaData, setPrimaNotaData] = useState(null);
   const [totale, setTotale] = useState(0);
   const [raggruppamenti, setRaggruppamenti] = useState({});
-  
+
   // Stati per visualizzazione
   const [viewPrima, setViewPrima] = useState(true);
   const [viewStat, setViewStat] = useState(false);
   const [statisticsData, setStatisticsData] = useState(null);
-  
+
+  // Dati hardcodati anno scolastico precedente (2024-2025) - Solo Entrate
+  // Ordinati per anno scolastico: Settembre 2024 -> Agosto 2025
+  const lastYearData = {
+    monthlyStats: [
+      { month: 'Settembre', entrate: 28855.00 },
+      { month: 'Ottobre', entrate: 26615.00 },
+      { month: 'Novembre', entrate: 5550.00 },
+      { month: 'Dicembre', entrate: 1565.00 },
+      { month: 'Gennaio', entrate: 4970.00 },
+      { month: 'Febbraio', entrate: 7350.00 },
+      { month: 'Marzo', entrate: 5415.00 },
+      { month: 'Aprile', entrate: 6485.00 },
+      { month: 'Maggio', entrate: 380.00 },
+      { month: 'Giugno', entrate: 3975.00 },
+      { month: 'Luglio', entrate: 400.00 },
+      { month: 'Agosto', entrate: 0.00 }
+    ]
+  };
+
+  // Calcola anno scolastico corrente
+  const getCurrentSchoolYear = () => {
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1; // 1-12
+    const currentYear = today.getFullYear();
+    const schoolYearStart = currentMonth >= 9 ? currentYear : currentYear - 1;
+    const schoolYearEnd = schoolYearStart + 1;
+    return `${schoolYearStart}-${schoolYearEnd}`;
+  };
+
+  const currentSchoolYear = getCurrentSchoolYear();
+
   // Stati per errori e loading
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showError, setShowError] = useState(false);
-  
+
   // Opzioni per il tipo di prima nota
   const typeOptions = [
     { label: 'Tutte le Ricevute', value: 0 },
@@ -52,17 +83,42 @@ const PrimaNotaList = () => {
     2: { nome: 'Contanti', color: 'success' },
     3: { nome: 'Bonifico', color: 'info' }
   };
-  
+
+  // Helper function per calcolare la variazione percentuale
+  const calculatePercentageChange = (current, previous) => {
+    if (!previous || previous === 0) return null;
+    return ((current - previous) / previous) * 100;
+  };
+
+  // Helper function per ottenere i dati dell'anno precedente per un mese specifico
+  const getLastYearDataForMonth = (monthName) => {
+    const monthData = lastYearData.monthlyStats.find(m => m.month === monthName);
+    return monthData ? monthData.entrate : 0;
+  };
+
+  // Helper function per calcolare il totale anno precedente solo per i mesi presenti nell'anno corrente
+  const getLastYearTotalForCurrentMonths = (currentMonthlyStats) => {
+    if (!currentMonthlyStats || currentMonthlyStats.length === 0) return 0;
+
+    // Ottieni i nomi dei mesi presenti nell'anno corrente
+    const currentMonths = currentMonthlyStats.map(stat => stat.month);
+
+    // Somma solo i mesi dell'anno precedente che corrispondono ai mesi dell'anno corrente
+    return lastYearData.monthlyStats
+      .filter(stat => currentMonths.includes(stat.month))
+      .reduce((sum, stat) => sum + stat.entrate, 0);
+  };
+
   // Imposta tipo di default all'avvio
   useEffect(() => {
     setSelectedType(typeOptions[0]);
-    
+
     // Imposta date di default (inizio anno corrente)
     const currentYear = new Date().getFullYear();
     const startOfYear = new Date(currentYear, 0, 1);
     const endOfYear = new Date(currentYear, 11, 31);
     const today = new Date();
-    
+
     setBeginDate(startOfYear);
     setEndDate(endOfYear);
     setSingleDate(today);
@@ -216,10 +272,16 @@ const PrimaNotaList = () => {
     setLoading(true);
     setError('');
     setShowError(false);
-    
+
     try {
+      console.log('Fetching statistics...');
       const response = await primaNotaService.getStatistic(0);
-      setStatisticsData(response.data);
+      console.log('Statistics response:', response);
+      console.log('Statistics data:', response.data);
+      console.log('Monthly stats:', response.data?.data?.monthlyStats);
+      console.log('Category stats:', response.data?.data?.categorieStats);
+
+      setStatisticsData(response.data.data);
       setViewPrima(false);
       setViewStat(true);
     } catch (err) {
@@ -460,57 +522,201 @@ const PrimaNotaList = () => {
                 <Loader />
               ) : statisticsData ? (
                 <div>
-                  <h6 className="mb-3">Riepilogo per Categoria</h6>
-                  <Table striped bordered hover responsive>
-                    <thead>
-                      <tr>
-                        <th>Categoria</th>
-                        <th>Entrate</th>
-                        <th>Uscite</th>
-                        <th>Saldo</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {statisticsData.categorieStats && statisticsData.categorieStats.map((stat, index) => (
-                        <tr key={index}>
-                          <td>{stat.categoria}</td>
-                          <td className="text-end">{stat.entrate?.toFixed(2) || '0.00'} €</td>
-                          <td className="text-end">{stat.uscite?.toFixed(2) || '0.00'} €</td>
-                          <td className="text-end">{(stat.entrate - stat.uscite).toFixed(2)} €</td>
+                  {/* Summary Cards per confronto annuale */}
+                  {statisticsData.monthlyStats && statisticsData.monthlyStats.length > 0 && (
+                    <Row className="mb-4">
+                      <Col md={4} className="d-flex align-items-stretch">
+                        <Card className="text-center border-primary w-100">
+                          <Card.Body className="d-flex flex-column justify-content-center py-4">
+                            <Card.Title className="text-muted mb-3">Totale Entrate {currentSchoolYear}</Card.Title>
+                            <div>
+                              <h3 className="text-primary mb-2">
+                                {statisticsData.monthlyStats.reduce((sum, stat) => sum + (stat.entrate || 0), 0).toFixed(2)} €
+                              </h3>
+                              <div style={{height: '26px'}}>&nbsp;</div>
+                            </div>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                      <Col md={4} className="d-flex align-items-stretch">
+                        <Card className="text-center border-secondary w-100">
+                          <Card.Body className="d-flex flex-column justify-content-center py-4">
+                            <Card.Title className="text-muted mb-3">Totale Entrate 2024-2025 (stessi mesi)</Card.Title>
+                            <div>
+                              <h3 className="text-secondary mb-2">
+                                {getLastYearTotalForCurrentMonths(statisticsData.monthlyStats).toFixed(2)} €
+                              </h3>
+                              <div style={{height: '26px'}}>&nbsp;</div>
+                            </div>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                      <Col md={4} className="d-flex align-items-stretch">
+                        <Card className={`text-center w-100 ${
+                          (statisticsData.monthlyStats.reduce((sum, stat) => sum + (stat.entrate || 0), 0) -
+                           getLastYearTotalForCurrentMonths(statisticsData.monthlyStats)) >= 0
+                            ? 'border-success' : 'border-danger'
+                        }`}>
+                          <Card.Body className="d-flex flex-column justify-content-center py-4">
+                            <Card.Title className="text-muted mb-3">Variazione Annuale</Card.Title>
+                            <div>
+                              <h3 className={`mb-2 ${
+                                (statisticsData.monthlyStats.reduce((sum, stat) => sum + (stat.entrate || 0), 0) -
+                                 getLastYearTotalForCurrentMonths(statisticsData.monthlyStats)) >= 0
+                                  ? 'text-success' : 'text-danger'
+                              }`}>
+                                {(() => {
+                                  const totalCurrent = statisticsData.monthlyStats.reduce((sum, stat) => sum + (stat.entrate || 0), 0);
+                                  const totalLast = getLastYearTotalForCurrentMonths(statisticsData.monthlyStats);
+                                  const diff = totalCurrent - totalLast;
+                                  return `${diff >= 0 ? '+' : ''}${diff.toFixed(2)} €`;
+                                })()}
+                              </h3>
+                              <Badge bg={
+                                calculatePercentageChange(
+                                  statisticsData.monthlyStats.reduce((sum, stat) => sum + (stat.entrate || 0), 0),
+                                  getLastYearTotalForCurrentMonths(statisticsData.monthlyStats)
+                                ) >= 0 ? 'success' : 'danger'
+                              }>
+                                {(() => {
+                                  const totalChange = calculatePercentageChange(
+                                    statisticsData.monthlyStats.reduce((sum, stat) => sum + (stat.entrate || 0), 0),
+                                    getLastYearTotalForCurrentMonths(statisticsData.monthlyStats)
+                                  );
+                                  return totalChange !== null
+                                    ? `${totalChange >= 0 ? '+' : ''}${totalChange.toFixed(2)}% ${totalChange >= 0 ? '↑' : '↓'}`
+                                    : 'N/A';
+                                })()}
+                              </Badge>
+                            </div>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                    </Row>
+                  )}
+
+                  <Accordion defaultActiveKey="0" className="mt-4">
+                    {/* PRIMO: Riepilogo Mensile */}
+                    <Accordion.Item eventKey="0">
+                      <Accordion.Header>
+                        <strong>Riepilogo Mensile - Confronto Anno Scolastico {currentSchoolYear} vs 2024-2025</strong>
+                      </Accordion.Header>
+                      <Accordion.Body>
+                        {statisticsData.monthlyStats && statisticsData.monthlyStats.length > 0 ? (
+                          <Table striped bordered hover responsive>
+                      <thead>
+                        <tr>
+                          <th>Mese</th>
+                          <th className="text-end">Entrate {currentSchoolYear}</th>
+                          <th className="text-end">Entrate 2024-2025</th>
+                          <th className="text-end">Differenza</th>
+                          <th className="text-end">Variazione %</th>
                         </tr>
-                      ))}
+                      </thead>
+                      <tbody>
+                        {statisticsData.monthlyStats.map((stat, index) => {
+                        const lastYearEntrate = getLastYearDataForMonth(stat.month);
+                        const currentEntrate = stat.entrate || 0;
+                        const difference = currentEntrate - lastYearEntrate;
+                        const percentageChange = calculatePercentageChange(currentEntrate, lastYearEntrate);
+
+                        return (
+                          <tr key={index}>
+                            <td>{stat.month}</td>
+                            <td className="text-end fw-bold">{currentEntrate.toFixed(2)} €</td>
+                            <td className="text-end text-muted">{lastYearEntrate.toFixed(2)} €</td>
+                            <td className={`text-end ${difference >= 0 ? 'text-success' : 'text-danger'}`}>
+                              {difference >= 0 ? '+' : ''}{difference.toFixed(2)} €
+                            </td>
+                            <td className={`text-end fw-bold ${percentageChange !== null && percentageChange >= 0 ? 'text-success' : 'text-danger'}`}>
+                              {percentageChange !== null ? (
+                                <>
+                                  {percentageChange >= 0 ? '+' : ''}{percentageChange.toFixed(2)}%
+                                  {percentageChange >= 0 ? ' ↑' : ' ↓'}
+                                </>
+                              ) : 'N/A'}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
-                    <tfoot>
-                      <tr>
-                        <th className="text-end">Totale</th>
-                        <th className="text-end">{statisticsData.totaleEntrate?.toFixed(2) || '0.00'} €</th>
-                        <th className="text-end">{statisticsData.totaleUscite?.toFixed(2) || '0.00'} €</th>
-                        <th className="text-end">{(statisticsData.totaleEntrate - statisticsData.totaleUscite)?.toFixed(2) || '0.00'} €</th>
-                      </tr>
-                    </tfoot>
-                  </Table>
-                  
-                  <h6 className="my-3">Riepilogo Mensile</h6>
-                  <Table striped bordered hover responsive>
-                    <thead>
-                      <tr>
-                        <th>Mese</th>
-                        <th>Entrate</th>
-                        <th>Uscite</th>
-                        <th>Saldo</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {statisticsData.monthlyStats && statisticsData.monthlyStats.map((stat, index) => (
-                        <tr key={index}>
-                          <td>{stat.month}</td>
-                          <td className="text-end">{stat.entrate?.toFixed(2) || '0.00'} €</td>
-                          <td className="text-end">{stat.uscite?.toFixed(2) || '0.00'} €</td>
-                          <td className="text-end">{(stat.entrate - stat.uscite).toFixed(2)} €</td>
+                    {statisticsData.monthlyStats && statisticsData.monthlyStats.length > 0 && (
+                      <tfoot>
+                        <tr className="table-secondary fw-bold">
+                          <td>Totale</td>
+                          <td className="text-end">
+                            {statisticsData.monthlyStats.reduce((sum, stat) => sum + (stat.entrate || 0), 0).toFixed(2)} €
+                          </td>
+                          <td className="text-end">
+                            {getLastYearTotalForCurrentMonths(statisticsData.monthlyStats).toFixed(2)} €
+                          </td>
+                          <td className={`text-end ${
+                            (statisticsData.monthlyStats.reduce((sum, stat) => sum + (stat.entrate || 0), 0) -
+                             getLastYearTotalForCurrentMonths(statisticsData.monthlyStats)) >= 0
+                              ? 'text-success' : 'text-danger'
+                          }`}>
+                            {(statisticsData.monthlyStats.reduce((sum, stat) => sum + (stat.entrate || 0), 0) -
+                              getLastYearTotalForCurrentMonths(statisticsData.monthlyStats)) >= 0 ? '+' : ''}
+                            {(statisticsData.monthlyStats.reduce((sum, stat) => sum + (stat.entrate || 0), 0) -
+                              getLastYearTotalForCurrentMonths(statisticsData.monthlyStats)).toFixed(2)} €
+                          </td>
+                          <td className={`text-end ${
+                            calculatePercentageChange(
+                              statisticsData.monthlyStats.reduce((sum, stat) => sum + (stat.entrate || 0), 0),
+                              getLastYearTotalForCurrentMonths(statisticsData.monthlyStats)
+                            ) >= 0 ? 'text-success' : 'text-danger'
+                          }`}>
+                            {(() => {
+                              const totalChange = calculatePercentageChange(
+                                statisticsData.monthlyStats.reduce((sum, stat) => sum + (stat.entrate || 0), 0),
+                                getLastYearTotalForCurrentMonths(statisticsData.monthlyStats)
+                              );
+                              return totalChange !== null
+                                ? `${totalChange >= 0 ? '+' : ''}${totalChange.toFixed(2)}% ${totalChange >= 0 ? '↑' : '↓'}`
+                                : 'N/A';
+                            })()}
+                          </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </Table>
+                      </tfoot>
+                    )}
+                          </Table>
+                        ) : (
+                          <p className="text-center text-muted">Nessun dato mensile disponibile per l'anno corrente.</p>
+                        )}
+                      </Accordion.Body>
+                    </Accordion.Item>
+
+                    {/* SECONDO: Riepilogo per Categoria */}
+                    <Accordion.Item eventKey="1">
+                      <Accordion.Header>
+                        <strong>Riepilogo per Categoria</strong>
+                      </Accordion.Header>
+                      <Accordion.Body>
+                        <Table striped bordered hover responsive>
+                          <thead>
+                            <tr>
+                              <th>Categoria</th>
+                              <th className="text-end">Entrate</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {statisticsData.categorieStats && statisticsData.categorieStats.map((stat, index) => (
+                              <tr key={index}>
+                                <td>{stat.categoria}</td>
+                                <td className="text-end">{stat.entrate?.toFixed(2) || '0.00'} €</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="fw-bold">
+                              <th className="text-end">Totale</th>
+                              <th className="text-end">{statisticsData.totaleEntrate?.toFixed(2) || '0.00'} €</th>
+                            </tr>
+                          </tfoot>
+                        </Table>
+                      </Accordion.Body>
+                    </Accordion.Item>
+                  </Accordion>
                 </div>
               ) : (
                 <p className="text-center">Nessun dato statistico disponibile.</p>
