@@ -35,7 +35,17 @@ const endpoints = {
       SEND: '/send-email'
     },
 
-    
+        // Enti
+    ENTI: {
+      CREATE: 'enti/create',
+      RETRIEVE_ALL: 'enti/retrieveAll',
+      RETRIEVE_BY_ID: 'enti/retrieveById',
+      UPDATE: 'enti/update',
+      DELETE: 'enti/delete',
+      BUILD_PRIMA_NOTA: 'enti/buildPrimaNota'
+    },
+
+
     // Prima Nota
     PRIMA_NOTA: {
       BUILD: 'primanota/buildPrimaNota',
