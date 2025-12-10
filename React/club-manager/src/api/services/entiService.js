@@ -8,7 +8,7 @@ const entiService = {
 
   /**
    * Crea una nuova ricevuta enti
-   * @param {Object} ricevutaData - Dati della ricevuta (dataRicevuta, ente, importo)
+   * @param {Object} ricevutaData - Dati della ricevuta (dataRicevuta, ente, importo, descrizione)
    * @returns {Promise} Promise con la risposta del server
    */
   createRicevutaEnti: (ricevutaData) => {

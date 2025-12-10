@@ -109,10 +109,11 @@ const ElencoSoci = () => {
     
     goNewTab('email', {
       cognome: filters.cognome || '',
-      scadenza: filters.scadenza,
+      scadenza: filters.scadenza ? 1 : 0,
       attivita: filters.attivita,
-      scadute: filters.scadute,
+      scadute: filters.scadute ? 1 : 0,
       anno: filters.anno,
+      sezione: filters.sezione,
       titolo
     });
   };

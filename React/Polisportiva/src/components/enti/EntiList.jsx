@@ -245,14 +245,14 @@ const EntiList = () => {
                 <DateField
                   label="Data Inizio"
                   value={beginDate}
-                  onChange={setBeginDate}
+                  onChange={(name, date) => setBeginDate(date)}
                 />
               </Col>
               <Col md={4}>
                 <DateField
                   label="Data Fine"
                   value={endDate}
-                  onChange={setEndDate}
+                  onChange={(name, date) => setEndDate(date)}
                 />
               </Col>
               <Col md={4} className="d-flex align-items-end">
@@ -293,6 +293,7 @@ const EntiList = () => {
                   <th>#</th>
                   <th>Data</th>
                   <th>Ente</th>
+                  <th>Descrizione</th>
                   <th>Importo</th>
                   <th>Saldo Progressivo</th>
                   <th>Azioni</th>
@@ -304,6 +305,7 @@ const EntiList = () => {
                     <td>{index + 1}</td>
                     <td>{formatDateDisplay(ricevuta.dataRicevuta)}</td>
                     <td>{ricevuta.ente}</td>
+                    <td>{ricevuta.descrizione || '-'}</td>
                     <td className="text-end">
                       <Badge bg="success">{formatImporto(ricevuta.importo)}</Badge>
                     </td>
@@ -364,6 +366,9 @@ const EntiList = () => {
               <ul className="list-unstyled mt-2">
                 <li><strong>Data:</strong> {formatDateDisplay(deletingRicevuta.dataRicevuta)}</li>
                 <li><strong>Ente:</strong> {deletingRicevuta.ente}</li>
+                {deletingRicevuta.descrizione && (
+                  <li><strong>Descrizione:</strong> {deletingRicevuta.descrizione}</li>
+                )}
                 <li><strong>Importo:</strong> {formatImporto(deletingRicevuta.importo)}</li>
               </ul>
             </div>

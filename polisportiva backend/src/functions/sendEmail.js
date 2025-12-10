@@ -45,12 +45,24 @@ app.http('sendEmail', {
                 pdfBase64,
                 fileName,
                 isScheda,
-                ricevutaNumber
+                ricevutaNumber,
+                customMessage,
+                htmlContent
             } = requestBody;
 
             // Validazione dei dati richiesti
-            if (!recipientEmail || !recipientName || !subject || !pdfBase64 || !fileName) {
+            if (!recipientEmail || !recipientName || !subject) {
                 return createErrorResponse(400, 'Parametri mancanti per l\'invio dell\'email');
+            }
+
+            // Validazione aggiuntiva per messaggi personalizzati
+            if (customMessage && !htmlContent) {
+                return createErrorResponse(400, 'htmlContent è richiesto quando customMessage è true');
+            }
+
+            // Se c'è un allegato PDF, fileName è richiesto
+            if (pdfBase64 && !fileName) {
+                return createErrorResponse(400, 'fileName è richiesto quando viene fornito pdfBase64');
             }
 
             // Validazione formato email
@@ -62,39 +74,61 @@ app.http('sendEmail', {
             const client = getEmailClient();
             const senderAddress = process.env['SENDER_EMAIL'] || "DoNotReply@centrosportivoorbassano.it";
 
-            const emailMessage = {
-                senderAddress: senderAddress,
-                content: {
+            // Genera il contenuto dell'email in base al tipo
+            let emailContent;
+            if (customMessage) {
+                // Per messaggi personalizzati, usa htmlContent direttamente
+                emailContent = {
+                    subject: subject,
+                    plainText: stripHtmlTags(htmlContent),
+                    html: htmlContent,
+                };
+            } else {
+                // Per ricevute/schede, usa i template esistenti
+                emailContent = {
                     subject: subject,
                     plainText: generatePlainTextContent(isScheda, recipientName, ricevutaNumber),
                     html: generateSimpleHtmlContent(isScheda, recipientName, ricevutaNumber),
-                },
+                };
+            }
+
+            const emailMessage = {
+                senderAddress: senderAddress,
+                content: emailContent,
                 recipients: {
-                    to: [{ 
+                    to: [{
                         address: recipientEmail,
-                        displayName: recipientName 
+                        displayName: recipientName
                     }],
-                },
-                attachments: [
+                }
+            };
+
+            // Aggiungi l'allegato solo se è presente
+            if (pdfBase64 && fileName) {
+                emailMessage.attachments = [
                     {
                         name: fileName,
                         contentType: "application/pdf",
                         contentInBase64: pdfBase64
                     }
-                ]
-            };
+                ];
+            }
 
-            context.log(`Invio ${isScheda ? 'scheda' : 'ricevuta'} a ${recipientEmail}...`);
+            const emailType = customMessage ? 'email personalizzata' : (isScheda ? 'scheda' : 'ricevuta');
+            context.log(`Invio ${emailType} a ${recipientEmail}...`);
             
             const poller = await client.beginSend(emailMessage);
             const result = await poller.pollUntilDone();
 
             if (result.status === 'Succeeded') {
                 context.log(`Email inviata con successo. ID: ${result.id}`);
+                const successMessage = customMessage
+                    ? 'Email personalizzata inviata con successo'
+                    : `${isScheda ? 'Scheda' : 'Ricevuta'} inviata con successo`;
                 return createSuccessResponse({
                     success: true,
                     messageId: result.id,
-                    message: `${isScheda ? 'Scheda' : 'Ricevuta'} inviata con successo`
+                    message: successMessage
                 });
             } else {
                 context.log('Errore nell\'invio dell\'email:', result);
@@ -108,21 +142,32 @@ app.http('sendEmail', {
     }
 });
 
+function stripHtmlTags(html) {
+    if (!html) return '';
+    // Rimuove i tag HTML per creare una versione plain text
+    return html
+        .replace(/<style[^>]*>.*<\/style>/gmi, '') // Rimuove tag style
+        .replace(/<script[^>]*>.*<\/script>/gmi, '') // Rimuove tag script
+        .replace(/<[^>]+>/gm, '') // Rimuove tutti i tag HTML
+        .replace(/\s+/g, ' ') // Normalizza gli spazi
+        .trim();
+}
+
 function generatePlainTextContent(isScheda, recipientName, ricevutaNumber) {
     if (isScheda) {
         return `Gentile ${recipientName},
 
-in allegato troverà la sua scheda socio del Centro Sportivo Orbassano.
+in allegato troverà la sua scheda socio del Polisportiva Rivoli.
 
 Cordiali saluti,
-Centro Sportivo Orbassano`;
+Polisportiva Rivoli`;
     } else {
         return `Gentile ${recipientName},
 
-in allegato troverà la ricevuta N° ${ricevutaNumber} del Centro Sportivo Orbassano.
+in allegato troverà la ricevuta N° ${ricevutaNumber} del Polisportiva Rivoli.
 
 Cordiali saluti,
-Centro Sportivo Orbassano`;
+Polisportiva Rivoli`;
     }
 }
 
@@ -132,10 +177,10 @@ function generateSimpleHtmlContent(isScheda, recipientName, ricevutaNumber) {
           <html>
             <body style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">
               <p>Gentile <strong>${recipientName}</strong>,</p>
-              <p>in allegato troverà la sua scheda socio del Centro Sportivo Orbassano.</p>
+              <p>in allegato troverà la sua scheda socio del Polisportiva Rivoli.</p>
               <br>
               <p>Cordiali saluti,<br>
-              <strong>Centro Sportivo Orbassano</strong></p>
+              <strong>Polisportiva Rivoli</strong></p>
             </body>
           </html>`;
     } else {
@@ -143,10 +188,10 @@ function generateSimpleHtmlContent(isScheda, recipientName, ricevutaNumber) {
           <html>
             <body style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">
               <p>Gentile <strong>${recipientName}</strong>,</p>
-              <p>in allegato troverà la ricevuta N° <strong>${ricevutaNumber}</strong> del Centro Sportivo Orbassano.</p>
+              <p>in allegato troverà la ricevuta N° <strong>${ricevutaNumber}</strong> del Polisportiva Rivoli.</p>
               <br>
               <p>Cordiali saluti,<br>
-              <strong>Centro Sportivo Orbassano</strong></p>
+              <strong>Polisportiva Rivoli</strong></p>
             </body>
           </html>`;
     }

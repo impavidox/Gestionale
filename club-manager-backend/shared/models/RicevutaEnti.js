@@ -30,6 +30,7 @@ const ricevutaEntiSchema = Joi.object({
   dataRicevuta: Joi.date().required(),
   ente: Joi.string().min(1).max(255).required(),
   importo: Joi.number().integer().min(0).required(),
+  descrizione: Joi.string().allow('', null).optional(),
 });
 
 const validateRicevutaEnti = (data, context) => {
@@ -56,6 +57,7 @@ const normalizeRicevutaEntiResponse = (ricevuta) => {
     dataRicevuta: ricevuta.dataRicevuta,
     ente: ricevuta.ente,
     importo: ricevuta.importo,
+    descrizione: ricevuta.descrizione,
     created_at: ricevuta.created_at
   };
 };

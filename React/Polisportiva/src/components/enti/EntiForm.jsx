@@ -10,6 +10,7 @@ const EntiForm = ({ ricevuta, onSave, onCancel }) => {
   const [dataRicevuta, setDataRicevuta] = useState(new Date());
   const [ente, setEnte] = useState('');
   const [importo, setImporto] = useState('');
+  const [descrizione, setDescrizione] = useState('');
   const [errors, setErrors] = useState({});
 
   // Carica i dati della ricevuta se in modalità modifica
@@ -19,6 +20,7 @@ const EntiForm = ({ ricevuta, onSave, onCancel }) => {
       setEnte(ricevuta.ente || '');
       // Converti da centesimi a euro per la visualizzazione
       setImporto(((ricevuta.importo || 0) / 100).toFixed(2));
+      setDescrizione(ricevuta.descrizione || '');
     }
   }, [ricevuta]);
 
@@ -60,7 +62,8 @@ const EntiForm = ({ ricevuta, onSave, onCancel }) => {
     const ricevutaData = {
       dataRicevuta: formatDateForApi(dataRicevuta),
       ente: ente.trim(),
-      importo: importoCentesimi
+      importo: importoCentesimi,
+      descrizione: descrizione.trim()
     };
 
     onSave(ricevutaData);
@@ -84,7 +87,7 @@ const EntiForm = ({ ricevuta, onSave, onCancel }) => {
           <DateField
             label="Data Ricevuta *"
             value={dataRicevuta}
-            onChange={setDataRicevuta}
+            onChange={(name, date) => setDataRicevuta(date)}
             error={errors.dataRicevuta}
             required
           />
@@ -127,6 +130,24 @@ const EntiForm = ({ ricevuta, onSave, onCancel }) => {
             </Form.Control.Feedback>
             <Form.Text className="text-muted">
               Inserisci l'importo in euro (es. 100.50)
+            </Form.Text>
+          </Form.Group>
+        </Col>
+      </Row>
+
+      <Row>
+        <Col md={12}>
+          <Form.Group className="mb-3">
+            <Form.Label>Descrizione</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={descrizione}
+              onChange={(e) => setDescrizione(e.target.value)}
+              placeholder="Inserisci una descrizione (opzionale)"
+            />
+            <Form.Text className="text-muted">
+              Descrizione della ricevuta (opzionale)
             </Form.Text>
           </Form.Group>
         </Col>

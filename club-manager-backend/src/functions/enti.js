@@ -115,15 +115,16 @@ async function handleCreateRicevutaEnti(context, ricevutaData) {
 
             const insertQuery = `
                 INSERT INTO RicevuteEnti (
-                    dataRicevuta, ente, importo, created_at
+                    dataRicevuta, ente, importo, descrizione, created_at
                 ) OUTPUT INSERTED.id VALUES (
-                    @dataRicevuta, @ente, @importo, GETDATE()
+                    @dataRicevuta, @ente, @importo, @descrizione, GETDATE()
                 )
             `;
 
             request.input('dataRicevuta', sql.Date, value.dataRicevuta);
             request.input('ente', sql.NVarChar(255), value.ente);
             request.input('importo', sql.Int, value.importo);
+            request.input('descrizione', sql.NVarChar(255), value.descrizione || null);
 
             const result = await request.query(insertQuery);
             const ricevutaId = result.recordset[0].id;
@@ -176,7 +177,7 @@ async function handleRetrieveAllRicevuteEnti(context, queryParams) {
 
         const query = `
             SELECT
-                id, dataRicevuta, ente, importo, created_at
+                id, dataRicevuta, ente, importo, descrizione, created_at
             FROM RicevuteEnti
             ${whereClause}
             ORDER BY dataRicevuta DESC, id DESC
@@ -222,7 +223,7 @@ async function handleRetrieveRicevutaEntiById(context, ricevutaId) {
         request.input('ricevutaId', sql.Int, parseInt(ricevutaId));
 
         const query = `
-            SELECT id, dataRicevuta, ente, importo, created_at
+            SELECT id, dataRicevuta, ente, importo, descrizione, created_at
             FROM RicevuteEnti
             WHERE id = @ricevutaId
         `;
@@ -280,13 +281,15 @@ async function handleUpdateRicevutaEnti(context, ricevutaData) {
             updateRequest.input('dataRicevuta', sql.Date, value.dataRicevuta);
             updateRequest.input('ente', sql.NVarChar(255), value.ente);
             updateRequest.input('importo', sql.Int, value.importo);
+            updateRequest.input('descrizione', sql.NVarChar(255), value.descrizione || null);
 
             const updateQuery = `
                 UPDATE RicevuteEnti
                 SET
                     dataRicevuta = @dataRicevuta,
                     ente = @ente,
-                    importo = @importo
+                    importo = @importo,
+                    descrizione = @descrizione
                 WHERE id = @ricevutaId
             `;
 
@@ -375,7 +378,8 @@ async function handleBuildPrimaNotaEnti(context, type, startDate, endDate) {
                 id,
                 dataRicevuta,
                 ente,
-                importo
+                importo,
+                descrizione
             FROM RicevuteEnti
             WHERE 1=1 ${dateFilter}
             ORDER BY dataRicevuta, id
