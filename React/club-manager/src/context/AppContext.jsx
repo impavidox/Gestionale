@@ -56,10 +56,11 @@ export const AppProvider = ({ children }) => {
       // } catch (error) {
       //   console.error('Errore nel caricamento dell\'anno sportivo:', error);
         // Set fallback year
-        const currentYear = new Date().getFullYear();
+        const now = new Date();
+        const startYear = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
         setAnnoSportiva({
           id: 1,
-          annoName: `${currentYear}/${currentYear + 1}`
+          annoName: `${startYear}/${startYear + 1}`
         });
       
     };

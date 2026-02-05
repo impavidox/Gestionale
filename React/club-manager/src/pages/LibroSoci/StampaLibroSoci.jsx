@@ -154,7 +154,7 @@ const StampaLibroSoci = () => {
           <div className="text-center mb-4">
             <img src='./headercso.jpg'></img>
             <h2>{'Libro '+ getTipoNome(tipo)}</h2>
-            <p className="mb-1">Anno Sportivo: {anno}/{anno + 1}</p>
+            <p className="mb-1">Anno Sportivo: {anno - 1}/{anno}</p>
           </div>
           
           {soci.length === 0 ? (

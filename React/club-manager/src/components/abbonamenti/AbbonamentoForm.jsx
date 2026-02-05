@@ -77,10 +77,11 @@ const AbbonamentoForm = ({ socio, abbonamento, onSuccess, onCancel }) => {
           setValues(prev => ({ ...prev, idAnno: anno.id }));
         } else {
           // Fallback to current year if API fails
-          const currentYear = new Date().getFullYear();
-          const fallbackAnno = { 
-            id: 1, 
-            annoName: `${currentYear}/${currentYear + 1}` 
+          const now = new Date();
+          const startYear = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+          const fallbackAnno = {
+            id: 1,
+            annoName: `${startYear}/${startYear + 1}`
           };
           setAnnoSportivo(fallbackAnno);
           setValues(prev => ({ ...prev, idAnno: fallbackAnno.id }));
@@ -88,10 +89,11 @@ const AbbonamentoForm = ({ socio, abbonamento, onSuccess, onCancel }) => {
       } catch (err) {
         console.error('Errore nel caricamento dell\'anno sportivo:', err);
         // Use fallback year
-        const currentYear = new Date().getFullYear();
-        const fallbackAnno = { 
-          id: 1, 
-          annoName: `${currentYear}/${currentYear + 1}` 
+        const now = new Date();
+        const startYear = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+        const fallbackAnno = {
+          id: 1,
+          annoName: `${startYear}/${startYear + 1}`
         };
         setAnnoSportivo(fallbackAnno);
         setValues(prev => ({ ...prev, idAnno: fallbackAnno.id }));

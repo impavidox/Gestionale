@@ -605,26 +605,19 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
       setFormData(prev => ({
         ...prev,
         tipoSocio: {
-         // ...prev.tipoSocio,
+          ...prev.tipoSocio,
           [tipoKey]: numericValue
         }
       }));
-      
+
       // Show/hide federation dropdown based on tesserato checkbox
       if (tipoKey === 'tesserato') {
         setViewFede(value);
         if (!value) {
           // Clear federation if tesserato is unchecked
           setSelectedActivity(null);
-          setActivitiesList([]);
-          setFormData(prev => ({ ...prev, activityId: null }));
+          setFormData(prev => ({ ...prev, codice: null }));
         }
-      }
-      else {
-        setViewFede();
-        setSelectedActivity(null);
-        setActivitiesList([]);
-        setFormData(prev => ({ ...prev, activityId: null }));
       }
     } else if (typeof value === 'boolean') {
       // Convert the boolean to 1 (true) or 0 (false) for other checkboxes
@@ -1119,7 +1112,7 @@ const SocioForm = ({ existingSocio, mode = 'C', onSave }) => {
                       label="Attività"
                       name="activity"
                       value={selectedActivity}
-                      options={activitiesList.map(item => item.nome)}
+                      options={activitiesList.map(item => item.nome).filter(Boolean)}
                       onChange={handleActivitySelected}
                       required={viewFede}
                     />

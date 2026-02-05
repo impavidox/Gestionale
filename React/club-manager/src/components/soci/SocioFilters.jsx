@@ -97,11 +97,12 @@ const SocioFilters = ({
         } catch (err) {
           console.warn('Failed to load anno sportivo, using fallback:', err);
           // Fallback anno
-          const currentYear = new Date().getFullYear();
-          anniData = [{ 
-            id: 1, 
-            annoName: `${currentYear}/${currentYear + 1}`,
-            name: `${currentYear}/${currentYear + 1}`
+          const now = new Date();
+          const startYear = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+          anniData = [{
+            id: 1,
+            annoName: `${startYear}/${startYear + 1}`,
+            name: `${startYear}/${startYear + 1}`
           }];
           setAnni(anniData);
           setSelectedAnno(anniData[0]);

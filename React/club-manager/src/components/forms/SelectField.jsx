@@ -45,7 +45,7 @@ const SelectField = ({
       return optionsArray;
     }
     // Convert to correct format
-    return optionsArray.map(option => {
+    return optionsArray.filter(option => option != null).map(option => {
       if (option.id !== undefined) {
         return {
           value: option.id,
