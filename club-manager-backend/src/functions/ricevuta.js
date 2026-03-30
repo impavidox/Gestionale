@@ -253,8 +253,8 @@ async function handleCreateNewRicevuta(context, ricevutaData) {
             `;
             request.input('attivitaId', sql.Int, value.attivitàId);
             request.input('socioId', sql.Int, value.socioId);
-            request.input('importoRicevuta', sql.Int, value.importoRicevuta || 0);
-            request.input('importoIncassato', sql.Int, value.importoIncassato || 0);
+            request.input('importoRicevuta', sql.Float, value.importoRicevuta || 0);
+            request.input('importoIncassato', sql.Float, value.importoIncassato || 0);
             request.input('tipologiaPagamento', sql.Int, value.tipologiaPagamento || 0);
             request.input('quotaAss', sql.Int, value.quotaAss || 0);
             request.input('scadenzaQuota', sql.Date, value.scadenzaQuota || null);
@@ -326,8 +326,8 @@ async function handleUpdateRicevuta(context, ricevutaData) {
             requestUpdate.input('ricevutaId', sql.Int, parseInt(ricevutaId));
             requestUpdate.input('attivitaId', sql.Int, value.attivitàId);
             requestUpdate.input('socioId', sql.Int, value.socioId);
-            requestUpdate.input('importoRicevuta', sql.Int, value.importoRicevuta || 0);
-            requestUpdate.input('importoIncassato', sql.Int, value.importoIncassato || 0);
+            requestUpdate.input('importoRicevuta', sql.Float, value.importoRicevuta || 0);
+            requestUpdate.input('importoIncassato', sql.Float, value.importoIncassato || 0);
             requestUpdate.input('tipologiaPagamento', sql.Int, value.tipologiaPagamento || 0);
             requestUpdate.input('quotaAss', sql.Int, value.quotaAss || 0);
             requestUpdate.input('scadenzaQuota', sql.Date, value.scadenzaQuota || null);

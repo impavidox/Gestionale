@@ -29,8 +29,8 @@ const parseDateFromString = (dateStr) => {
 const ricevutaAttivitaSchema = Joi.object({
   attivitàId: Joi.number().integer().positive().required(),
   socioId: Joi.number().integer().positive().required(),
-  importoRicevuta: Joi.number().integer().min(0).optional(),
-  importoIncassato: Joi.number().integer().min(0).optional(),
+  importoRicevuta: Joi.number().min(0).optional(),
+  importoIncassato: Joi.number().min(0).optional(),
   tipologiaPagamento: Joi.number().integer().valid(1, 2, 3).optional(), // 0=contanti, 1=bonifico, 2=carta, 3=altro
   quotaAss: Joi.number().integer().min(0).optional(),
   scadenzaQuota: Joi.date().optional(),
