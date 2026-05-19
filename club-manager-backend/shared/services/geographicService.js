@@ -5,7 +5,7 @@ class GeographicService {
     this.cache = new Map();
     this.cacheTimeout = 24 * 60 * 60 * 1000; // 24 ore in milliseconds
     this.apiTimeout = 10000; // 10 secondi timeout per API calls
-    this.baseUrl = 'https://axqvoqvbfjpaamphztgd.functions.supabase.co/';
+    this.baseUrl = 'https://comuni-ita.nicolorebaioli.dev';
   }
 
   /**
